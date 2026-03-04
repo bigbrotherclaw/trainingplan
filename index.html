@@ -1519,11 +1519,11 @@
                         const metrics = entry.details.cardio.metrics;
 
                         if (cardioName.includes('bike') && metrics.distance) {
-                            distances.bike += metrics.distance;
+                            distances.bike += parseFloat(metrics.distance) || 0;
                         } else if (cardioName.includes('run') && metrics.distance) {
-                            distances.run += metrics.distance;
+                            distances.run += parseFloat(metrics.distance) || 0;
                         } else if (cardioName.includes('swim')) {
-                            distances.swim += (metrics.totalDistance || 0);
+                            distances.swim += parseFloat(metrics.totalDistance) || 0;
                         }
                     }
                 });
@@ -1531,8 +1531,11 @@
                 return distances;
             }, [filteredHistory]);
 
-            const distances = useMemo(() => getCumulativeDistances(), [getCumulativeDistances]);
-            const maxDistance = Math.max(distances.bike, distances.run, distances.swim || 1);
+            const distances = useMemo(() => {
+                const d = getCumulativeDistances();
+                return { bike: Number(d.bike) || 0, run: Number(d.run) || 0, swim: Number(d.swim) || 0 };
+            }, [getCumulativeDistances]);
+            const maxDistance = Math.max(distances.bike, distances.run, distances.swim, 1);
 
             useEffect(() => {
                 setTimeout(() => {
@@ -1675,19 +1678,25 @@
                         <h3 style={{ marginBottom: '12px', color: '#e2e8f0', fontSize: '14px', fontWeight: '600' }}>Cumulative Distance</h3>
                         <div style={{ marginBottom: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <div style={{ width: '30px', color: '#3b82f6', fontWeight: '600' }}>Bike</div>
-                                <div style={{ flex: 1, height: '8px', backgroundColor: '#3b82f6', borderRadius: '4px', width: maxDistance > 0 ? ((distances.bike / maxDistance) * 100) + '%' : '0%' }}></div>
-                                <div style={{ color: '#94a3b8', fontSize: '12px', minWidth: '50px', textAlign: 'right' }}>{distances.bike.toFixed(1)} mi</div>
+                                <div style={{ width: '36px', color: '#3b82f6', fontWeight: '600', fontSize: '12px' }}>Bike</div>
+                                <div style={{ flex: 1, height: '8px', backgroundColor: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', backgroundColor: '#3b82f6', borderRadius: '4px', width: maxDistance > 0 ? ((distances.bike / maxDistance) * 100) + '%' : '0%' }}></div>
+                                </div>
+                                <div style={{ color: '#94a3b8', fontSize: '12px', minWidth: '55px', textAlign: 'right' }}>{distances.bike.toFixed(1)} mi</div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <div style={{ width: '30px', color: '#10b981', fontWeight: '600' }}>Run</div>
-                                <div style={{ flex: 1, height: '8px', backgroundColor: '#10b981', borderRadius: '4px', width: maxDistance > 0 ? ((distances.run / maxDistance) * 100) + '%' : '0%' }}></div>
-                                <div style={{ color: '#94a3b8', fontSize: '12px', minWidth: '50px', textAlign: 'right' }}>{distances.run.toFixed(1)} mi</div>
+                                <div style={{ width: '36px', color: '#10b981', fontWeight: '600', fontSize: '12px' }}>Run</div>
+                                <div style={{ flex: 1, height: '8px', backgroundColor: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', backgroundColor: '#10b981', borderRadius: '4px', width: maxDistance > 0 ? ((distances.run / maxDistance) * 100) + '%' : '0%' }}></div>
+                                </div>
+                                <div style={{ color: '#94a3b8', fontSize: '12px', minWidth: '55px', textAlign: 'right' }}>{distances.run.toFixed(1)} mi</div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '30px', color: '#8b5cf6', fontWeight: '600' }}>Swim</div>
-                                <div style={{ flex: 1, height: '8px', backgroundColor: '#8b5cf6', borderRadius: '4px', width: maxDistance > 0 ? ((distances.swim / maxDistance) * 100) + '%' : '0%' }}></div>
-                                <div style={{ color: '#94a3b8', fontSize: '12px', minWidth: '50px', textAlign: 'right' }}>{distances.swim.toFixed(0)} yds</div>
+                                <div style={{ width: '36px', color: '#8b5cf6', fontWeight: '600', fontSize: '12px' }}>Swim</div>
+                                <div style={{ flex: 1, height: '8px', backgroundColor: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', backgroundColor: '#8b5cf6', borderRadius: '4px', width: maxDistance > 0 ? ((distances.swim / maxDistance) * 100) + '%' : '0%' }}></div>
+                                </div>
+                                <div style={{ color: '#94a3b8', fontSize: '12px', minWidth: '55px', textAlign: 'right' }}>{distances.swim.toFixed(0)} yds</div>
                             </div>
                         </div>
                     </div>
