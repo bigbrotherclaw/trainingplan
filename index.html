@@ -1338,6 +1338,28 @@
             return null;
         }
 
+        function getWorkoutSummaryForDate(date, workoutOverrides) {
+            const dateKey = date.toISOString().split('T')[0];
+            const override = workoutOverrides && workoutOverrides[dateKey];
+            let workout = WEEKLY_TEMPLATE[date.getDay()];
+            if (override) {
+                workout = Object.values(WEEKLY_TEMPLATE).find(w => w.type === override.type) || workout;
+            }
+
+            if (workout.type === 'rest') return { label: 'Rest', color: '#334155', accent: '#475569' };
+            if (workout.type === 'strength') {
+                const acc = workout.accessories;
+                const cats = [...new Set(ACCESSORIES[acc]?.map(a => a.category) || [])];
+                return { label: cats.join(' + '), color: '#92400e', accent: '#f59e0b' };
+            }
+            if (workout.type === 'tri') {
+                if (workout.name.includes('Run')) return { label: 'Run + HIC', color: '#064e3b', accent: '#10b981' };
+                return { label: 'Swim/Bike + HIC', color: '#1e3a5f', accent: '#3b82f6' };
+            }
+            if (workout.type === 'long') return { label: 'Long Tri', color: '#4c1d95', accent: '#8b5cf6' };
+            return { label: workout.short, color: '#334155', accent: '#64748b' };
+        }
+
         function Dashboard({ settings, workoutOverrides, workoutHistory }) {
             const [viewMode, setViewMode] = useState('week');
             const todayRef = useRef(null);
@@ -1774,23 +1796,44 @@
                             <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '8px' }}>F</div>
                             <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '8px' }}>S</div>
                             {thisMonthData.map((dayInfo, idx) => {
-                                const workout = getWorkoutForDate(dayInfo.date, settings.block, settings.week);
                                 const isLogged = loggedDateStrings.some(d => new Date(d).toDateString() === dayInfo.date.toDateString());
                                 const log = isLogged ? getLogForDate(dayInfo.date) : null;
                                 const hasSkippedHic = log?.details?.hic?.skipped;
                                 const isToday = dayInfo.date.toDateString() === today.toDateString();
+                                const summary = dayInfo.isCurrentMonth ? getWorkoutSummaryForDate(dayInfo.date, workoutOverrides) : null;
 
-                                let bgColor = '#1a1a1a';
+                                let bgColor = summary ? summary.color + '33' : '#0a0a0a';
                                 let borderColor = '#334155';
 
                                 if (isToday) {
-                                    borderColor = '#3b82f6';
+                                    borderColor = '#e2e8f0';
+                                    bgColor = summary ? summary.color + '66' : '#1a1a1a';
                                 } else if (isLogged) {
                                     borderColor = '#10b981';
+                                } else if (summary) {
+                                    borderColor = summary.accent + '55';
                                 }
 
                                 if (!dayInfo.isCurrentMonth) {
                                     bgColor = '#0a0a0a';
+                                }
+
+                                // Build logged summary if available
+                                let logLabel = null;
+                                if (log) {
+                                    const parts = [];
+                                    if (log.details?.cardio?.name) {
+                                        const cn = log.details.cardio.name.toLowerCase();
+                                        if (cn.includes('swim')) parts.push('Swim');
+                                        else if (cn.includes('bike')) parts.push('Bike');
+                                        else if (cn.includes('run')) parts.push('Run');
+                                        else parts.push(log.details.cardio.name.split(' ')[0]);
+                                    }
+                                    if (log.details?.hic) {
+                                        parts.push(log.details.hic.skipped ? '—' : 'HIC');
+                                    }
+                                    if (log.type === 'strength') parts.push('STR');
+                                    logLabel = parts.join('+');
                                 }
 
                                 return (
@@ -1800,9 +1843,9 @@
                                         style={{
                                             aspectRatio: '1',
                                             backgroundColor: bgColor,
-                                            border: '1px solid ' + borderColor,
+                                            border: isToday ? '2px solid ' + borderColor : '1px solid ' + borderColor,
                                             borderRadius: '6px',
-                                            padding: '4px',
+                                            padding: '2px',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             alignItems: 'center',
@@ -1810,13 +1853,19 @@
                                             fontSize: '11px',
                                             color: dayInfo.isCurrentMonth ? '#e2e8f0' : '#64748b',
                                             fontWeight: '500',
-                                            position: 'relative'
+                                            position: 'relative',
+                                            overflow: 'hidden'
                                         }}
                                     >
-                                        {dayInfo.date.getDate()}
+                                        <div style={{ fontSize: '11px', fontWeight: isToday ? '700' : '500' }}>{dayInfo.date.getDate()}</div>
+                                        {dayInfo.isCurrentMonth && summary && summary.label !== 'Rest' && (
+                                            <div style={{ fontSize: '7px', color: summary.accent, textAlign: 'center', lineHeight: '1.1', marginTop: '1px', fontWeight: '600', letterSpacing: '-0.2px' }}>
+                                                {isLogged && logLabel ? logLabel : summary.label}
+                                            </div>
+                                        )}
                                         {isLogged && (
-                                            <div style={{ fontSize: '10px', color: hasSkippedHic ? '#f59e0b' : '#10b981', marginTop: '2px' }}>
-                                                {hasSkippedHic ? '~' : 'X'}
+                                            <div style={{ fontSize: '8px', color: hasSkippedHic ? '#f59e0b' : '#10b981', marginTop: '1px', fontWeight: '700' }}>
+                                                {hasSkippedHic ? '~' : '✓'}
                                             </div>
                                         )}
                                     </div>
