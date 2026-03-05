@@ -70,9 +70,9 @@ export const EXERCISE_MUSCLE_MAP = {
 
 export const DEFAULT_SETTINGS = {
   name: 'Luke',
-  benchPress1RM: 225,
-  squat1RM: 315,
-  weightedPullup1RM: 135,
+  benchPress1RM: 245,
+  squat1RM: 325,
+  weightedPullup1RM: 115,
   block: 1,
   week: 1,
   runLTPace: 0,
