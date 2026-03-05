@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { getSwappedWorkoutForDate, getSwappedWorkoutSummaryForDate } from '../utils/workout';
 import WeekStrip from '../components/WeekStrip';
 import MuscleHeatmap from '../components/MuscleHeatmap';
+import ComplianceRing from '../components/ComplianceRing';
 
 export default function Dashboard({ onNavigate }) {
   const { workoutHistory, settings, weekSwaps } = useApp();
@@ -116,6 +117,9 @@ export default function Dashboard({ onNavigate }) {
           <div className="text-[10px] text-slate-500 uppercase">Total</div>
         </div>
       </div>
+
+      {/* Weekly Compliance Ring */}
+      <ComplianceRing weekWorkouts={weekWorkouts} />
 
       {/* Muscle Heatmap */}
       <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">

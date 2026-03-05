@@ -1,11 +1,31 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '../data/training';
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
 import { HIC_PRESETS, HIC_INPUT_FIELDS, DEFAULT_HIC_FIELDS, getRecommendedHics } from '../data/hic';
+
+function Sparkline({ data }) {
+  if (!data || data.length < 2) return null;
+  const w = 60, h = 20, pad = 2;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return `${x},${y}`;
+  }).join(' ');
+  const trend = data[data.length - 1] - data[0];
+  const color = trend > 0 ? '#10b981' : trend < 0 ? '#ef4444' : '#64748b';
+  return (
+    <svg width={w} height={h} className="inline-block ml-2">
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 function getCardioPresetsForWorkout(workout, week) {
   if (workout.type === 'tri') {
@@ -155,6 +175,10 @@ export default function Workout({ showToast }) {
   const [cardioModality, setCardioModality] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [expandedLifts, setExpandedLifts] = useState({});
+  const [durationMin, setDurationMin] = useState('');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef(null);
+  const loggingStartRef = useRef(null);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayWorkout = useMemo(() => getSwappedWorkoutForDate(today, weekSwaps), [today, weekSwaps]);
@@ -174,6 +198,19 @@ export default function Workout({ showToast }) {
     }
     return upcoming;
   }, [today, weekSwaps]);
+
+  useEffect(() => {
+    if (loggingMode) {
+      loggingStartRef.current = Date.now();
+      setElapsedSeconds(0);
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - loggingStartRef.current) / 1000));
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [loggingMode]);
 
   useEffect(() => {
     if (todayWorkout.type === 'tri') {
@@ -262,6 +299,22 @@ export default function Workout({ showToast }) {
     return [{ label: 'Endurance Bike', value: 'endurance-bike' }, { label: 'Z2 Run', value: 'endurance-run' }];
   };
 
+  const liftSparklines = useMemo(() => {
+    const byLift = {};
+    workoutHistory
+      .filter((e) => e.type === 'strength' && e.details?.lifts)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach((entry) => {
+        entry.details.lifts.forEach((lift) => {
+          if (!byLift[lift.name]) byLift[lift.name] = [];
+          byLift[lift.name].push(lift.weight);
+        });
+      });
+    // Keep last 8 sessions per lift
+    Object.keys(byLift).forEach((k) => { byLift[k] = byLift[k].slice(-8); });
+    return byLift;
+  }, [workoutHistory]);
+
   const recommendedHics = useMemo(() => getRecommendedHics(workoutHistory), [workoutHistory]);
   const hicFields = HIC_INPUT_FIELDS[selectedHic] || DEFAULT_HIC_FIELDS;
 
@@ -285,19 +338,23 @@ export default function Workout({ showToast }) {
         }
         return { name: acc.name, weight, reps, setsCompleted };
       });
+      const dur = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
       setWorkoutHistory((prev) => [...prev, {
         date: new Date().toISOString(),
         workoutName: todayWorkout.name,
         type: 'strength',
+        ...(dur ? { duration: dur } : {}),
         details: { lifts, accessories, loading: { sets: loadingInfo.sets, reps: loadingInfo.reps, percentage: loadingInfo.percentage } },
       }]);
     } else if (todayWorkout.type === 'tri') {
       if (!selectedCardio) { showToast('Please select a cardio workout', 'error'); return; }
       if (!selectedHic && !skippedHic) { showToast('Please select an HIC or skip it', 'error'); return; }
+      const durTri = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
       setWorkoutHistory((prev) => [...prev, {
         date: new Date().toISOString(),
         workoutName: todayWorkout.name,
         type: 'tri',
+        ...(durTri ? { duration: durTri } : {}),
         details: {
           cardio: { name: selectedCardio, metrics: { ...cardioMetrics } },
           hic: skippedHic ? { name: 'Skipped', skipped: true } : { name: selectedHic, metrics: { ...hicMetrics } },
@@ -305,10 +362,12 @@ export default function Workout({ showToast }) {
       }]);
     } else if (todayWorkout.type === 'long') {
       if (!selectedCardio) { showToast('Please select a cardio workout', 'error'); return; }
+      const durLong = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
       setWorkoutHistory((prev) => [...prev, {
         date: new Date().toISOString(),
         workoutName: todayWorkout.name,
         type: 'long',
+        ...(durLong ? { duration: durLong } : {}),
         details: { cardio: { name: selectedCardio, metrics: { ...cardioMetrics } }, notes: longNotes },
       }]);
     }
@@ -396,7 +455,10 @@ export default function Workout({ showToast }) {
                     const weight = getTodayLiftWeight(lift.name);
                     return (
                       <div key={lift.name} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                        <span className="text-sm font-medium text-white">{lift.name}</span>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-white">{lift.name}</span>
+                          <Sparkline data={liftSparklines[lift.name]} />
+                        </div>
                         <span className="text-sm text-slate-300">{weight} lbs x {loadingInfo.sets}x{loadingInfo.reps}</span>
                       </div>
                     );
@@ -488,7 +550,13 @@ export default function Workout({ showToast }) {
           <ArrowLeft size={18} />
           Back
         </button>
-        {todayWorkout.type === 'strength' && <RestTimer defaultSeconds={loadingInfo.restMin === '2 min' ? 120 : 180} />}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-dark-500 text-slate-400 text-xs">
+            <Clock size={12} />
+            <span className="tabular-nums">{Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')}</span>
+          </div>
+          {todayWorkout.type === 'strength' && <RestTimer defaultSeconds={loadingInfo.restMin === '2 min' ? 120 : 180} />}
+        </div>
       </div>
 
       <div>
@@ -742,6 +810,13 @@ export default function Workout({ showToast }) {
           )}
         </div>
       )}
+
+      <div className="bg-dark-700 rounded-xl p-4 border border-white/5">
+        <label className="text-[10px] uppercase text-slate-500 block mb-1">Duration (minutes, optional)</label>
+        <input type="number" placeholder={elapsedSeconds > 60 ? `~${Math.round(elapsedSeconds / 60)} min (auto)` : 'e.g. 45'}
+          value={durationMin} onChange={(e) => setDurationMin(e.target.value)}
+          className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+      </div>
 
       <motion.button
         whileTap={{ scale: 0.97 }}

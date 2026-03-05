@@ -1,14 +1,100 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, Radar, AreaChart, Area, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, Radar, AreaChart, Area, Tooltip, Legend } from 'recharts';
 import MuscleHeatmap from '../components/MuscleHeatmap';
-import { Trophy, TrendingUp, Activity } from 'lucide-react';
+import { Trophy, TrendingUp, Activity, Timer } from 'lucide-react';
+import { OPERATOR_LIFTS, EXERCISE_MUSCLE_MAP, ACCESSORIES } from '../data/training';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316'];
+const LIFT_COLORS = { 'Bench Press': '#3b82f6', 'Back Squat': '#ef4444', 'Weighted Pull-up': '#10b981' };
+
+function epley(weight, reps) {
+  if (reps <= 0 || weight <= 0) return 0;
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30));
+}
 
 export default function Stats() {
   const { workoutHistory } = useApp();
   const [heatmapPeriod, setHeatmapPeriod] = useState('week');
+
+  // E1RM Trend Lines
+  const e1rmData = useMemo(() => {
+    const sessions = workoutHistory
+      .filter((e) => e.type === 'strength' && e.details?.lifts)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (sessions.length === 0) return [];
+    return sessions.map((entry) => {
+      const d = new Date(entry.date);
+      const label = `${d.getMonth() + 1}/${d.getDate()}`;
+      const row = { date: label, fullDate: entry.date };
+      entry.details.lifts.forEach((lift) => {
+        row[lift.name] = epley(lift.weight, lift.reps);
+      });
+      return row;
+    });
+  }, [workoutHistory]);
+
+  // Volume Load Bar Chart - weekly tonnage stacked by muscle group
+  const volumeData = useMemo(() => {
+    const weekMap = {};
+    workoutHistory
+      .filter((e) => e.type === 'strength' && e.details?.lifts)
+      .forEach((entry) => {
+        const d = new Date(entry.date);
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        const weekKey = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+        if (!weekMap[weekKey]) weekMap[weekKey] = { week: weekKey, _ts: weekStart.getTime() };
+
+        const addVolume = (name, weight, reps, sets) => {
+          const vol = weight * reps * sets;
+          const mapping = EXERCISE_MUSCLE_MAP[name];
+          if (mapping) {
+            const totalPts = Object.values(mapping).reduce((a, b) => a + b, 0);
+            Object.entries(mapping).forEach(([muscle, pts]) => {
+              const share = Math.round(vol * (pts / totalPts));
+              weekMap[weekKey][muscle] = (weekMap[weekKey][muscle] || 0) + share;
+            });
+          }
+        };
+
+        entry.details.lifts.forEach((lift) => {
+          addVolume(lift.name, lift.weight, lift.reps, lift.setsCompleted || 1);
+        });
+        if (entry.details.accessories) {
+          entry.details.accessories.forEach((acc) => {
+            addVolume(acc.name, acc.weight || 0, acc.reps, acc.setsCompleted || 1);
+          });
+        }
+      });
+
+    return Object.values(weekMap).sort((a, b) => a._ts - b._ts);
+  }, [workoutHistory]);
+
+  const volumeMuscles = useMemo(() => {
+    const muscles = new Set();
+    volumeData.forEach((w) => {
+      Object.keys(w).forEach((k) => { if (k !== 'week' && k !== '_ts') muscles.add(k); });
+    });
+    return [...muscles];
+  }, [volumeData]);
+
+  // Average Duration by Type
+  const durationData = useMemo(() => {
+    const byType = {};
+    workoutHistory.forEach((e) => {
+      if (e.duration && e.duration > 0) {
+        if (!byType[e.type]) byType[e.type] = [];
+        byType[e.type].push(e.duration);
+      }
+    });
+    return Object.entries(byType).map(([type, durations]) => ({
+      type: type.charAt(0).toUpperCase() + type.slice(1),
+      avg: Math.round(durations.reduce((a, b) => a + b, 0) / durations.length),
+      count: durations.length,
+    }));
+  }, [workoutHistory]);
 
   // Strength Progress - weight over time per lift
   const strengthProgress = useMemo(() => {
@@ -128,8 +214,78 @@ export default function Stats() {
     );
   }
 
+  const MUSCLE_COLORS = {
+    chest: '#ef4444', shoulders: '#f59e0b', lats: '#3b82f6', traps: '#8b5cf6',
+    biceps: '#10b981', triceps: '#14b8a6', forearms: '#6366f1', core: '#f97316',
+    obliques: '#ec4899', lowerBack: '#a855f7', quads: '#06b6d4', hamstrings: '#84cc16',
+    glutes: '#e11d48', calves: '#0ea5e9',
+  };
+
   return (
     <div className="px-4 py-4 pb-8 space-y-6">
+      {/* E1RM Trend Lines */}
+      {e1rmData.length > 0 && (
+        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={16} className="text-accent-blue" />
+            <h3 className="text-sm font-semibold text-slate-200">Estimated 1RM Trends</h3>
+          </div>
+          <p className="text-[10px] text-slate-500 mb-2">Epley formula: weight x (1 + reps/30)</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={e1rmData}>
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={40} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }}
+                formatter={(value, name) => [`${value} lbs`, name]}
+              />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              {OPERATOR_LIFTS.map((lift) => (
+                <Line
+                  key={lift.name}
+                  type="monotone"
+                  dataKey={lift.name}
+                  stroke={LIFT_COLORS[lift.name]}
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: LIFT_COLORS[lift.name], cursor: 'pointer' }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                  connectNulls
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Volume Load Bar Chart */}
+      {volumeData.length > 0 && (
+        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
+          <h3 className="text-sm font-semibold text-slate-200 mb-3">Weekly Volume Tonnage</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={volumeData}>
+              <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={45}
+                tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }}
+                formatter={(value, name) => [`${value.toLocaleString()} lbs`, name]}
+              />
+              {volumeMuscles.map((muscle, i) => (
+                <Bar key={muscle} dataKey={muscle} stackId="vol" fill={MUSCLE_COLORS[muscle] || COLORS[i % COLORS.length]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {volumeMuscles.map((muscle, i) => (
+              <div key={muscle} className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: MUSCLE_COLORS[muscle] || COLORS[i % COLORS.length] }} />
+                <span className="text-[9px] text-slate-500 capitalize">{muscle}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Muscle Heatmap */}
       <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
         <div className="flex items-center justify-between mb-3">
@@ -189,6 +345,27 @@ export default function Stats() {
               </ResponsiveContainer>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Average Workout Duration */}
+      {durationData.length > 0 && (
+        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
+          <div className="flex items-center gap-2 mb-3">
+            <Timer size={16} className="text-accent-purple" />
+            <h3 className="text-sm font-semibold text-slate-200">Avg Duration by Type</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={140}>
+            <BarChart data={durationData}>
+              <XAxis dataKey="type" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={35} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }}
+                formatter={(value) => [`${value} min`, 'Avg Duration']}
+              />
+              <Bar dataKey="avg" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 
