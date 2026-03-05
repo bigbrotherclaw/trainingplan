@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Flame, TrendingUp, Dumbbell, ChevronRight, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { getSwappedWorkoutForDate, getWorkoutSummaryForDate } from '../utils/workout';
+import { getSwappedWorkoutForDate, getSwappedWorkoutSummaryForDate } from '../utils/workout';
 import WeekStrip from '../components/WeekStrip';
 import MuscleHeatmap from '../components/MuscleHeatmap';
 
@@ -41,7 +41,7 @@ export default function Dashboard({ onNavigate }) {
     return [...workoutHistory].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
   }, [workoutHistory]);
 
-  const todaySummary = useMemo(() => getWorkoutSummaryForDate(today), [today]);
+  const todaySummary = useMemo(() => getSwappedWorkoutSummaryForDate(today, weekSwaps), [today, weekSwaps]);
 
   const typeLabel = {
     rest: 'Rest Day',

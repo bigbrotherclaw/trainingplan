@@ -5,8 +5,12 @@ export function getWorkoutForDate(date) {
   return WEEKLY_TEMPLATE[dayOfWeek];
 }
 
-export function getWorkoutSummaryForDate(date) {
-  const workout = WEEKLY_TEMPLATE[date.getDay()];
+export function getSwappedWorkoutSummaryForDate(date, weekSwaps) {
+  const workout = getSwappedWorkoutForDate(date, weekSwaps || {});
+  return getWorkoutSummary(workout);
+}
+
+export function getWorkoutSummary(workout) {
   if (workout.type === 'rest') return { label: 'Rest', color: '#334155', accent: '#475569' };
   if (workout.type === 'strength') {
     const acc = workout.accessories;
@@ -19,6 +23,11 @@ export function getWorkoutSummaryForDate(date) {
   }
   if (workout.type === 'long') return { label: 'Long Tri', color: '#4c1d95', accent: '#8b5cf6' };
   return { label: workout.short, color: '#334155', accent: '#64748b' };
+}
+
+export function getWorkoutSummaryForDate(date) {
+  const workout = WEEKLY_TEMPLATE[date.getDay()];
+  return getWorkoutSummary(workout);
 }
 
 export function getMonthData(year, month) {
