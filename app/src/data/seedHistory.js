@@ -8,7 +8,7 @@ export const SEED_HISTORY = [
     type: 'strength',
     details: {
       lifts: [
-        { name: 'Bench Press', weight: 172, reps: 5, setsCompleted: 3 },
+        { name: 'Bench Press', weight: 195, reps: 5, setsCompleted: 3 },
         { name: 'Back Squat', weight: 228, reps: 5, setsCompleted: 3 },
         { name: 'Weighted Pull-up', weight: 81, reps: 5, setsCompleted: 3 },
       ],
@@ -41,12 +41,13 @@ export const SEED_HISTORY = [
         },
       },
       hic: {
-        name: '600m Resets',
+        name: 'Meat Eater II',
         category: 'Aerobic-Anaerobic',
         metrics: {
-          rounds: '6',
-          bestTime: '118',
-          notes: 'Kept consistent splits. Last 2 rounds were tough.',
+          kbWeight: '53',
+          rounds: '10',
+          totalTime: '18',
+          notes: '10 KB swings + 10 burpees x10 rounds.',
         },
       },
     },
@@ -59,7 +60,7 @@ export const SEED_HISTORY = [
     type: 'strength',
     details: {
       lifts: [
-        { name: 'Bench Press', weight: 172, reps: 5, setsCompleted: 3 },
+        { name: 'Bench Press', weight: 195, reps: 5, setsCompleted: 3 },
         { name: 'Back Squat', weight: 228, reps: 5, setsCompleted: 3 },
         { name: 'Weighted Pull-up', weight: 81, reps: 5, setsCompleted: 3 },
       ],
