@@ -1,12 +1,13 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DEFAULT_SETTINGS } from '../data/training';
+import { SEED_HISTORY } from '../data/seedHistory';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [settings, setSettings] = useLocalStorage('trainingAppSettings', DEFAULT_SETTINGS);
-  const [workoutHistory, setWorkoutHistory] = useLocalStorage('trainingAppHistory', []);
+  const [workoutHistory, setWorkoutHistory] = useLocalStorage('trainingAppHistory', SEED_HISTORY);
   const [workoutOverrides, setWorkoutOverrides] = useLocalStorage('trainingAppOverrides', {});
   const [weekSwaps, setWeekSwaps] = useLocalStorage('trainingAppWeekSwaps', {});
 
