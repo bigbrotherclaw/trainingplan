@@ -6,6 +6,120 @@ import { useApp } from '../context/AppContext';
 import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '../data/training';
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
 import { HIC_PRESETS, HIC_INPUT_FIELDS, DEFAULT_HIC_FIELDS, getRecommendedHics } from '../data/hic';
+
+function getCardioPresetsForWorkout(workout, week) {
+  if (workout.type === 'tri') {
+    if (workout.name.includes('Run')) {
+      const preset = getCardioForWeek(RUN_PRESETS, week);
+      return { modality: 'Run', presets: preset ? [preset] : [RUN_PRESETS[0]] };
+    }
+    const swimPreset = getCardioForWeek(SWIM_PRESETS, week);
+    const bikePreset = getCardioForWeek(BIKE_PRESETS, week);
+    return {
+      modality: 'Swim / Bike',
+      presets: [swimPreset || SWIM_PRESETS[0], bikePreset || BIKE_PRESETS[0]].filter(Boolean),
+    };
+  }
+  if (workout.type === 'long') {
+    const bikePreset = getCardioForWeek(BIKE_ENDURANCE_PRESETS, week);
+    const runPreset = getCardioForWeek(RUN_ENDURANCE_PRESETS, week);
+    return {
+      modality: 'Endurance',
+      presets: [bikePreset || BIKE_ENDURANCE_PRESETS[0], runPreset || RUN_ENDURANCE_PRESETS[0]].filter(Boolean),
+    };
+  }
+  return null;
+}
+
+function UpcomingWorkoutCard({ date, workout, settings }) {
+  const loadingInfo = OPERATOR_LOADING.find((l) => l.week === settings.week) || OPERATOR_LOADING[0];
+
+  if (workout.type === 'rest') {
+    return (
+      <div className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-slate-500">
+            {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </div>
+          <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles.rest}`}>rest</span>
+        </div>
+        <div className="text-sm font-medium text-slate-400">Rest Day</div>
+      </div>
+    );
+  }
+
+  const cardioInfo = getCardioPresetsForWorkout(workout, settings.week);
+
+  return (
+    <div className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs text-slate-500">
+          {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+        </div>
+        <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[workout.type]}`}>
+          {workout.type}
+        </span>
+      </div>
+      <div className="text-sm font-bold text-slate-200 mb-2">{workout.name}</div>
+
+      {/* Strength detail */}
+      {workout.type === 'strength' && (
+        <div className="space-y-1.5">
+          <div className="text-[10px] text-slate-500">
+            Wk {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}%
+          </div>
+          {OPERATOR_LIFTS.map((lift) => {
+            const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
+            return (
+              <div key={lift.name} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-1.5">
+                <span className="text-xs text-slate-300">{lift.name}</span>
+                <span className="text-xs text-slate-400">{weight} lbs × {loadingInfo.sets}×{loadingInfo.reps}</span>
+              </div>
+            );
+          })}
+          {workout.accessories && (
+            <div className="mt-1.5 pt-1.5 border-t border-white/5">
+              <div className="text-[10px] text-slate-500 mb-1">Accessories {workout.accessories}</div>
+              {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
+                <div key={idx} className="flex items-center justify-between py-0.5">
+                  <span className="text-[11px] text-slate-400">{acc.name}</span>
+                  <span className="text-[11px] text-slate-500">{acc.sets}×{acc.reps} · {acc.category}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tri / Long cardio detail */}
+      {cardioInfo && (
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase text-slate-500">{cardioInfo.modality}</div>
+          {cardioInfo.presets.map((preset, idx) => (
+            <div key={idx} className="bg-white/5 rounded-lg px-3 py-2">
+              <div className="text-xs font-medium text-slate-300">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">{preset.time}{preset.distance ? ` · ${preset.distance}` : ''}</div>
+              <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">{preset.description}</div>
+            </div>
+          ))}
+
+          {/* HIC for tri */}
+          {workout.type === 'tri' && (
+            <div className="mt-1.5 pt-1.5 border-t border-white/5">
+              <div className="text-[10px] uppercase text-slate-500 mb-1">HIC Options</div>
+              {HIC_PRESETS.slice(0, 3).map((hic, idx) => (
+                <div key={idx} className="py-1">
+                  <div className="text-[11px] text-slate-300 font-medium">{hic.name} <span className="text-slate-500">· {hic.time}</span></div>
+                  <div className="text-[10px] text-slate-500">{hic.description}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import RestTimer from '../components/RestTimer';
 
@@ -216,19 +330,9 @@ export default function Workout({ showToast }) {
 
         <div>
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Upcoming</h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {upcomingWorkouts.map(({ date, workout }, idx) => (
-              <div key={idx} className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-slate-500">
-                    {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </div>
-                  <div className="text-sm font-medium text-slate-200">{workout.name}</div>
-                </div>
-                <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[workout.type]}`}>
-                  {workout.type}
-                </span>
-              </div>
+              <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
             ))}
           </div>
         </div>
@@ -349,19 +453,9 @@ export default function Workout({ showToast }) {
         {/* Upcoming Workouts */}
         <div>
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Upcoming</h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {upcomingWorkouts.map(({ date, workout }, idx) => (
-              <div key={idx} className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-slate-500">
-                    {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </div>
-                  <div className="text-sm font-medium text-slate-200">{workout.name}</div>
-                </div>
-                <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[workout.type]}`}>
-                  {workout.type}
-                </span>
-              </div>
+              <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
             ))}
           </div>
         </div>
