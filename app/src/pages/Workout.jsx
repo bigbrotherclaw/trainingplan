@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Sparkles, Moon } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight } from 'lucide-react';
+import { addDays } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '../data/training';
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
@@ -8,8 +9,23 @@ import { HIC_PRESETS, HIC_INPUT_FIELDS, DEFAULT_HIC_FIELDS, getRecommendedHics }
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import RestTimer from '../components/RestTimer';
 
+const typeBadgeStyles = {
+  strength: 'bg-red-500/20 text-red-400',
+  tri: 'bg-teal-500/20 text-teal-400',
+  long: 'bg-indigo-500/20 text-indigo-400',
+  rest: 'bg-slate-500/20 text-slate-400',
+};
+
+const typeGradient = {
+  rest: 'from-slate-800 to-slate-900',
+  strength: 'from-red-950 to-red-900/50',
+  tri: 'from-teal-950 to-teal-900/50',
+  long: 'from-indigo-950 to-indigo-900/50',
+};
+
 export default function Workout({ showToast }) {
   const { settings, workoutHistory, setWorkoutHistory, weekSwaps } = useApp();
+  const [loggingMode, setLoggingMode] = useState(false);
   const [selectedCardio, setSelectedCardio] = useState(null);
   const [cardioMetrics, setCardioMetrics] = useState({});
   const [selectedHic, setSelectedHic] = useState(null);
@@ -34,6 +50,16 @@ export default function Workout({ showToast }) {
     () => workoutHistory.some((e) => new Date(e.date).toDateString() === today.toDateString()),
     [workoutHistory, today]
   );
+
+  const upcomingWorkouts = useMemo(() => {
+    const upcoming = [];
+    for (let i = 1; upcoming.length < 5; i++) {
+      const date = addDays(today, i);
+      const workout = getSwappedWorkoutForDate(date, weekSwaps);
+      upcoming.push({ date, workout });
+    }
+    return upcoming;
+  }, [today, weekSwaps]);
 
   useEffect(() => {
     if (todayWorkout.type === 'tri') {
@@ -173,20 +199,177 @@ export default function Workout({ showToast }) {
       }]);
     }
     setShowCelebration(true);
+    setLoggingMode(false);
     showToast('Workout logged!');
     setTimeout(() => setShowCelebration(false), 2500);
   };
 
+  // REST DAY
   if (todayWorkout.type === 'rest') {
     return (
-      <div className="px-4 py-8 text-center">
-        <Moon size={48} className="text-slate-600 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-slate-200 mb-2">Rest Day</h2>
-        <p className="text-sm text-slate-500">Take time to recover and prepare for tomorrow.</p>
+      <div className="px-4 py-4 pb-8 space-y-4">
+        <div className="text-center py-8">
+          <Moon size={48} className="text-slate-600 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-200 mb-2">Rest Day</h2>
+          <p className="text-sm text-slate-500">Take time to recover and prepare for tomorrow.</p>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Upcoming</h3>
+          <div className="space-y-2">
+            {upcomingWorkouts.map(({ date, workout }, idx) => (
+              <div key={idx} className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-slate-500">
+                    {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                  <div className="text-sm font-medium text-slate-200">{workout.name}</div>
+                </div>
+                <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[workout.type]}`}>
+                  {workout.type}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
+  // OVERVIEW MODE
+  if (!loggingMode) {
+    return (
+      <div className="px-4 py-4 pb-8 space-y-4">
+        <AnimatePresence>
+          {showCelebration && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            >
+              <div className="text-center">
+                <Sparkles size={64} className="text-amber-400 mx-auto mb-4 animate-pulse" />
+                <h2 className="text-3xl font-bold text-white mb-2">Workout Complete!</h2>
+                <p className="text-slate-400">Great work today.</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Today's Workout Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`bg-gradient-to-br ${typeGradient[todayWorkout.type]} rounded-2xl p-5 border border-white/5 relative overflow-hidden`}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.02] rounded-full -translate-y-8 translate-x-8" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-slate-400">
+                {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              </p>
+              <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
+                {todayWorkout.type}
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-3">{todayWorkout.name}</h2>
+
+            {todayLogged && (
+              <div className="bg-emerald-950/50 border border-emerald-800/30 rounded-xl px-4 py-2 text-emerald-300 text-sm font-medium flex items-center gap-2 mb-3">
+                <Check size={16} /> Already logged today
+              </div>
+            )}
+
+            {/* Strength preview */}
+            {todayWorkout.type === 'strength' && (
+              <div className="space-y-2 mb-4">
+                <div className="text-xs text-slate-400">
+                  Week {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}% | Rest {loadingInfo.restMin}-{loadingInfo.restMax}
+                </div>
+                <div className="space-y-1.5">
+                  {OPERATOR_LIFTS.map((lift) => {
+                    const weight = getTodayLiftWeight(lift.name);
+                    return (
+                      <div key={lift.name} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                        <span className="text-sm font-medium text-white">{lift.name}</span>
+                        <span className="text-sm text-slate-300">{weight} lbs x {loadingInfo.sets}x{loadingInfo.reps}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {todayWorkout.accessories && (
+                  <div className="mt-2">
+                    <div className="text-[10px] uppercase text-slate-500 mb-1">Accessories ({todayWorkout.accessories})</div>
+                    {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => (
+                      <div key={idx} className="text-xs text-slate-400 py-0.5">
+                        {acc.name} - {acc.sets}x{acc.reps}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tri preview */}
+            {todayWorkout.type === 'tri' && (
+              <div className="space-y-1 mb-4">
+                <div className="text-sm text-slate-300">
+                  {todayWorkout.name.includes('Run') ? 'Run session' : 'Swim or Bike session'} + HIC conditioning
+                </div>
+                {(() => {
+                  const recommended = recommendedHics.slice(0, 2);
+                  return recommended.length > 0 && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      Recommended HICs: {recommended.map(h => h.name).join(', ')}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Long preview */}
+            {todayWorkout.type === 'long' && (
+              <div className="mb-4">
+                <div className="text-sm text-slate-300">Endurance session - Bike or Run</div>
+              </div>
+            )}
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setLoggingMode(true)}
+              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+            >
+              Log Workout
+              <ChevronRight size={18} />
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Upcoming Workouts */}
+        <div>
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Upcoming</h3>
+          <div className="space-y-2">
+            {upcomingWorkouts.map(({ date, workout }, idx) => (
+              <div key={idx} className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-slate-500">
+                    {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                  <div className="text-sm font-medium text-slate-200">{workout.name}</div>
+                </div>
+                <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[workout.type]}`}>
+                  {workout.type}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // LOGGING MODE
   return (
     <div className="px-4 py-4 pb-8 space-y-4">
       <AnimatePresence>
@@ -207,11 +390,16 @@ export default function Workout({ showToast }) {
       </AnimatePresence>
 
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-slate-500">{today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-          <h2 className="text-lg font-bold text-white">{todayWorkout.name}</h2>
-        </div>
+        <button onClick={() => setLoggingMode(false)} className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm">
+          <ArrowLeft size={18} />
+          Back
+        </button>
         {todayWorkout.type === 'strength' && <RestTimer defaultSeconds={loadingInfo.restMin === '2 min' ? 120 : 180} />}
+      </div>
+
+      <div>
+        <p className="text-xs text-slate-500">{today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+        <h2 className="text-lg font-bold text-white">{todayWorkout.name}</h2>
       </div>
 
       {todayLogged && (
@@ -461,15 +649,13 @@ export default function Workout({ showToast }) {
         </div>
       )}
 
-      {todayWorkout.type !== 'rest' && (
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={handleComplete}
-          className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider transition-colors"
-        >
-          Complete Workout
-        </motion.button>
-      )}
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={handleComplete}
+        className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider transition-colors"
+      >
+        Complete Workout
+      </motion.button>
     </div>
   );
 }
