@@ -6,7 +6,7 @@ export const WEEKLY_TEMPLATE = {
   4: { name: 'Run + HIC', type: 'tri', short: 'Run+HIC', label: 'TRI' },
   5: { name: 'TB Operator + Accessories C', type: 'strength', short: 'STR C', label: 'STRENGTH', accessories: 'C' },
   6: { name: 'Long Tri Session', type: 'long', short: 'Long Tri', label: 'LONG' },
-}
+};
 
 export const OPERATOR_LOADING = [
   { week: 1, sets: 3, reps: 5, percentage: 70, restMin: '2 min', restMax: '3 min' },
@@ -15,13 +15,13 @@ export const OPERATOR_LOADING = [
   { week: 4, sets: 3, reps: 5, percentage: 75, restMin: '2 min', restMax: '3 min' },
   { week: 5, sets: 3, reps: 5, percentage: 85, restMin: '3 min', restMax: '5 min' },
   { week: 6, sets: 3, reps: 3, percentage: 90, restMin: '3 min', restMax: '5 min' },
-]
+];
 
 export const OPERATOR_LIFTS = [
   { name: 'Bench Press', settingsKey: 'benchPress1RM' },
   { name: 'Back Squat', settingsKey: 'squat1RM' },
   { name: 'Weighted Pull-up', settingsKey: 'weightedPullup1RM' },
-]
+];
 
 export const ACCESSORIES = {
   A: [
@@ -45,7 +45,7 @@ export const ACCESSORIES = {
     { name: 'Cable Crunch', sets: 3, reps: 12, category: 'Abs' },
     { name: 'Pallof Press', sets: 3, reps: 8, category: 'Abs' },
   ],
-}
+};
 
 export const EXERCISE_MUSCLE_MAP = {
   'Bench Press': { chest: 3, shoulders: 2, triceps: 2 },
@@ -66,7 +66,7 @@ export const EXERCISE_MUSCLE_MAP = {
   'Incline DB Flye': { chest: 2, shoulders: 1 },
   'Cable Crunch': { core: 3 },
   'Pallof Press': { core: 3, obliques: 2 },
-}
+};
 
 export const DEFAULT_SETTINGS = {
   name: 'Luke',
@@ -79,4 +79,4 @@ export const DEFAULT_SETTINGS = {
   runLTHR: 0,
   bikeFTP: 0,
   bikeLTHR: 0,
-}
+};

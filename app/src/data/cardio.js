@@ -1,13 +1,13 @@
-export const bikeInputFields = [
+const bikeInputFields = [
   { key: 'avgPower', label: 'Avg Power (W)', type: 'number' },
   { key: 'maxPower', label: 'Max Power (W)', type: 'number' },
   { key: 'distance', label: 'Distance (mi)', type: 'number' },
   { key: 'totalTime', label: 'Total Time (min)', type: 'number' },
   { key: 'avgHR', label: 'Avg HR (bpm)', type: 'number' },
   { key: 'notes', label: 'Notes', type: 'text' },
-]
+];
 
-export const runInputFields = [
+const runInputFields = [
   { key: 'reps', label: 'Reps/Intervals', type: 'number' },
   { key: 'bestSplit', label: 'Best Split', type: 'text' },
   { key: 'avgPace', label: 'Avg Pace (min/mi)', type: 'text' },
@@ -15,15 +15,18 @@ export const runInputFields = [
   { key: 'distance', label: 'Distance (mi)', type: 'number' },
   { key: 'totalTime', label: 'Total Time (min)', type: 'number' },
   { key: 'notes', label: 'Notes', type: 'text' },
-]
+];
 
-export const swimInputFields = [
+const swimInputFields = [
   { key: 'totalDistance', label: 'Total Distance (yds)', type: 'number' },
   { key: 'totalTime', label: 'Total Time (min)', type: 'number' },
   { key: 'avgPace', label: 'Avg Pace (sec/100y)', type: 'number' },
   { key: 'notes', label: 'Notes', type: 'text' },
-]
+];
 
+export { bikeInputFields, runInputFields, swimInputFields };
+
+// All 6 BIKE_PRESETS (week 1-6) with full descriptions exactly as in the original
 export const BIKE_PRESETS = [
   {
     name: 'Turbo Trainer - Sprint Pyramid', category: 'Sprint', week: 1, time: '45 min',
@@ -55,7 +58,7 @@ export const BIKE_PRESETS = [
     description: 'WARM UP: 10 min easy pedalling.\n\nWORK:\n5 min at 105% FTP\n1 min recover\n4 min at 115% FTP\n1 min recover\n3 min at 125% FTP\n2 min recover\n2 min at 135% FTP\n2 min recover\n1 min all-out\n3 min recover\n\nRepeat 3x through total.\n\nCOOL DOWN: 10 min easy pedalling.',
     inputFields: bikeInputFields,
   },
-]
+];
 
 export const BIKE_ENDURANCE_PRESETS = [
   { name: 'Endurance Bike', category: 'Endurance', week: 1, time: '70 min', description: 'WARM UP: 5 min easy pedalling.\n\nWORK: 55 min at 65-80% FTP. Steady effort, conversational pace.\n\nCOOL DOWN: 10 min easy pedalling.', inputFields: bikeInputFields },
@@ -63,8 +66,8 @@ export const BIKE_ENDURANCE_PRESETS = [
   { name: 'Endurance Bike', category: 'Endurance', week: 3, time: '85 min', description: 'WARM UP: 5 min easy pedalling.\n\nWORK: 70 min at 65-85% FTP. Steady effort.\n\nCOOL DOWN: 10 min easy pedalling.', inputFields: bikeInputFields },
   { name: 'Endurance Bike', category: 'Endurance', week: 4, time: '90 min', description: 'WARM UP: 5 min easy pedalling.\n\nWORK: 75 min at 65-85% FTP. Push the duration.\n\nCOOL DOWN: 10 min easy pedalling.', inputFields: bikeInputFields },
   { name: 'Endurance Bike', category: 'Endurance', week: 5, time: '100 min', description: 'WARM UP: 5 min easy pedalling.\n\nWORK: 85 min at 65-85% FTP. Longest ride of the block.\n\nCOOL DOWN: 10 min easy pedalling.', inputFields: bikeInputFields },
-  { name: 'Endurance Bike', category: 'Endurance', week: 6, time: '80 min', description: 'WARM UP: 5 min easy pedalling.\n\nWORK: 65 min at 65-80% FTP. Taper week — maintain fitness, reduce volume.\n\nCOOL DOWN: 10 min easy pedalling.', inputFields: bikeInputFields },
-]
+  { name: 'Endurance Bike', category: 'Endurance', week: 6, time: '80 min', description: 'WARM UP: 5 min easy pedalling.\n\nWORK: 65 min at 65-80% FTP. Taper week \u2014 maintain fitness, reduce volume.\n\nCOOL DOWN: 10 min easy pedalling.', inputFields: bikeInputFields },
+];
 
 export const RUN_PRESETS = [
   {
@@ -89,7 +92,7 @@ export const RUN_PRESETS = [
   },
   {
     name: 'Threshold Retest - 30 min TT', category: 'Threshold', week: 5, time: '~55 min', distance: '~6-8 km',
-    description: 'Start with a 10-15 minute easy warm up run.\n\n30-MINUTE TIME TRIAL: Go as hard as you can sustain for 30 minutes. This re-establishes your baseline hard effort pace and HR.\n\nWear a HR monitor. After the run, download the data and find your average heart rate for the last 20 minutes — that approximates your LTHR (lactate threshold heart rate).\n\nDo NOT watch your HR during the test. Just go as hard as you can.\n\nCool down: 10-15 min easy jog.\n\nUpdate your LT settings in the app after!',
+    description: 'Start with a 10-15 minute easy warm up run.\n\n30-MINUTE TIME TRIAL: Go as hard as you can sustain for 30 minutes. This re-establishes your baseline hard effort pace and HR.\n\nWear a HR monitor. After the run, download the data and find your average heart rate for the last 20 minutes \u2014 that approximates your LTHR (lactate threshold heart rate).\n\nDo NOT watch your HR during the test. Just go as hard as you can.\n\nCool down: 10-15 min easy jog.\n\nUpdate your LT settings in the app after!',
     inputFields: [...runInputFields, { key: 'lthr', label: 'LTHR Result (bpm)', type: 'number' }, { key: 'ltPace', label: 'LT Pace (min/mi)', type: 'text' }],
   },
   {
@@ -97,16 +100,16 @@ export const RUN_PRESETS = [
     description: "On a track or the road:\n\n1000m warm up with some 50m hard sprints thrown in.\n\n4x1200m hard effort, with equal rest between sets (so if an effort takes 5:00 then you rest 5:00 before the next).\n\nVolume increase from last cycle. Focus on form/gait throughout!\n\n1000m reallyyyy steady cool down to bring HR back down.\n\nAim to beat your splits from last cycle's 1200s.",
     inputFields: runInputFields,
   },
-]
+];
 
 export const RUN_ENDURANCE_PRESETS = [
-  { name: 'Z2 Run', category: 'Endurance', week: 1, time: '50 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 35 min — keep HR within Z2 for the entirety.\n\nCOOL DOWN: 10 min easy walking, bring HR back down.', inputFields: runInputFields },
+  { name: 'Z2 Run', category: 'Endurance', week: 1, time: '50 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 35 min \u2014 keep HR within Z2 for the entirety.\n\nCOOL DOWN: 10 min easy walking, bring HR back down.', inputFields: runInputFields },
   { name: 'Z2 Run', category: 'Endurance', week: 2, time: '55 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 40 min in Z2.\n\nCOOL DOWN: 10 min easy walking.', inputFields: runInputFields },
   { name: 'Z2 Run', category: 'Endurance', week: 3, time: '60 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 45 min in Z2.\n\nCOOL DOWN: 10 min easy walking.', inputFields: runInputFields },
   { name: 'Z2 Run', category: 'Endurance', week: 4, time: '65 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 50 min in Z2.\n\nCOOL DOWN: 10 min easy walking.', inputFields: runInputFields },
   { name: 'Z2 Run', category: 'Endurance', week: 5, time: '75 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 60 min in Z2. Longest run of the block.\n\nCOOL DOWN: 10 min easy walking.', inputFields: runInputFields },
-  { name: 'Z2 Run', category: 'Endurance', week: 6, time: '55 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 40 min in Z2. Taper week — maintain, reduce volume.\n\nCOOL DOWN: 10 min easy walking.', inputFields: runInputFields },
-]
+  { name: 'Z2 Run', category: 'Endurance', week: 6, time: '55 min', description: 'WARM UP: Alternate walking and running to bring HR up to Z2.\n\nWORK: 40 min in Z2. Taper week \u2014 maintain, reduce volume.\n\nCOOL DOWN: 10 min easy walking.', inputFields: runInputFields },
+];
 
 export const SWIM_PRESETS = [
   {
@@ -136,12 +139,12 @@ export const SWIM_PRESETS = [
   },
   {
     name: 'Swim - Race Pace', category: 'Speed', week: 6, time: '~30 min', distance: '1500 yds',
-    description: 'WARM UP: 200 easy swim with 4 x 25 fast.\n\nWORK: 4 x 200m @ race pace with 30s rest.\n\nTaper week — stay sharp.\n\nCOOL DOWN: 200 easy pull.',
+    description: 'WARM UP: 200 easy swim with 4 x 25 fast.\n\nWORK: 4 x 200m @ race pace with 30s rest.\n\nTaper week \u2014 stay sharp.\n\nCOOL DOWN: 200 easy pull.',
     inputFields: swimInputFields,
   },
-]
+];
 
 export function getCardioForWeek(presets, week) {
-  const idx = Math.min(week - 1, presets.length - 1)
-  return presets[idx]
+  const idx = Math.min(week - 1, presets.length - 1);
+  return presets[idx];
 }

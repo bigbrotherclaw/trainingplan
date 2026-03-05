@@ -19,7 +19,7 @@ export const HIC_PRESETS = [
   { name: 'Power Complex', category: 'Power Development', time: '20-25 min', description: 'Push-press x5@60-70% + KB squat jumps x10 + KB snatch x5/arm + plyo pull-ups x5. x3.' },
   { name: 'Transition Complex', category: 'Power Development', time: '20-25 min', description: 'Front squat x3@85% + squat jumps x10 + OHP x3@85% + plyo push-ups x10 + weighted pull-ups x3 + med ball slams x10. x2-3.' },
   { name: 'Pool Destroyer', category: 'Swim', time: '25 min', description: '200m warmup + 8x50m sprint + 200m easy + 4x100m@RPE8 + 200m cooldown.' },
-]
+];
 
 export const HIC_INPUT_FIELDS = {
   '600m Resets': [{ key: 'rounds', label: 'Rounds', type: 'number' }, { key: 'bestTime', label: 'Best Split (sec)', type: 'number' }, { key: 'notes', label: 'Notes', type: 'text' }],
@@ -42,10 +42,36 @@ export const HIC_INPUT_FIELDS = {
   'Power Complex': [{ key: 'kbWeight', label: 'KB Weight (lbs)', type: 'number' }, { key: 'rounds', label: 'Rounds', type: 'number' }, { key: 'notes', label: 'Notes', type: 'text' }],
   'Transition Complex': [{ key: 'frontSquatWeight', label: 'Front Squat Weight', type: 'number' }, { key: 'ohpWeight', label: 'OHP Weight', type: 'number' }, { key: 'rounds', label: 'Rounds', type: 'number' }, { key: 'notes', label: 'Notes', type: 'text' }],
   'Pool Destroyer': [{ key: 'totalDistance', label: 'Total Distance (m)', type: 'number' }, { key: 'totalTime', label: 'Total Time (min)', type: 'number' }, { key: 'notes', label: 'Notes', type: 'text' }],
-}
+};
 
 export const DEFAULT_HIC_FIELDS = [
   { key: 'rounds', label: 'Rounds', type: 'number' },
   { key: 'totalTime', label: 'Total Time (min)', type: 'number' },
   { key: 'notes', label: 'Notes', type: 'text' },
-]
+];
+
+export function getRecommendedHics(workoutHistory) {
+  const recentHics = workoutHistory
+    .filter(e => e.type === 'tri' && e.details && e.details.hic)
+    .slice(-3)
+    .map(e => e.details.hic.name);
+
+  const categories = ['Aerobic-Anaerobic', 'General Conditioning', 'Power Development'];
+  const picks = [];
+
+  for (const cat of categories) {
+    const available = HIC_PRESETS.filter(h => h.category === cat && !recentHics.includes(h.name));
+    if (available.length > 0) {
+      const dayIndex = new Date().getDate() % available.length;
+      picks.push(available[dayIndex]);
+    }
+  }
+
+  while (picks.length < 3) {
+    const remaining = HIC_PRESETS.filter(h => !picks.find(p => p.name === h.name));
+    if (remaining.length === 0) break;
+    picks.push(remaining[0]);
+  }
+
+  return picks;
+}

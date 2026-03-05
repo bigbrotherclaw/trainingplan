@@ -1,90 +1,100 @@
-import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { LayoutDashboard, Dumbbell, ClipboardList, Clock, Settings } from 'lucide-react'
-import { useApp } from './context/AppContext'
-import Dashboard from './pages/Dashboard'
-import Workout from './pages/Workout'
-import Overview from './pages/Overview'
-import History from './pages/History'
-import SettingsPage from './pages/Settings'
-import Toast from './components/Toast'
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { LayoutDashboard, Dumbbell, Calendar, BarChart3, Settings } from 'lucide-react';
+import Dashboard from './pages/Dashboard';
+import Workout from './pages/Workout';
+import CalendarPage from './pages/CalendarPage';
+import Stats from './pages/Stats';
+import SettingsPage from './pages/SettingsPage';
+import Toast from './components/Toast';
+import { useApp } from './context/AppContext';
 
 const tabs = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { id: 'workout', label: 'Workout', icon: Dumbbell },
-  { id: 'overview', label: 'Program', icon: ClipboardList },
-  { id: 'history', label: 'History', icon: Clock },
+  { id: 'calendar', label: 'Calendar', icon: Calendar },
+  { id: 'stats', label: 'Stats', icon: BarChart3 },
   { id: 'settings', label: 'Settings', icon: Settings },
-]
+];
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+};
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard')
-  const { toasts, settings } = useApp()
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [toast, setToast] = useState(null);
+  const { settings } = useApp();
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard />
-      case 'workout': return <Workout />
-      case 'overview': return <Overview />
-      case 'history': return <History />
-      case 'settings': return <SettingsPage />
-      default: return <Dashboard />
+      case 'dashboard':
+        return <Dashboard onNavigate={setActiveTab} showToast={showToast} />;
+      case 'workout':
+        return <Workout showToast={showToast} />;
+      case 'calendar':
+        return <CalendarPage onNavigate={setActiveTab} />;
+      case 'stats':
+        return <Stats />;
+      case 'settings':
+        return <SettingsPage showToast={showToast} />;
+      default:
+        return <Dashboard onNavigate={setActiveTab} showToast={showToast} />;
     }
-  }
+  };
 
   return (
-    <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-gray-800">
-        <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-lg font-bold text-slate-100">Training Plan</h1>
-          <div className="text-xs text-slate-500">
-            Block {settings.block} / Week {settings.week}
-          </div>
-        </div>
+    <div className="flex flex-col h-dvh bg-dark-900">
+      <header className="shrink-0 bg-gradient-to-r from-dark-800 via-dark-700 to-dark-800 border-b border-white/5 px-4 py-3 safe-top">
+        <h1 className="text-lg font-bold text-white tracking-tight">Training Plan</h1>
+        <p className="text-xs text-slate-500 mt-0.5">Block {settings.block} / Week {settings.week}</p>
       </header>
 
-      <main className="fixed top-[52px] bottom-[64px] left-0 right-0 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             transition={{ duration: 0.15 }}
+            className="min-h-full"
           >
             {renderPage()}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-sm border-t border-gray-800">
-        <div className="flex justify-around items-center py-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            const active = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1 transition-colors ${
-                  active ? 'text-blue-500' : 'text-slate-500'
-                }`}
-              >
-                <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
-                <span className="text-[10px] font-medium">{tab.label}</span>
-              </button>
-            )
-          })}
-        </div>
+      <nav className="shrink-0 border-t border-white/5 bg-dark-900/95 backdrop-blur-lg flex justify-around items-center px-1 pb-safe">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center gap-0.5 py-2 px-3 rounded-lg transition-colors ${
+                isActive ? 'text-accent-blue' : 'text-slate-600 active:text-slate-400'
+              }`}
+            >
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+              <span className="text-[10px] font-medium">{tab.label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="fixed top-16 right-4 z-[100] flex flex-col gap-2">
-        <AnimatePresence>
-          {toasts.map((t) => (
-            <Toast key={t.id} message={t.message} type={t.type} />
-          ))}
-        </AnimatePresence>
-      </div>
-    </>
-  )
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+    </div>
+  );
 }
