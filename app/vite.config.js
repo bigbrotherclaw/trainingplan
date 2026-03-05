@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  base: '/trainingplan/',
+  base: process.env.CAPACITOR_BUILD ? '/' : '/trainingplan/',
   plugins: [react(), tailwindcss()],
   server: { host: true },
 });
