@@ -10,6 +10,10 @@ export function useLocalStorage(key, defaultValue) {
         if (Array.isArray(parsed) && parsed.length === 0 && Array.isArray(defaultValue) && defaultValue.length > 0) {
           return defaultValue;
         }
+        // If default has a version and stored doesn't match, use default (settings updated)
+        if (defaultValue && defaultValue._v && (!parsed._v || parsed._v < defaultValue._v)) {
+          return defaultValue;
+        }
         return parsed;
       }
       return defaultValue;

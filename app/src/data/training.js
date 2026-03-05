@@ -69,7 +69,8 @@ export const EXERCISE_MUSCLE_MAP = {
 };
 
 export const DEFAULT_SETTINGS = {
-  name: 'Luke',
+  _v: 2,
+  name: 'Big',
   benchPress1RM: 245,
   squat1RM: 325,
   weightedPullup1RM: 115,
