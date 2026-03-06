@@ -20,6 +20,7 @@
     "@nivo/heatmap": "^0.99.0",
     "@nivo/line": "^0.99.0",
     "@nivo/radar": "^0.99.0",
+    "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/vite": "^4.2.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.35.0",
