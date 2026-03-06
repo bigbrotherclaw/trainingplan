@@ -129,7 +129,7 @@ export default function Dashboard({ onNavigate }) {
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
   return (
-    <div className="px-4 pt-4 pb-28 space-y-4">
+    <div className="px-4 pt-3 pb-28 space-y-5">
 
       {/* YOUR WEEK */}
       <motion.div
@@ -138,16 +138,16 @@ export default function Dashboard({ onNavigate }) {
         className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
       >
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3">Your Week</h2>
-        <div className="flex justify-between px-1">
+        <div className="flex justify-between px-0">
           {weekData.map((day, i) => {
             const color = TYPE_COLORS[day.workout.type];
             const filled = day.isLogged;
             const isToday = day.isToday;
             return (
-              <div key={i} className="flex flex-col items-center">
-                <span className="text-[11px] text-[#666666] mb-1">{dayLabels[i]}</span>
+              <div key={i} className="flex flex-col items-center flex-1">
+                <span className="text-[10px] text-[#666666] mb-1">{dayLabels[i]}</span>
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                     isToday ? 'animate-pulse-ring' : ''
                   }`}
                   style={{
@@ -231,11 +231,11 @@ export default function Dashboard({ onNavigate }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="relative overflow-hidden bg-[#141414] rounded-2xl border border-white/[0.10]"
+        className="relative bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden"
       >
         {/* Left color accent bar */}
         <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: todayColor }} />
-        <div className="p-6 pl-7">
+        <div className="p-5 pl-6">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Today</h2>
             <div className="flex items-center gap-2">
@@ -273,20 +273,20 @@ export default function Dashboard({ onNavigate }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex gap-3"
+        className="grid grid-cols-3 gap-3"
       >
         {(() => { const allZero = streak === 0 && workoutHistory.length === 0 && compliancePct === 0; const numColor = allZero ? 'text-[#555555]' : 'text-white'; const cardOpacity = allZero ? 'opacity-50' : ''; return (<>
-        <div className={`flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center ${cardOpacity}`}>
-          <div className={`text-[22px] font-bold leading-none ${numColor}`}>{streak}</div>
-          <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Streak</div>
+        <div className={`bg-[#141414] rounded-2xl border border-white/[0.10] py-4 px-2 text-center ${cardOpacity}`}>
+          <div className={`text-[20px] font-bold leading-none ${numColor}`}>{streak}</div>
+          <div className="text-[11px] uppercase tracking-wider text-[#555555] mt-1.5">Streak</div>
         </div>
-        <div className={`flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center ${cardOpacity}`}>
-          <div className={`text-[22px] font-bold leading-none ${numColor}`}>{workoutHistory.length}</div>
-          <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Workouts</div>
+        <div className={`bg-[#141414] rounded-2xl border border-white/[0.10] py-4 px-2 text-center ${cardOpacity}`}>
+          <div className={`text-[20px] font-bold leading-none ${numColor}`}>{workoutHistory.length}</div>
+          <div className="text-[11px] uppercase tracking-wider text-[#555555] mt-1.5">Workouts</div>
         </div>
-        <div className={`flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center ${cardOpacity}`}>
-          <div className={`text-[22px] font-bold leading-none ${numColor}`}>{compliancePct}<span className="text-[14px] font-semibold">%</span></div>
-          <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Compliance</div>
+        <div className={`bg-[#141414] rounded-2xl border border-white/[0.10] py-4 px-2 text-center ${cardOpacity}`}>
+          <div className={`text-[20px] font-bold leading-none ${numColor}`}>{compliancePct}<span className="text-[13px] font-semibold">%</span></div>
+          <div className="text-[11px] uppercase tracking-wider text-[#555555] mt-1.5">Compliance</div>
         </div>
         </>); })()}
       </motion.div>
