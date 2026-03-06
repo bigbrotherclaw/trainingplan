@@ -9,6 +9,10 @@ import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
 import { HIC_PRESETS, HIC_INPUT_FIELDS, DEFAULT_HIC_FIELDS, getRecommendedHics } from '../data/hic';
 
+function roundToFive(n) {
+  return Math.round(n / 5) * 5;
+}
+
 function Sparkline({ data }) {
   if (!data || data.length < 2) return null;
   const w = 60, h = 20, pad = 2;
@@ -79,9 +83,11 @@ function EnergyModal({ onSelect, onClose, whoopRecovery }) {
       >
         <div className="w-10 h-1 bg-[#333333] rounded-full mx-auto mb-6" />
         {whoopRecovery && (
-          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getZoneColor(whoopRecovery.zone) }} />
-            <span className="text-xs text-[#999]">Whoop: {whoopRecovery.score}% recovered</span>
+          <div className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-lg border" style={{ backgroundColor: getZoneColor(whoopRecovery.zone) + '12', borderColor: getZoneColor(whoopRecovery.zone) + '25' }}>
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getZoneColor(whoopRecovery.zone) }} />
+            <span className="text-xs" style={{ color: getZoneColor(whoopRecovery.zone) }}>
+              Whoop: {whoopRecovery.score}% recovered
+            </span>
           </div>
         )}
         <h2 className="text-2xl font-semibold text-white mb-1">How are you feeling?</h2>
@@ -242,6 +248,7 @@ export default function Workout({ showToast }) {
   const [showSwapSheet, setShowSwapSheet] = useState(false);
   const [recoveryChecked, setRecoveryChecked] = useState({});
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [overrideSuggestion, setOverrideSuggestion] = useState(false);
   const timerRef = useRef(null);
   const loggingStartRef = useRef(null);
 
@@ -349,6 +356,8 @@ export default function Workout({ showToast }) {
     return 1;
   };
 
+  const activeSuggestion = (!overrideSuggestion && acceptedSuggestion) ? acceptedSuggestion : null;
+
   const getTodayLiftWeight = (liftName) => {
     const lift = OPERATOR_LIFTS.find((l) => l.name === liftName);
     if (!lift) return 0;
@@ -357,11 +366,16 @@ export default function Workout({ showToast }) {
     if (energyLevel && energyLevel !== 'ready') {
       weight = Math.round(base * getWeightMultiplier());
     }
-    // Apply Whoop intensity multiplier on top if accepted
-    if (acceptedSuggestion?.modifications?.intensityMultiplier && acceptedSuggestion.modifications.intensityMultiplier < 1) {
-      weight = Math.round(weight * acceptedSuggestion.modifications.intensityMultiplier);
+    if (activeSuggestion?.modifications?.intensityMultiplier && activeSuggestion.modifications.intensityMultiplier < 1) {
+      weight = roundToFive(weight * activeSuggestion.modifications.intensityMultiplier);
     }
     return weight;
+  };
+
+  const getProgrammedWeight = (liftName) => {
+    const lift = OPERATOR_LIFTS.find((l) => l.name === liftName);
+    if (!lift) return 0;
+    return Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
   };
 
   // For low energy: use only first 2 lifts
@@ -703,14 +717,19 @@ export default function Workout({ showToast }) {
               </div>
               <div className="space-y-2.5">
                 {OPERATOR_LIFTS.map((lift) => {
-                  const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
+                  const programmed = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
+                  const hasAdjustment = activeSuggestion?.modifications?.intensityMultiplier && activeSuggestion.modifications.intensityMultiplier < 1;
+                  const adjusted = hasAdjustment ? roundToFive(programmed * activeSuggestion.modifications.intensityMultiplier) : programmed;
                   return (
                     <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2.5">
                       <div className="flex items-center">
                         <span className="text-sm font-medium text-white">{lift.name}</span>
                         <Sparkline data={liftSparklines[lift.name]} />
                       </div>
-                      <span className="text-sm text-[#B3B3B3]">{weight} lbs x {loadingInfo.sets}x{loadingInfo.reps}</span>
+                      <span className="text-sm text-[#B3B3B3]">
+                        {hasAdjustment ? <>{programmed} <span className="text-[#555]">&rarr;</span> {adjusted} lbs</> : <>{programmed} lbs</>}
+                        {' '}x {loadingInfo.sets}x{loadingInfo.reps}
+                      </span>
                     </div>
                   );
                 })}
@@ -840,12 +859,23 @@ export default function Workout({ showToast }) {
         )}
       </div>
 
-      {acceptedSuggestion && whoopConnected && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border" style={{ backgroundColor: getZoneColor(acceptedSuggestion.zone) + '15', borderColor: getZoneColor(acceptedSuggestion.zone) + '30' }}>
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getZoneColor(acceptedSuggestion.zone) }} />
-          <span className="text-xs" style={{ color: getZoneColor(acceptedSuggestion.zone) }}>
-            Adjusted for Whoop recovery ({acceptedSuggestion.score}%)
-          </span>
+      {activeSuggestion && whoopConnected && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl border" style={{ backgroundColor: getZoneColor(activeSuggestion.zone) + '15', borderColor: getZoneColor(activeSuggestion.zone) + '30' }}>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getZoneColor(activeSuggestion.zone) }} />
+            <span className="text-xs text-[#B3B3B3]">
+              Recovery {activeSuggestion.score}%
+              {activeSuggestion.modifications?.intensityMultiplier && (
+                <> · Intensity at {Math.round(activeSuggestion.modifications.intensityMultiplier * 100)}%</>
+              )}
+            </span>
+          </div>
+          <button
+            onClick={() => setOverrideSuggestion(true)}
+            className="text-[11px] text-[#666] hover:text-white transition-colors ml-3 flex-shrink-0"
+          >
+            Override
+          </button>
         </div>
       )}
 
@@ -898,7 +928,7 @@ export default function Workout({ showToast }) {
       {/* STRENGTH */}
       {todayWorkout.type === 'strength' && energyLevel !== 'recovery' && (
         <div className="space-y-3">
-          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 text-center">
             <span className="text-[15px] text-[#A0A0A0]">Week {settings.week}: </span>
             <span className="text-[15px] font-semibold text-white">{loadingInfo.sets}×{loadingInfo.reps} @ {loadingInfo.percentage}%</span>
             <span className="text-[13px] text-[#666666] ml-2">· Rest {loadingInfo.restMin}–{loadingInfo.restMax}</span>
@@ -907,10 +937,15 @@ export default function Workout({ showToast }) {
 
           {getActiveLifts().map((lift) => {
             const weight = getTodayLiftWeight(lift.name);
+            const programmed = getProgrammedWeight(lift.name);
+            const hasAdjustment = activeSuggestion?.modifications?.intensityMultiplier && activeSuggestion.modifications.intensityMultiplier < 1 && weight !== programmed;
             return (
-              <div key={lift.name} className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
+              <div key={lift.name} className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
                 <h3 className="text-[17px] font-semibold text-white mb-1">{lift.name}</h3>
-                <p className="text-[13px] text-[#666666] mb-4">{loadingInfo.sets} × {loadingInfo.reps} @ {weight} lbs</p>
+                <p className="text-[13px] text-[#666666] mb-4">
+                  {loadingInfo.sets} × {loadingInfo.reps} @{' '}
+                  {hasAdjustment ? <><span className="line-through">{programmed}</span> {weight} lbs</> : <>{weight} lbs</>}
+                </p>
                 {/* Set table */}
                 <div>
                   <div className="flex items-center py-2 border-b border-white/[0.10] gap-3">
@@ -945,13 +980,13 @@ export default function Workout({ showToast }) {
             );
           })}
 
-          <div>
-            <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3">Accessories {todayWorkout.accessories}</h3>
+          <div className="space-y-3">
+            <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Accessories {todayWorkout.accessories}</h3>
             {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => {
               const lastData = getLastAccessoryData(acc.name);
               const isExpanded = expandedLifts[acc.name] !== false;
               return (
-                <div key={idx} className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
+                <div key={idx} className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
                   <button className="w-full flex items-center justify-between mb-1" onClick={() => setExpandedLifts((p) => ({ ...p, [acc.name]: !isExpanded }))}>
                     <div className="text-left">
                       <div className="text-[17px] font-semibold text-white">{acc.name}</div>
@@ -1005,6 +1040,13 @@ export default function Workout({ showToast }) {
         <div className="space-y-3">
           <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
             <h3 className="text-[17px] font-semibold text-white mb-3">Cardio Session</h3>
+            {activeSuggestion?.modifications?.intensityMultiplier && activeSuggestion.modifications.intensityMultiplier < 1 && (
+              <div className="mb-3 px-3 py-2.5 rounded-lg border" style={{ backgroundColor: getZoneColor(activeSuggestion.zone) + '10', borderColor: getZoneColor(activeSuggestion.zone) + '20' }}>
+                <p className="text-xs" style={{ color: getZoneColor(activeSuggestion.zone) }}>
+                  Zone 2 effort recommended — recovery at {activeSuggestion.score}%
+                </p>
+              </div>
+            )}
             {energyLevel && energyLevel !== 'ready' && (
               <div className="mb-3 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05]">
                 <p className="text-xs" style={{ color: energyBadge?.color }}>

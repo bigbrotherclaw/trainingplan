@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, ChevronUp, Heart, Activity, Moon, Zap, Battery } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, Heart, Activity, Moon, Zap, Battery, Droplets } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
 import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
@@ -66,7 +66,7 @@ function RecoveryArc({ score, color, size = 80 }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[28px] font-bold text-white leading-none">{score}</span>
+        <span className="text-[22px] font-bold text-white leading-none">{score}</span>
       </div>
     </div>
   );
@@ -78,13 +78,17 @@ function RecoveryBanner({ latestRecovery, latestSleep, latestCycle }) {
 
   // Extract from Whoop v2 API response shape (nested under .score)
   const score = latestRecovery?.score?.recovery_score ?? latestRecovery?.recovery_score ?? 0;
-  const hrv = latestRecovery?.score?.hrv_rmssd_milli ?? latestRecovery?.hrv_rmssd_milli ?? '--';
+  const rawHrv = latestRecovery?.score?.hrv_rmssd_milli ?? latestRecovery?.hrv_rmssd_milli ?? null;
+  const hrv = rawHrv != null ? Math.round(rawHrv * 10) / 10 : '--';
   const rhr = latestRecovery?.score?.resting_heart_rate ?? latestRecovery?.resting_heart_rate ?? '--';
   const sleepScore = latestSleep?.score?.sleep_performance_percentage ?? latestSleep?.sleep_performance_percentage ?? '--';
   const stages = latestSleep?.score?.stage_summary ?? latestSleep?.stage_summary;
   const sleepDurationMs = stages ? (stages.total_in_bed_time_milli - (stages.total_awake_time_milli || 0)) : null;
   const strain = latestCycle?.score?.strain ?? latestCycle?.strain ?? '--';
-  const zoneColor = getZoneColor(scoreToZone(score));
+  const spo2 = latestRecovery?.score?.spo2_percentage ?? latestRecovery?.spo2_percentage ?? '--';
+  const zone = scoreToZone(score);
+  const zoneColor = getZoneColor(zone);
+  const zoneLabel = zone === 'green' ? 'Good' : zone === 'yellow' ? 'Fair' : 'Poor';
 
   const sleepHours = sleepDurationMs
     ? `${Math.floor(sleepDurationMs / 3600000)}h ${Math.round((sleepDurationMs % 3600000) / 60000)}m`
@@ -104,17 +108,30 @@ function RecoveryBanner({ latestRecovery, latestSleep, latestCycle }) {
         <RecoveryArc score={score} color={zoneColor} size={80} />
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-2">Recovery</h2>
-          <div className="flex gap-4">
+          <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-1">Recovery</h2>
+          <p className="text-[15px] font-semibold text-white mb-2">
+            {score}% <span className="font-normal" style={{ color: zoneColor }}>&middot; {zoneLabel}</span>
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
             <div className="flex items-center gap-1.5">
               <Activity size={14} className="text-[#666666]" />
               <span className="text-[13px] text-[#A0A0A0]">HRV</span>
-              <span className="text-[13px] text-white font-semibold">{hrv}</span>
+              <span className="text-[13px] text-white font-semibold">{hrv} <span className="text-[#666666] font-normal">ms</span></span>
             </div>
             <div className="flex items-center gap-1.5">
               <Moon size={14} className="text-[#666666]" />
               <span className="text-[13px] text-[#A0A0A0]">Sleep</span>
-              <span className="text-[13px] text-white font-semibold">{sleepScore}</span>
+              <span className="text-[13px] text-white font-semibold">{sleepScore}<span className="text-[#666666] font-normal">%</span></span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Heart size={14} className="text-[#666666]" />
+              <span className="text-[13px] text-[#A0A0A0]">RHR</span>
+              <span className="text-[13px] text-white font-semibold">{rhr} <span className="text-[#666666] font-normal">bpm</span></span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Zap size={14} className="text-[#666666]" />
+              <span className="text-[13px] text-[#A0A0A0]">Strain</span>
+              <span className="text-[13px] text-white font-semibold">{typeof strain === 'number' ? strain.toFixed(1) : strain}</span>
             </div>
           </div>
         </div>
@@ -135,7 +152,27 @@ function RecoveryBanner({ latestRecovery, latestSleep, latestCycle }) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-4 flex gap-4 border-t border-white/[0.06] pt-3">
+            <div className="px-5 pb-4 border-t border-white/[0.06] pt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+              <div className="flex items-center gap-1.5">
+                <Battery size={14} className="text-[#666666]" />
+                <span className="text-[13px] text-[#A0A0A0]">Recovery</span>
+                <span className="text-[13px] text-white font-semibold">{score}<span className="text-[#666666] font-normal">%</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Activity size={14} className="text-[#666666]" />
+                <span className="text-[13px] text-[#A0A0A0]">HRV</span>
+                <span className="text-[13px] text-white font-semibold">{hrv} <span className="text-[#666666] font-normal">ms</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Heart size={14} className="text-[#666666]" />
+                <span className="text-[13px] text-[#A0A0A0]">RHR</span>
+                <span className="text-[13px] text-white font-semibold">{rhr} <span className="text-[#666666] font-normal">bpm</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Moon size={14} className="text-[#666666]" />
+                <span className="text-[13px] text-[#A0A0A0]">Sleep</span>
+                <span className="text-[13px] text-white font-semibold">{sleepScore}<span className="text-[#666666] font-normal">%</span></span>
+              </div>
               {sleepHours && (
                 <div className="flex items-center gap-1.5">
                   <Moon size={14} className="text-[#666666]" />
@@ -144,14 +181,14 @@ function RecoveryBanner({ latestRecovery, latestSleep, latestCycle }) {
                 </div>
               )}
               <div className="flex items-center gap-1.5">
-                <Heart size={14} className="text-[#666666]" />
-                <span className="text-[13px] text-[#A0A0A0]">RHR</span>
-                <span className="text-[13px] text-white font-semibold">{rhr}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
                 <Zap size={14} className="text-[#666666]" />
                 <span className="text-[13px] text-[#A0A0A0]">Strain</span>
                 <span className="text-[13px] text-white font-semibold">{typeof strain === 'number' ? strain.toFixed(1) : strain}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Droplets size={14} className="text-[#666666]" />
+                <span className="text-[13px] text-[#A0A0A0]">SpO2</span>
+                <span className="text-[13px] text-white font-semibold">{spo2}<span className="text-[#666666] font-normal">%</span></span>
               </div>
             </div>
           </motion.div>
@@ -180,7 +217,18 @@ function RecoverySuggestionCard({ suggestion, onAccept, onDismiss }) {
           <Battery size={16} style={{ color: zoneColor }} />
           <span className="text-[15px] font-bold text-white">{suggestion.headline}</span>
         </div>
-        <p className="text-[14px] text-[#A0A0A0] mb-4 leading-relaxed">{suggestion.suggestion}</p>
+        <p className="text-[14px] text-[#A0A0A0] mb-1 leading-relaxed">{suggestion.suggestion}</p>
+        {suggestion.modifications?.type === 'swap' && (
+          <p className="text-[13px] font-medium mb-3" style={{ color: zoneColor }}>Swap to recovery session</p>
+        )}
+        {suggestion.modifications?.type === 'reduce' && suggestion.modifications?.intensityMultiplier && (
+          <p className="text-[13px] font-medium mb-3" style={{ color: zoneColor }}>Reduce to {Math.round(suggestion.modifications.intensityMultiplier * 100)}% intensity</p>
+        )}
+        {!suggestion.modifications?.type || suggestion.modifications?.type === 'none' ? null : (
+          suggestion.modifications?.type !== 'swap' && suggestion.modifications?.type !== 'reduce' && (
+            <div className="mb-3" />
+          )
+        )}
         <div className="flex gap-3">
           <button
             onClick={onAccept}
@@ -453,15 +501,15 @@ export default function Dashboard({ onNavigate, acceptedSuggestion, onAcceptSugg
         className="flex gap-3"
       >
         <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
-          <div className="text-[28px] font-bold text-white leading-none">{streak}</div>
+          <div className="text-[22px] font-bold text-white leading-none">{streak}</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Streak</div>
         </div>
         <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
-          <div className="text-[28px] font-bold text-white leading-none">{workoutHistory.length}</div>
+          <div className="text-[22px] font-bold text-white leading-none">{workoutHistory.length}</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Workouts</div>
         </div>
         <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
-          <div className="text-[28px] font-bold text-white leading-none">{compliancePct}%</div>
+          <div className="text-[22px] font-bold text-white leading-none">{compliancePct}%</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Compliance</div>
         </div>
       </motion.div>
@@ -475,7 +523,7 @@ export default function Dashboard({ onNavigate, acceptedSuggestion, onAcceptSugg
       >
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Weekly Compliance</h2>
         <div className="flex justify-center">
-          <ComplianceRing weekWorkouts={weekWorkouts} size={100} />
+          <ComplianceRing weekWorkouts={weekWorkouts} size={80} />
         </div>
       </motion.div>
 

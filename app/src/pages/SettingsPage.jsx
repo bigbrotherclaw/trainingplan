@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Download, Upload, ChevronRight, Activity, Moon, Zap, Loader2 } from 'lucide-react';
+import { Download, Upload, ChevronRight, Activity, Moon, Zap, Heart, Clock, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
 
@@ -88,6 +88,43 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
     }
   };
 
+  const formatSleepDuration = (sleepScore) => {
+    if (!sleepScore?.stage_summary) return '--';
+    const totalInBed = sleepScore.stage_summary.total_in_bed_time_milli ?? 0;
+    const totalAwake = sleepScore.stage_summary.total_awake_time_milli ?? 0;
+    const sleepMs = totalInBed - totalAwake;
+    if (sleepMs <= 0) return '--';
+    const hours = Math.floor(sleepMs / 3600000);
+    const mins = Math.floor((sleepMs % 3600000) / 60000);
+    return `${hours}h ${mins}m`;
+  };
+
+  const formatSyncedAgo = (record) => {
+    const ts = record?.updated_at || record?.created_at || record?.date;
+    if (!ts) return null;
+    const diff = Date.now() - new Date(ts).getTime();
+    if (diff < 0) return 'just now';
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
+
+  const MetricTile = ({ icon: Icon, iconColor, label, value, unit }) => (
+    <div className="bg-[#1A1A1A] rounded-xl px-3 py-2.5 flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <Icon size={12} className={iconColor} />
+        <span className="text-[11px] text-[#888888] uppercase tracking-wide">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-[20px] font-bold text-white leading-tight">{value}</span>
+        {unit && <span className="text-[11px] text-[#555555]">{unit}</span>}
+      </div>
+    </div>
+  );
+
   const StepperRow = ({ label, settingsKey, step = 5, unit, showUnit = true }) => (
     <div className="flex items-center justify-between px-5 py-4 min-h-[52px]">
       <span className="text-[17px] text-white">{label}</span>
@@ -111,6 +148,15 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
     </div>
   );
+
+  const recoveryScore = latestRecovery?.score?.recovery_score ?? '--';
+  const hrv = latestRecovery?.score?.hrv_rmssd_milli != null
+    ? Math.round(latestRecovery.score.hrv_rmssd_milli * 10) / 10
+    : '--';
+  const rhr = latestRecovery?.score?.resting_heart_rate ?? '--';
+  const sleepPct = latestSleep?.score?.sleep_performance_percentage ?? '--';
+  const sleepDuration = formatSleepDuration(latestSleep?.score);
+  const syncedAgo = formatSyncedAgo(latestRecovery);
 
   return (
     <div className="px-5 pt-4 pb-36 bg-black space-y-5">
@@ -239,30 +285,54 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
             </button>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-2 h-2 rounded-full bg-[#44b700]" />
-                <span className="text-[13px] text-[#888888]">Whoop connected</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#44b700]" />
+                  <span className="text-[13px] text-[#888888]">Whoop connected</span>
+                </div>
+                {syncedAgo && (
+                  <span className="text-[11px] text-[#555555]">Last synced: {syncedAgo}</span>
+                )}
               </div>
 
-              {latestRecovery && (
-                <div className="flex items-center justify-between bg-[#1A1A1A] rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Zap size={14} className="text-[#44b700]" />
-                    <span className="text-[15px] text-white">Recovery</span>
-                  </div>
-                  <span className="text-[17px] font-bold text-white">{latestRecovery.score?.recovery_score ?? latestRecovery.recovery_score ?? '--'}%</span>
+              <div className="grid grid-cols-2 gap-2.5">
+                <MetricTile
+                  icon={Zap}
+                  iconColor="text-[#44b700]"
+                  label="Recovery"
+                  value={recoveryScore !== '--' ? `${recoveryScore}` : '--'}
+                  unit="%"
+                />
+                <MetricTile
+                  icon={Activity}
+                  iconColor="text-[#44b700]"
+                  label="HRV"
+                  value={hrv}
+                  unit="ms"
+                />
+                <MetricTile
+                  icon={Heart}
+                  iconColor="text-red-400"
+                  label="RHR"
+                  value={rhr}
+                  unit="bpm"
+                />
+                <MetricTile
+                  icon={Moon}
+                  iconColor="text-[#8B8BF5]"
+                  label="Sleep"
+                  value={sleepPct !== '--' ? `${sleepPct}` : '--'}
+                  unit="%"
+                />
+                <div className="col-span-2">
+                  <MetricTile
+                    icon={Clock}
+                    iconColor="text-[#8B8BF5]"
+                    label="Sleep Duration"
+                    value={sleepDuration}
+                  />
                 </div>
-              )}
-
-              {latestSleep && (
-                <div className="flex items-center justify-between bg-[#1A1A1A] rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Moon size={14} className="text-[#8B8BF5]" />
-                    <span className="text-[15px] text-white">Sleep</span>
-                  </div>
-                  <span className="text-[17px] font-bold text-white">{latestSleep.score?.sleep_performance_percentage ?? latestSleep.sleep_performance_percentage ?? '--'}%</span>
-                </div>
-              )}
+              </div>
 
               <button
                 onClick={() => whoopSync(7)}
