@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LayoutDashboard, Dumbbell, Calendar, BarChart3, Settings, Users } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, Calendar, BarChart3, Settings } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Workout from './pages/Workout';
 import CalendarPage from './pages/CalendarPage';
 import Stats from './pages/Stats';
 import SettingsPage from './pages/SettingsPage';
-import SocialPage from './pages/SocialPage';
 import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
 import MigrationModal from './components/MigrationModal';
@@ -19,7 +18,6 @@ const tabs = [
   { id: 'workout', label: 'Workout', icon: Dumbbell },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'stats', label: 'Stats', icon: BarChart3 },
-  { id: 'social', label: 'Social', icon: Users, requiresAuth: true },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -78,8 +76,6 @@ export default function App() {
         return <CalendarPage onNavigate={setActiveTab} />;
       case 'stats':
         return <Stats />;
-      case 'social':
-        return <SocialPage />;
       case 'settings':
         return <SettingsPage showToast={showToast} />;
       default:
@@ -113,7 +109,7 @@ export default function App() {
           transition={{ duration: 0.25 }}
           className="flex flex-col h-dvh bg-black"
         >
-          <header className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 py-3 safe-top flex items-center justify-between">
+          <header className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 py-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] flex items-center justify-between">
             <div>
               <h1 className="text-lg font-semibold text-white tracking-tight">Training Plan</h1>
               <p className="text-xs text-[#666666] mt-0.5">Block {settings.block} / Week {settings.week}</p>
@@ -141,20 +137,23 @@ export default function App() {
             </AnimatePresence>
           </main>
 
-          <nav className="shrink-0 border-t border-white/[0.03] bg-black/90 backdrop-blur-xl flex justify-around items-center px-1 pb-safe">
-            {tabs.filter((tab) => !tab.requiresAuth || user).map((tab) => {
+          <nav
+            className="shrink-0 border-t border-white/[0.06] bg-black flex justify-around items-center px-1"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = !showProfile && activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
-                  className={`flex flex-col items-center gap-1 py-2.5 px-3 transition-colors ${
+                  className={`flex flex-col items-center gap-1 py-3 px-3 min-h-[48px] transition-colors ${
                     isActive ? 'text-accent-blue' : 'text-[#666666] active:text-[#999999]'
                   }`}
                 >
-                  <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-                  <span className="text-[10px] font-medium">{tab.label}</span>
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+                  <span className="text-[11px] font-medium">{tab.label}</span>
                   {isActive && <div className="w-1 h-1 rounded-full bg-accent-blue" />}
                 </button>
               );

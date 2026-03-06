@@ -159,27 +159,27 @@ export default function Stats() {
 
   if (workoutHistory.length === 0) {
     return (
-      <div className="px-5 py-16 text-center">
+      <div className="px-5 pt-4 pb-24 bg-black min-h-screen flex flex-col items-center justify-center text-center">
         <Activity size={48} className="text-[#333333] mx-auto mb-4" />
         <h2 className="text-2xl font-semibold text-white mb-2">No Stats Yet</h2>
-        <p className="text-sm text-[#666666]">Complete some workouts to see your progress.</p>
+        <p className="text-sm text-[#666666]">Log workouts to see your stats.</p>
       </div>
     );
   }
 
   return (
-    <div className="px-5 py-5 pb-8 space-y-5">
+    <div className="px-5 pt-4 pb-24 bg-black min-h-screen space-y-4">
       {/* STRENGTH JOURNEY */}
-      <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+      <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
         <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Strength Journey</h2>
 
         {/* Lift tabs */}
-        <div className="flex gap-1 bg-dark-600 rounded-xl p-1 mb-4">
+        <div className="flex gap-1 bg-[#1a1a1a] rounded-xl p-1 mb-4">
           {LIFT_TABS.map(lift => (
             <button
               key={lift.name}
               onClick={() => setSelectedLift(lift.name)}
-              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex-1 min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 selectedLift === lift.name
                   ? 'bg-accent-blue text-white'
                   : 'text-[#666666] hover:text-[#999999]'
@@ -196,7 +196,7 @@ export default function Stats() {
             <button
               key={r}
               onClick={() => setTimeRange(r)}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors ${
+              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
                 timeRange === r ? 'bg-accent-blue/20 text-accent-blue' : 'text-[#666666]'
               }`}
             >
@@ -222,7 +222,7 @@ export default function Stats() {
 
             {/* Personal Best */}
             {personalBest && (
-              <div className="mt-4 flex items-center gap-3 bg-dark-600 rounded-xl px-4 py-3">
+              <div className="mt-4 flex items-center gap-3 bg-[#1a1a1a] rounded-xl px-4 py-3">
                 <Trophy size={18} className="text-amber-400" />
                 <div>
                   <div className="text-sm font-semibold text-white">{personalBest.weight} lbs <span className="text-[#666666] font-normal">x{personalBest.reps}</span></div>
@@ -237,7 +237,7 @@ export default function Stats() {
       </div>
 
       {/* VOLUME THIS WEEK */}
-      <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+      <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
         <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Volume This Week</h2>
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={volumeWeek} barCategoryGap="20%">
@@ -262,7 +262,7 @@ export default function Stats() {
 
       {/* BODY BALANCE */}
       {muscleBalance.length > 0 && (
-        <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+        <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
           <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Body Balance</h2>
           <div className="space-y-2.5">
             {muscleBalance.map(m => (
@@ -271,7 +271,7 @@ export default function Stats() {
                   <span className="text-xs text-[#B3B3B3]">{m.label}</span>
                   <span className="text-[10px] text-[#666666]">{m.points} pts</span>
                 </div>
-                <div className="h-2 bg-dark-600 rounded-full overflow-hidden">
+                <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{ width: `${m.pct}%`, backgroundColor: m.color }}
@@ -284,7 +284,7 @@ export default function Stats() {
       )}
 
       {/* STREAK & CONSISTENCY */}
-      <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+      <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
         <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Streak & Consistency</h2>
         <p className="text-xs text-[#666666] mb-3">Last 12 weeks</p>
         <div className="grid grid-cols-12 gap-1.5">

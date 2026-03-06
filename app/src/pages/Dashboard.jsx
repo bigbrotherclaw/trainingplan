@@ -120,24 +120,24 @@ export default function Dashboard({ onNavigate }) {
   const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   return (
-    <div className="px-5 py-5 pb-8 space-y-4">
+    <div className="px-5 pt-4 pb-24 space-y-4">
       {/* YOUR WEEK */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03] active:scale-[0.98] transition-transform"
       >
-        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Your Week</h2>
-        <div className="flex justify-between gap-2 mb-4">
+        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-3">Your Week</h2>
+        <div className="flex justify-between gap-3 mb-4">
           {weekData.map((day, i) => {
             const color = TYPE_COLORS[day.workout.type];
             const filled = day.isLogged;
             const isToday = day.isToday;
             return (
-              <div key={i} className="flex flex-col items-center gap-1.5">
-                <span className="text-[10px] text-[#666666] font-medium">{dayLabels[i]}</span>
+              <div key={i} className="flex flex-col items-center gap-1">
+                <span className="text-[10px] text-[#666666] font-medium mb-1">{dayLabels[i]}</span>
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     isToday ? 'animate-pulse-ring' : ''
                   }`}
                   style={{
@@ -153,7 +153,7 @@ export default function Dashboard({ onNavigate }) {
             );
           })}
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-3">
           <p className="text-sm text-[#B3B3B3]">
             <span className="text-white font-semibold">{weekWorkouts}</span> of {plannedWorkouts} workouts complete
           </p>
@@ -172,11 +172,11 @@ export default function Dashboard({ onNavigate }) {
       >
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest">Today</h2>
-          <span className={`text-[10px] font-semibold uppercase px-2.5 py-1 rounded-full ${TYPE_BADGE_BG[todayWorkout.type]}`}>
+          <span className={`text-[10px] font-semibold uppercase px-3 py-1.5 rounded-full ${TYPE_BADGE_BG[todayWorkout.type]}`}>
             {todayWorkout.type}
           </span>
         </div>
-        <h3 className="text-2xl font-semibold text-white mb-1">{todayWorkout.name}</h3>
+        <h3 className="text-xl font-bold text-white mb-1">{todayWorkout.name}</h3>
         <p className="text-sm text-[#666666] mb-4">
           {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
         </p>
@@ -189,7 +189,7 @@ export default function Dashboard({ onNavigate }) {
         ) : todayWorkout.type !== 'rest' ? (
           <button
             onClick={() => onNavigate('workout')}
-            className="flex items-center justify-center gap-2 w-full bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-3 rounded-xl text-sm font-semibold transition-colors active:scale-[0.98]"
+            className="flex items-center justify-center gap-2 w-full bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-3 rounded-xl text-base font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
           >
             Start Workout
             <ChevronRight size={16} />
@@ -208,7 +208,7 @@ export default function Dashboard({ onNavigate }) {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-2">Streak</h2>
+            <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-3">Streak</h2>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-bold text-white">{streak}</span>
               <Flame size={24} className="text-orange-400" />

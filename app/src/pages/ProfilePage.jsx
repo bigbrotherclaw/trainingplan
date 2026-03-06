@@ -55,7 +55,7 @@ function DeleteConfirmModal({ onConfirm, onCancel, loading }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
-        className="relative w-full max-w-sm bg-[#111111] rounded-2xl border border-white/[0.03] p-6 z-10"
+        className="relative w-full max-w-sm bg-[#111111] rounded-2xl border border-white/[0.06] p-6 z-10"
       >
         <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
           <Trash2 className="text-red-400" size={20} />
@@ -67,14 +67,14 @@ function DeleteConfirmModal({ onConfirm, onCancel, loading }) {
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 border border-white/10 hover:border-white/20 text-[#B3B3B3] font-medium rounded-xl py-2.5 text-sm transition-colors"
+            className="flex-1 min-h-[48px] border border-white/[0.06] text-[#B3B3B3] font-semibold rounded-xl text-sm transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 bg-red-500 hover:bg-red-500/90 disabled:opacity-50 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors flex items-center justify-center gap-2"
+            className="flex-1 min-h-[48px] bg-red-500 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
           >
             {loading ? <Spinner /> : 'Delete'}
           </button>
@@ -172,14 +172,14 @@ export default function ProfilePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-black px-4 py-8 safe-top safe-bottom">
+      <div className="px-5 pt-4 pb-24 bg-black min-h-screen">
         <div className="max-w-[440px] mx-auto flex flex-col gap-4">
 
           {/* Profile header card */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#111111] rounded-2xl border border-white/[0.03] p-6"
+            className="bg-[#111111] rounded-2xl border border-white/[0.06] p-6"
           >
             <div className="flex flex-col items-center gap-4">
               <Avatar profile={profile} user={user} />
@@ -196,42 +196,42 @@ export default function ProfilePage() {
                         if (e.key === 'Enter') handleSaveName();
                         if (e.key === 'Escape') handleCancelName();
                       }}
-                      className="bg-[#1A1A1A] border border-[#3B82F6]/40 rounded-lg px-4 py-2 text-white text-center text-base font-semibold focus:outline-none w-48"
+                      className="bg-[#1A1A1A] border border-[#3B82F6]/40 rounded-xl px-4 py-3 min-h-[48px] text-white text-center text-base font-semibold focus:outline-none w-56"
                     />
                     {nameError && <p className="text-red-400 text-xs">{nameError}</p>}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full">
                       <button
                         onClick={handleSaveName}
                         disabled={nameLoading}
-                        className="flex items-center gap-1.5 bg-[#3B82F6] hover:bg-[#3B82F6]/90 disabled:opacity-50 text-white text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] bg-[#3B82F6] disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
                       >
-                        {nameLoading ? <Spinner /> : <Check size={12} />}
+                        {nameLoading ? <Spinner /> : <Check size={14} />}
                         Save
                       </button>
                       <button
                         onClick={handleCancelName}
-                        className="flex items-center gap-1.5 border border-white/10 hover:border-white/20 text-[#B3B3B3] text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] border border-white/[0.06] text-[#B3B3B3] text-sm font-semibold rounded-xl transition-colors"
                       >
-                        <X size={12} />
+                        <X size={14} />
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    <span className="text-white font-semibold text-lg">
+                    <span className="text-white font-bold text-xl">
                       {profile?.display_name || 'Unnamed Operator'}
                     </span>
                     <button
                       onClick={handleEditName}
-                      className="text-[#666666] hover:text-[#B3B3B3] transition-colors"
+                      className="text-[#666666] active:text-[#B3B3B3] transition-colors"
                     >
                       <Pencil size={14} />
                     </button>
                   </div>
                 )}
 
-                <p className="text-[#666666] text-sm mt-0.5">{user?.email}</p>
+                <p className="text-sm text-[#666666] mt-1">{user?.email}</p>
 
                 {memberSince && (
                   <p className="text-[#666666] text-xs mt-2">Member since {memberSince}</p>
@@ -240,65 +240,48 @@ export default function ProfilePage() {
             </div>
           </motion.div>
 
-          {/* Actions card */}
+          {/* Data card */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="bg-[#111111] rounded-2xl border border-white/[0.03] p-4 flex flex-col gap-2"
+            className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 flex flex-col gap-3"
           >
-            <p className="text-[#666666] text-xs font-medium uppercase tracking-wider px-2 mb-1">Data</p>
+            <p className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Data</p>
 
             <button
               onClick={handleExport}
-              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 min-h-[48px] rounded-xl bg-[#1A1A1A] border border-white/[0.06] text-white text-sm font-medium active:bg-[#222222] active:scale-[0.98] transition-transform"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
-                <Download className="text-[#3B82F6]" size={16} />
-              </div>
-              <div>
-                <p className="text-white text-sm font-medium">Export Data</p>
-                <p className="text-[#666666] text-xs">Download your workout history as JSON</p>
-              </div>
+              <Download className="text-[#3B82F6]" size={18} />
+              Export Data
             </button>
           </motion.div>
 
-          {/* Danger zone card */}
+          {/* Account card */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-[#111111] rounded-2xl border border-white/[0.03] p-4 flex flex-col gap-2"
+            className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 flex flex-col gap-3"
           >
-            <p className="text-[#666666] text-xs font-medium uppercase tracking-wider px-2 mb-1">Account</p>
+            <p className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Account</p>
 
             <button
               onClick={handleSignOut}
               disabled={signOutLoading}
-              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors text-left disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border border-red-500/30 text-red-400 text-sm font-semibold disabled:opacity-50 active:bg-red-950/20 active:scale-[0.98] transition-transform"
             >
-              <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                {signOutLoading ? <Spinner /> : <LogOut className="text-red-400" size={16} />}
-              </div>
-              <div>
-                <p className="text-red-400 text-sm font-medium">Sign Out</p>
-                <p className="text-[#666666] text-xs">Sign out of this device</p>
-              </div>
+              {signOutLoading ? <Spinner /> : <LogOut size={16} />}
+              Sign Out
             </button>
-
-            <div className="h-px bg-white/[0.04] mx-3" />
 
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/[0.05] transition-colors text-left"
+              className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-red-500/10 text-red-400 text-sm font-semibold active:bg-red-500/20 active:scale-[0.98] transition-transform"
             >
-              <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <Trash2 className="text-red-400" size={16} />
-              </div>
-              <div>
-                <p className="text-red-400 text-sm font-medium">Delete Account</p>
-                <p className="text-[#666666] text-xs">Permanently delete your account and data</p>
-              </div>
+              <Trash2 size={16} />
+              Delete Account
             </button>
           </motion.div>
         </div>

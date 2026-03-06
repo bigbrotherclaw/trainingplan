@@ -98,13 +98,13 @@ export default function CalendarPage() {
   }, []);
 
   return (
-    <div className="px-5 py-5 pb-8">
+    <div className="px-5 pt-4 pb-24 bg-black min-h-screen">
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrentMonth((m) => subMonths(m, 1))} className="p-2 text-[#666666]">
+        <button onClick={() => setCurrentMonth((m) => subMonths(m, 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[#666666]">
           <ChevronLeft size={20} />
         </button>
-        <h2 className="text-lg font-semibold text-white">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <button onClick={() => setCurrentMonth((m) => addMonths(m, 1))} className="p-2 text-[#666666]">
+        <h2 className="text-xl font-semibold text-white">{format(currentMonth, 'MMMM yyyy')}</h2>
+        <button onClick={() => setCurrentMonth((m) => addMonths(m, 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[#666666]">
           <ChevronRight size={20} />
         </button>
       </div>
@@ -125,7 +125,7 @@ export default function CalendarPage() {
       {/* Day Headers */}
       <div className="grid grid-cols-7 gap-1.5 mb-1">
         {DAY_LABELS.map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-semibold text-[#666666] py-1">{d}</div>
+          <div key={i} className="text-center text-[10px] uppercase tracking-wider text-[#555555] py-1">{d}</div>
         ))}
       </div>
 
@@ -205,6 +205,15 @@ export default function CalendarPage() {
   );
 }
 
+function abbrevLabel(label) {
+  if (!label || label === 'Rest') return label;
+  // Remove " + HIC" suffix for tri workouts
+  let s = label.replace(' + HIC', '');
+  // Title-case and limit to first 2 "+" parts for strength labels
+  const parts = s.split(' + ');
+  return parts.slice(0, 2).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' + ');
+}
+
 function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderColor, isDragging, isValidTarget, todayRef }) {
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id,
@@ -235,7 +244,7 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
     justifyContent: 'center',
     opacity: isDragging ? 0.2 : dayInfo.isCurrentMonth ? 1 : 0.3,
     touchAction: 'none',
-    minHeight: 50,
+    minHeight: 52,
     transition: 'border-color 0.15s, background-color 0.15s, opacity 0.15s',
   };
 
@@ -248,8 +257,8 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
         {dayInfo.date.getDate()}
       </span>
       {dayInfo.isCurrentMonth && summary && summary.label !== 'Rest' && (
-        <span className="text-[7px] font-semibold uppercase mt-0.5 text-center leading-tight px-0.5" style={{ color: summary.accent }}>
-          {summary.label}
+        <span className="text-[9px] font-semibold mt-0.5 text-center leading-tight px-0.5" style={{ color: summary.accent }}>
+          {abbrevLabel(summary.label)}
         </span>
       )}
       {isLogged && (

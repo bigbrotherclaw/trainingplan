@@ -38,17 +38,17 @@ function SectionHeader({ icon: Icon, title }) {
 // --- Friends Section ---
 function FriendsSection({ friends, pendingRequests, onAddFriend, onAccept, onDecline, onRemove }) {
   return (
-    <div className="bg-[#111111] rounded-xl border border-white/[0.03] p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Users size={16} className="text-[#3B82F6]" />
           <h2 className="text-white font-semibold text-sm">Friends</h2>
         </div>
         <button
           onClick={onAddFriend}
-          className="flex items-center gap-1.5 bg-[#3B82F6] text-white text-xs font-medium px-2.5 py-1.5 rounded-lg active:scale-[0.98] transition-transform"
+          className="flex items-center gap-1.5 bg-[#3B82F6] text-white text-xs font-semibold px-3 min-h-[48px] rounded-xl active:scale-[0.98] transition-transform"
         >
-          <UserPlus size={13} />
+          <UserPlus size={14} />
           Add Friend
         </button>
       </div>
@@ -62,7 +62,7 @@ function FriendsSection({ friends, pendingRequests, onAddFriend, onAccept, onDec
                 key={req.id}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3"
+                className="flex items-center gap-3 min-h-[52px]"
               >
                 <AvatarCircle name={req.sender?.display_name} avatarUrl={req.sender?.avatar_url} size="sm" />
                 <span className="text-[#B3B3B3] text-sm flex-1 truncate">
@@ -71,13 +71,13 @@ function FriendsSection({ friends, pendingRequests, onAddFriend, onAccept, onDec
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => onAccept(req.id)}
-                    className="text-xs text-[#3B82F6] font-medium px-2 py-1 rounded-md border border-[#3B82F6]/30 active:scale-[0.98] transition-transform"
+                    className="text-xs text-[#3B82F6] font-medium px-3 py-2 rounded-lg border border-[#3B82F6]/30 active:scale-[0.98] transition-transform"
                   >
                     Accept
                   </button>
                   <button
                     onClick={() => onDecline(req.id)}
-                    className="text-xs text-[#666666] px-2 py-1 rounded-md border border-white/[0.06] active:scale-[0.98] transition-transform"
+                    className="text-xs text-[#666666] px-3 py-2 rounded-lg border border-white/[0.06] active:scale-[0.98] transition-transform"
                   >
                     Decline
                   </button>
@@ -103,7 +103,7 @@ function FriendsSection({ friends, pendingRequests, onAddFriend, onAccept, onDec
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -8 }}
                 transition={{ delay: i * 0.04 }}
-                className="flex items-center gap-3"
+                className="flex items-center gap-3 min-h-[52px]"
               >
                 <AvatarCircle name={f.display_name} avatarUrl={f.avatar_url} size="sm" />
                 <span className="text-[#B3B3B3] text-sm flex-1 truncate">
@@ -153,8 +153,8 @@ function LeaderboardSection({ friends, getLeaderboard }) {
   }
 
   return (
-    <div className="bg-[#111111] rounded-xl border border-white/[0.03] p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Trophy size={16} className="text-[#3B82F6]" />
           <h2 className="text-white font-semibold text-sm">Leaderboard</h2>
@@ -180,7 +180,7 @@ function LeaderboardSection({ friends, getLeaderboard }) {
       {loading ? (
         <div className="text-center py-6 text-[#666666] text-sm">Loading…</div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
           <AnimatePresence mode="wait">
             {rows.map((row, i) => (
               <motion.div
@@ -188,7 +188,7 @@ function LeaderboardSection({ friends, getLeaderboard }) {
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className={`flex items-center gap-3 rounded-lg p-2 ${
+                className={`flex items-center gap-3 min-h-[48px] rounded-xl px-3 ${
                   row.isCurrentUser
                     ? 'border border-[#3B82F6]/30 bg-[#3B82F6]/5'
                     : 'border border-transparent'
@@ -262,7 +262,7 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
   }
 
   return (
-    <div className="bg-[#111111] rounded-xl border border-white/[0.03] p-4">
+    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
       <SectionHeader icon={Share2} title="Shared Plans" />
 
       {sharedPlans.length > 0 && (
@@ -291,27 +291,27 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
             onChange={(e) => setShareName(e.target.value)}
             placeholder="Plan name"
             autoFocus
-            className="bg-black border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
+            className="bg-black border border-white/[0.06] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
           />
           <input
             type="text"
             value={shareDesc}
             onChange={(e) => setShareDesc(e.target.value)}
             placeholder="Description (optional)"
-            className="bg-black border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
+            className="bg-black border border-white/[0.06] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
           />
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setShowShareForm(false)}
-              className="flex-1 py-2 rounded-xl border border-white/[0.08] text-[#B3B3B3] text-sm active:scale-[0.98] transition-transform"
+              className="flex-1 min-h-[48px] rounded-xl border border-white/[0.06] text-[#B3B3B3] text-sm font-semibold active:scale-[0.98] transition-transform"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={shareLoading || !shareName.trim()}
-              className="flex-1 py-2 rounded-xl bg-[#3B82F6] text-white text-sm font-medium disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="flex-1 min-h-[48px] rounded-xl bg-[#3B82F6] text-white text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               {shareLoading ? 'Creating…' : 'Create Share Code'}
             </button>
@@ -320,7 +320,7 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
       ) : (
         <button
           onClick={() => setShowShareForm(true)}
-          className="w-full py-2.5 rounded-xl border border-[#3B82F6]/30 text-[#3B82F6] text-sm font-medium mb-4 active:scale-[0.98] transition-transform"
+          className="w-full min-h-[48px] rounded-xl border border-[#3B82F6]/30 text-[#3B82F6] text-sm font-semibold mb-4 active:scale-[0.98] transition-transform"
         >
           Share My Plan
         </button>
@@ -334,13 +334,13 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
             value={joinCode}
             onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setJoinError('') }}
             placeholder="Enter code (e.g. A1B2C3)"
-            className="flex-1 bg-black border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors font-mono uppercase tracking-wider"
+            className="flex-1 bg-black border border-white/[0.06] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors font-mono uppercase tracking-wider"
             maxLength={6}
           />
           <button
             type="submit"
             disabled={joinLoading || !joinCode.trim()}
-            className="px-4 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-medium disabled:opacity-40 active:scale-[0.98] transition-transform shrink-0"
+            className="px-4 min-h-[48px] rounded-xl bg-[#3B82F6] text-white text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform shrink-0"
           >
             {joinLoading ? '…' : 'Join'}
           </button>
@@ -403,7 +403,7 @@ export default function SocialPage() {
   }
 
   return (
-    <div className="min-h-full bg-black px-4 py-5 pb-8">
+    <div className="px-5 pt-4 pb-24 bg-black min-h-screen">
       <motion.div
         variants={containerVariants}
         initial="hidden"
