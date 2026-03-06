@@ -72,6 +72,13 @@ export function useWhoop() {
         // On native iOS, use Capacitor Browser
         if (window.Capacitor?.isNativePlatform()) {
           const { Browser } = await import('@capacitor/browser');
+          // Listen for browser close to re-check connection status
+          const listener = await Browser.addListener('browserFinished', () => {
+            listener.remove();
+            // Re-check connection after OAuth flow completes
+            setTimeout(() => checkStatus(), 500);
+            setTimeout(() => { checkStatus(); loadCachedData(30); }, 2000);
+          });
           await Browser.open({ url: result.url });
         } else {
           window.location.href = result.url;

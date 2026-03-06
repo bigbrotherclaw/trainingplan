@@ -119,8 +119,21 @@ serve(async (req: Request) => {
         return Response.redirect(`${APP_URL}?whoop=error`, 302)
       }
 
-      // Redirect back to app with success
-      return Response.redirect(`${APP_URL}?whoop=connected`, 302)
+      // For native Capacitor apps, return a page that closes the in-app browser.
+      // For web, redirect to the app URL.
+      const successHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>body{background:#0a0a0a;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
+        .card{padding:2rem}.check{font-size:3rem;margin-bottom:1rem}p{color:#888;font-size:0.9rem;margin-top:0.5rem}</style></head>
+        <body><div class="card"><div class="check">✅</div><h2>Whoop Connected!</h2><p>Returning to your app...</p></div>
+        <script>
+          // Try to close the Capacitor in-app browser
+          setTimeout(function() { try { window.close(); } catch(e) {} }, 1500);
+          // Fallback: redirect to app after 2s
+          setTimeout(function() { window.location.href = '${APP_URL}?whoop=connected'; }, 2500);
+        </script></body></html>`
+      return new Response(successHtml, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      })
     }
 
     // Step 3: Check connection status
