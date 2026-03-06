@@ -6,17 +6,19 @@ import { getSwappedWorkoutForDate } from '../utils/workout';
 import { CheckCircle } from 'lucide-react';
 
 const typeColors = {
-  rest: 'bg-slate-700/40 border-slate-600/30',
-  strength: 'bg-red-950/60 border-red-800/30',
-  tri: 'bg-teal-950/60 border-teal-800/30',
-  long: 'bg-indigo-950/60 border-indigo-800/30',
+  rest: 'bg-gray-800/40 border-gray-700/30',
+  strength: 'bg-amber-950/40 border-amber-800/30',
+  tri: 'bg-teal-950/40 border-teal-800/30',
+  long: 'bg-emerald-950/40 border-emerald-800/30',
+  hic: 'bg-purple-950/40 border-purple-800/30',
 };
 
 const typeAccents = {
-  rest: 'text-slate-500',
-  strength: 'text-red-400',
+  rest: 'text-[#666666]',
+  strength: 'text-amber-400',
   tri: 'text-teal-400',
-  long: 'text-indigo-400',
+  long: 'text-emerald-400',
+  hic: 'text-purple-400',
 };
 
 export default function WeekStrip({ onDayTap }) {
@@ -47,10 +49,10 @@ export default function WeekStrip({ onDayTap }) {
           onClick={() => onDayTap?.(date)}
           className={`flex-1 min-w-[44px] flex flex-col items-center gap-0.5 py-2 px-1 rounded-xl border transition-all relative ${
             typeColors[workout.type]
-          } ${isToday ? 'ring-2 ring-accent-blue ring-offset-1 ring-offset-dark-900' : ''}`}
+          } ${isToday ? 'ring-2 ring-accent-blue ring-offset-1 ring-offset-black' : ''}`}
         >
-          <span className="text-[10px] font-medium text-slate-500">{format(date, 'EEE')}</span>
-          <span className={`text-sm font-bold ${isToday ? 'text-white' : 'text-slate-300'}`}>
+          <span className="text-[10px] font-medium text-[#666666]">{format(date, 'EEE')}</span>
+          <span className={`text-sm font-bold ${isToday ? 'text-white' : 'text-[#B3B3B3]'}`}>
             {format(date, 'd')}
           </span>
           <span className={`text-[9px] font-semibold uppercase ${typeAccents[workout.type]}`}>

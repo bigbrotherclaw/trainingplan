@@ -151,7 +151,7 @@ export default function CalendarPage() {
 
             let bgColor = summary ? `${summary.color}33` : '#0a0a0a';
             let borderColor = '#111111';
-            if (isToday) { borderColor = '#e2e8f0'; bgColor = summary ? `${summary.color}66` : '#1a1a1a'; }
+            if (isToday) { borderColor = '#ffffff'; bgColor = summary ? `${summary.color}66` : '#1a1a1a'; }
             else if (isLogged) borderColor = '#10b981';
             else if (summary) borderColor = `${summary.accent}44`;
             if (!dayInfo.isCurrentMonth) bgColor = '#050505';

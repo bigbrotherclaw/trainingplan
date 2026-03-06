@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock } from 'lucide-react';
-import { addDays } from 'date-fns';
+import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw } from 'lucide-react';
+import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '../data/training';
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
@@ -188,8 +188,15 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
   );
 }
 
-import { getSwappedWorkoutForDate } from '../utils/workout';
+import { getSwappedWorkoutForDate, formatDateKey } from '../utils/workout';
 import RestTimer from '../components/RestTimer';
+
+const RECOVERY_ITEMS = [
+  { id: 'foam-rolling', duration: '10 min', label: 'Foam rolling (full body)' },
+  { id: 'mobility', duration: '15 min', label: 'Mobility flow (hips, shoulders, thoracic spine)' },
+  { id: 'easy-cardio', duration: '20 min', label: 'Easy walk or bike (Zone 1-2, conversational pace)' },
+  { id: 'stretching', duration: '5 min', label: 'Stretching cooldown' },
+];
 
 const typeBadgeStyles = {
   strength: 'bg-amber-500/15 text-amber-400',
@@ -199,7 +206,7 @@ const typeBadgeStyles = {
 };
 
 export default function Workout({ showToast }) {
-  const { settings, workoutHistory, setWorkoutHistory, weekSwaps } = useApp();
+  const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps } = useApp();
   const [loggingMode, setLoggingMode] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(null);
@@ -219,6 +226,8 @@ export default function Workout({ showToast }) {
   const [showCelebration, setShowCelebration] = useState(false);
   const [expandedLifts, setExpandedLifts] = useState({});
   const [durationMin, setDurationMin] = useState('');
+  const [showSwapSheet, setShowSwapSheet] = useState(false);
+  const [recoveryChecked, setRecoveryChecked] = useState({});
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef(null);
   const loggingStartRef = useRef(null);
@@ -375,6 +384,41 @@ export default function Workout({ showToast }) {
   const recommendedHics = useMemo(() => getRecommendedHics(workoutHistory), [workoutHistory]);
   const hicFields = HIC_INPUT_FIELDS[selectedHic] || DEFAULT_HIC_FIELDS;
 
+  const swapOptions = useMemo(() => {
+    const dayOfWeek = today.getDay();
+    const type = todayWorkout.type;
+    const options = { optionA: null, optionB: null };
+    if (type === 'strength') {
+      const altDay = [1, 3, 5].find(d => d !== dayOfWeek);
+      if (altDay !== undefined) {
+        options.optionA = { day: altDay, workout: WEEKLY_TEMPLATE[altDay], description: 'Different accessory focus for today' };
+      }
+      const triDay = dayOfWeek === 4 ? 2 : 4;
+      options.optionB = { day: triDay, workout: WEEKLY_TEMPLATE[triDay], description: 'Cardio + conditioning instead of lifting' };
+    } else if (type === 'tri') {
+      const altDay = [2, 4].find(d => d !== dayOfWeek);
+      if (altDay !== undefined) {
+        options.optionA = { day: altDay, workout: WEEKLY_TEMPLATE[altDay], description: 'Swap to the other tri modality' };
+      }
+      options.optionB = { day: 3, workout: WEEKLY_TEMPLATE[3], description: 'Strength session instead' };
+    } else if (type === 'long') {
+      options.optionB = { day: 2, workout: WEEKLY_TEMPLATE[2], description: 'Shorter tri session instead of long' };
+    }
+    return options;
+  }, [today, todayWorkout.type]);
+
+  const handleSwap = (targetDay) => {
+    const ws = startOfWeek(today, { weekStartsOn: 0 });
+    const weekKey = formatDateKey(ws);
+    const dayOfWeek = today.getDay();
+    setWeekSwaps((prev) => {
+      const existing = prev[weekKey] || {};
+      return { ...prev, [weekKey]: { ...existing, [dayOfWeek]: targetDay } };
+    });
+    setShowSwapSheet(false);
+    showToast('Workout swapped for today!');
+  };
+
   const handleLogWorkout = () => {
     setShowEnergyModal(true);
   };
@@ -451,6 +495,22 @@ export default function Workout({ showToast }) {
     setTimeout(() => setShowCelebration(false), 2500);
   };
 
+  const handleCompleteRecovery = () => {
+    const dur = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : 50);
+    setWorkoutHistory((prev) => [...prev, {
+      date: new Date().toISOString(),
+      workoutName: 'Recovery Session',
+      type: 'recovery',
+      duration: dur,
+      energyLevel: 'recovery',
+      details: { items: RECOVERY_ITEMS.map(item => ({ name: item.label, completed: !!recoveryChecked[item.id] })) },
+    }]);
+    setShowCelebration(true);
+    setLoggingMode(false);
+    showToast('Recovery session logged!');
+    setTimeout(() => setShowCelebration(false), 2500);
+  };
+
   const energyBadge = energyLevel ? ENERGY_LEVELS.find(e => e.key === energyLevel) : null;
 
   // REST DAY
@@ -499,6 +559,74 @@ export default function Workout({ showToast }) {
         <AnimatePresence>
           {showEnergyModal && (
             <EnergyModal onSelect={handleEnergySelect} onClose={() => setShowEnergyModal(false)} />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showSwapSheet && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowSwapSheet(false)}
+            >
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-lg bg-dark-800 rounded-t-3xl p-6 pb-10 border-t border-white/[0.05]"
+              >
+                <div className="w-10 h-1 bg-[#333333] rounded-full mx-auto mb-6" />
+                <h2 className="text-xl font-semibold text-white mb-1">Swap This Workout</h2>
+                <p className="text-sm text-[#666666] mb-5">Choose an alternative for today</p>
+
+                {swapOptions.optionA && (
+                  <div className="mb-4">
+                    <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Same Type, Different Focus</div>
+                    <button
+                      onClick={() => handleSwap(swapOptions.optionA.day)}
+                      className="w-full text-left p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
+                    >
+                      <div className="text-sm font-semibold text-white">{swapOptions.optionA.workout.name}</div>
+                      <div className="text-xs text-[#666666] mt-0.5">{swapOptions.optionA.description}</div>
+                    </button>
+                  </div>
+                )}
+
+                {swapOptions.optionB && (
+                  <div className="mb-4">
+                    <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Different Modality</div>
+                    <button
+                      onClick={() => handleSwap(swapOptions.optionB.day)}
+                      className="w-full text-left p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
+                    >
+                      <div className="text-sm font-semibold text-white">{swapOptions.optionB.workout.name}</div>
+                      <div className="text-xs text-[#666666] mt-0.5">{swapOptions.optionB.description}</div>
+                    </button>
+                  </div>
+                )}
+
+                <div className="mb-2">
+                  <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Just Move</div>
+                  <div className="p-4 rounded-xl bg-dark-600 border border-white/[0.03]">
+                    <div className="space-y-2">
+                      {['30-min walk outside', 'Pickup basketball', 'Yoga / stretching session', 'Swimming easy laps'].map((opt) => (
+                        <div key={opt} className="text-sm text-[#B3B3B3]">\u2022 {opt}</div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setShowSwapSheet(false)}
+                      className="w-full mt-3 py-2 text-xs text-[#666666] hover:text-white transition-colors"
+                    >
+                      Got it, just move today
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -589,6 +717,16 @@ export default function Workout({ showToast }) {
             Log Workout
             <ChevronRight size={18} />
           </motion.button>
+          {todayWorkout.type !== 'rest' && (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowSwapSheet(true)}
+              className="w-full mt-2 py-3 rounded-xl bg-dark-600 border border-white/[0.03] text-[#B3B3B3] font-medium text-sm tracking-wide transition-colors flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={15} />
+              Swap This Workout
+            </motion.button>
+          )}
         </motion.div>
 
         {/* Upcoming Workouts */}
@@ -664,21 +802,40 @@ export default function Workout({ showToast }) {
       {/* RECOVERY MODE */}
       {energyLevel === 'recovery' && (
         <div className="bg-dark-800 rounded-xl p-5 border border-white/[0.03]">
-          <h3 className="text-lg font-semibold text-white mb-3">Recovery Workout</h3>
-          <div className="space-y-3">
-            <div className="bg-white/[0.03] rounded-lg px-4 py-3">
-              <div className="text-sm font-medium text-white">Mobility Work</div>
-              <div className="text-xs text-[#666666] mt-1">15 min full body stretching & foam rolling</div>
-            </div>
-            <div className="bg-white/[0.03] rounded-lg px-4 py-3">
-              <div className="text-sm font-medium text-white">Light Cardio</div>
-              <div className="text-xs text-[#666666] mt-1">20 min easy walk or bike at conversational pace</div>
-            </div>
-            <div className="bg-white/[0.03] rounded-lg px-4 py-3">
-              <div className="text-sm font-medium text-white">Core Activation</div>
-              <div className="text-xs text-[#666666] mt-1">3x30s plank, 3x10 dead bugs, 3x10 bird dogs</div>
-            </div>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-lg font-semibold text-white">Recovery Session</h3>
+            <span className="text-xs text-[#666666]">~50 min total</span>
           </div>
+          <p className="text-xs text-[#666666] mb-4">Check off each item as you complete it</p>
+          <div className="space-y-2">
+            {RECOVERY_ITEMS.map((item) => {
+              const checked = !!recoveryChecked[item.id];
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setRecoveryChecked((p) => ({ ...p, [item.id]: !p[item.id] }))}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-colors active:scale-[0.98] ${
+                    checked ? 'bg-emerald-950/30 border border-emerald-800/20' : 'bg-dark-600 border border-white/[0.03]'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center ${checked ? 'bg-emerald-500 border-emerald-500' : 'border-[#333333]'}`}>
+                    {checked && <Check size={12} className="text-white" />}
+                  </div>
+                  <div className="text-left">
+                    <div className={`text-sm font-medium ${checked ? 'text-emerald-400 line-through' : 'text-white'}`}>{item.label}</div>
+                    <div className="text-xs text-[#666666]">{item.duration}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleCompleteRecovery}
+            className="w-full mt-4 py-3.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-sm tracking-wide transition-colors"
+          >
+            Complete Recovery
+          </motion.button>
         </div>
       )}
 
@@ -797,6 +954,14 @@ export default function Workout({ showToast }) {
         <div className="space-y-3">
           <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
             <h3 className="text-sm font-semibold text-white mb-3">Cardio Session</h3>
+            {energyLevel && energyLevel !== 'ready' && (
+              <div className="mb-3 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05]">
+                <p className="text-xs" style={{ color: energyBadge?.color }}>
+                  {energyLevel === 'good' && '\uD83D\uDCAA Good Energy \u2014 Keep intensity moderate, Zone 2-3 effort'}
+                  {energyLevel === 'low' && '\uD83D\uDE10 Low Energy \u2014 Scale distances to ~60%, or substitute with 30-min easy bike/walk'}
+                </p>
+              </div>
+            )}
             {getAvailableModalities().length > 1 && (
               <div className="flex gap-1 mb-3 bg-dark-600 rounded-lg p-1">
                 {getAvailableModalities().map((mod) => (
@@ -924,20 +1089,24 @@ export default function Workout({ showToast }) {
         </div>
       )}
 
-      <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
-        <label className="text-[10px] uppercase text-[#666666] block mb-1">Duration (minutes, optional)</label>
-        <input type="number" placeholder={elapsedSeconds > 60 ? `~${Math.round(elapsedSeconds / 60)} min (auto)` : 'e.g. 45'}
-          value={durationMin} onChange={(e) => setDurationMin(e.target.value)}
-          className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
-      </div>
+      {energyLevel !== 'recovery' && (
+        <>
+          <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
+            <label className="text-[10px] uppercase text-[#666666] block mb-1">Duration (minutes, optional)</label>
+            <input type="number" placeholder={elapsedSeconds > 60 ? `~${Math.round(elapsedSeconds / 60)} min (auto)` : 'e.g. 45'}
+              value={durationMin} onChange={(e) => setDurationMin(e.target.value)}
+              className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
+          </div>
 
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        onClick={handleComplete}
-        className="w-full py-4 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-sm tracking-wide transition-colors"
-      >
-        Complete Workout
-      </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleComplete}
+            className="w-full py-4 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-sm tracking-wide transition-colors"
+          >
+            Complete Workout
+          </motion.button>
+        </>
+      )}
     </div>
   );
 }
