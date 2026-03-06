@@ -1,12 +1,24 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, Radar, AreaChart, Area, Tooltip, Legend } from 'recharts';
-import MuscleHeatmap from '../components/MuscleHeatmap';
-import { Trophy, TrendingUp, Activity, Timer } from 'lucide-react';
-import { OPERATOR_LIFTS, EXERCISE_MUSCLE_MAP, ACCESSORIES } from '../data/training';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
+import { Trophy, Activity } from 'lucide-react';
+import { OPERATOR_LIFTS, EXERCISE_MUSCLE_MAP } from '../data/training';
+import { getSwappedWorkoutForDate } from '../utils/workout';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316'];
 const LIFT_COLORS = { 'Bench Press': '#3b82f6', 'Back Squat': '#ef4444', 'Weighted Pull-up': '#10b981' };
+const LIFT_TABS = [
+  { name: 'Bench Press', short: 'Bench' },
+  { name: 'Back Squat', short: 'Squat' },
+  { name: 'Weighted Pull-up', short: 'Pull-up' },
+];
+const TIME_RANGES = ['4W', '3M', '6M', 'All'];
+
+const TYPE_BAR_COLORS = {
+  strength: '#F59E0B',
+  tri: '#14B8A6',
+  long: '#10B981',
+  rest: '#6B7280',
+};
 
 function epley(weight, reps) {
   if (reps <= 0 || weight <= 0) return 0;
@@ -15,309 +27,255 @@ function epley(weight, reps) {
 }
 
 export default function Stats() {
-  const { workoutHistory } = useApp();
-  const [heatmapPeriod, setHeatmapPeriod] = useState('week');
+  const { workoutHistory, weekSwaps } = useApp();
+  const [selectedLift, setSelectedLift] = useState('Bench Press');
+  const [timeRange, setTimeRange] = useState('All');
 
-  // E1RM Trend Lines
-  const e1rmData = useMemo(() => {
+  const now = useMemo(() => new Date(), []);
+
+  const filterByRange = (data) => {
+    if (timeRange === 'All') return data;
+    const cutoff = new Date(now);
+    if (timeRange === '4W') cutoff.setDate(cutoff.getDate() - 28);
+    else if (timeRange === '3M') cutoff.setMonth(cutoff.getMonth() - 3);
+    else if (timeRange === '6M') cutoff.setMonth(cutoff.getMonth() - 6);
+    return data.filter(d => new Date(d.fullDate) >= cutoff);
+  };
+
+  // Strength Journey data per lift
+  const liftData = useMemo(() => {
     const sessions = workoutHistory
       .filter((e) => e.type === 'strength' && e.details?.lifts)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
-    if (sessions.length === 0) return [];
-    return sessions.map((entry) => {
+    const byLift = {};
+    LIFT_TABS.forEach(l => { byLift[l.name] = []; });
+    sessions.forEach((entry) => {
       const d = new Date(entry.date);
       const label = `${d.getMonth() + 1}/${d.getDate()}`;
-      const row = { date: label, fullDate: entry.date };
       entry.details.lifts.forEach((lift) => {
-        row[lift.name] = epley(lift.weight, lift.reps);
-      });
-      return row;
-    });
-  }, [workoutHistory]);
-
-  // Volume Load Bar Chart - weekly tonnage stacked by muscle group
-  const volumeData = useMemo(() => {
-    const weekMap = {};
-    workoutHistory
-      .filter((e) => e.type === 'strength' && e.details?.lifts)
-      .forEach((entry) => {
-        const d = new Date(entry.date);
-        const weekStart = new Date(d);
-        weekStart.setDate(d.getDate() - d.getDay());
-        const weekKey = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
-        if (!weekMap[weekKey]) weekMap[weekKey] = { week: weekKey, _ts: weekStart.getTime() };
-
-        const addVolume = (name, weight, reps, sets) => {
-          const vol = weight * reps * sets;
-          const mapping = EXERCISE_MUSCLE_MAP[name];
-          if (mapping) {
-            const totalPts = Object.values(mapping).reduce((a, b) => a + b, 0);
-            Object.entries(mapping).forEach(([muscle, pts]) => {
-              const share = Math.round(vol * (pts / totalPts));
-              weekMap[weekKey][muscle] = (weekMap[weekKey][muscle] || 0) + share;
-            });
-          }
-        };
-
-        entry.details.lifts.forEach((lift) => {
-          addVolume(lift.name, lift.weight, lift.reps, lift.setsCompleted || 1);
-        });
-        if (entry.details.accessories) {
-          entry.details.accessories.forEach((acc) => {
-            addVolume(acc.name, acc.weight || 0, acc.reps, acc.setsCompleted || 1);
+        if (byLift[lift.name]) {
+          byLift[lift.name].push({
+            date: label,
+            fullDate: entry.date,
+            weight: lift.weight,
+            e1rm: epley(lift.weight, lift.reps),
+            reps: lift.reps,
           });
         }
       });
-
-    return Object.values(weekMap).sort((a, b) => a._ts - b._ts);
-  }, [workoutHistory]);
-
-  const volumeMuscles = useMemo(() => {
-    const muscles = new Set();
-    volumeData.forEach((w) => {
-      Object.keys(w).forEach((k) => { if (k !== 'week' && k !== '_ts') muscles.add(k); });
     });
-    return [...muscles];
-  }, [volumeData]);
-
-  // Average Duration by Type
-  const durationData = useMemo(() => {
-    const byType = {};
-    workoutHistory.forEach((e) => {
-      if (e.duration && e.duration > 0) {
-        if (!byType[e.type]) byType[e.type] = [];
-        byType[e.type].push(e.duration);
-      }
-    });
-    return Object.entries(byType).map(([type, durations]) => ({
-      type: type.charAt(0).toUpperCase() + type.slice(1),
-      avg: Math.round(durations.reduce((a, b) => a + b, 0) / durations.length),
-      count: durations.length,
-    }));
-  }, [workoutHistory]);
-
-  // Strength Progress - weight over time per lift
-  const strengthProgress = useMemo(() => {
-    const byLift = {};
-    workoutHistory
-      .filter((e) => e.type === 'strength' && e.details?.lifts)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .forEach((entry) => {
-        const d = new Date(entry.date);
-        const label = `${d.getMonth() + 1}/${d.getDate()}`;
-        entry.details.lifts.forEach((lift) => {
-          if (!byLift[lift.name]) byLift[lift.name] = [];
-          byLift[lift.name].push({ date: label, weight: lift.weight, reps: lift.reps });
-        });
-      });
     return byLift;
   }, [workoutHistory]);
 
-  // Weekly Compliance Radar
-  const complianceData = useMemo(() => {
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-    const weekEntries = workoutHistory.filter((e) => new Date(e.date) >= weekStart);
-    const types = { strength: 0, tri: 0, long: 0 };
-    const targets = { strength: 3, tri: 2, long: 1 };
-    weekEntries.forEach((e) => { if (types[e.type] !== undefined) types[e.type]++; });
-    return Object.entries(targets).map(([type, target]) => ({
-      type: type.charAt(0).toUpperCase() + type.slice(1),
-      completion: Math.min(100, Math.round(((types[type] || 0) / target) * 100)),
+  const chartData = useMemo(() => filterByRange(liftData[selectedLift] || []), [liftData, selectedLift, timeRange]);
+
+  // Personal best for selected lift
+  const personalBest = useMemo(() => {
+    const data = liftData[selectedLift] || [];
+    if (data.length === 0) return null;
+    return data.reduce((best, d) => (!best || d.weight > best.weight) ? d : best, null);
+  }, [liftData, selectedLift]);
+
+  // Volume This Week - daily bars
+  const volumeWeek = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const result = days.map((day, i) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + i);
+      const dateStr = date.toDateString();
+      const isToday = dateStr === today.toDateString();
+      const workout = getSwappedWorkoutForDate(date, weekSwaps);
+      let tonnage = 0;
+      workoutHistory
+        .filter(e => new Date(e.date).toDateString() === dateStr && e.type === 'strength' && e.details?.lifts)
+        .forEach(entry => {
+          entry.details.lifts.forEach(lift => {
+            tonnage += lift.weight * lift.reps * (lift.setsCompleted || 1);
+          });
+          if (entry.details.accessories) {
+            entry.details.accessories.forEach(acc => {
+              tonnage += (acc.weight || 0) * acc.reps * (acc.setsCompleted || 1);
+            });
+          }
+        });
+      return { day, tonnage, isToday, type: workout.type };
+    });
+    return result;
+  }, [workoutHistory, weekSwaps]);
+
+  // Body Balance - horizontal bars by muscle group
+  const muscleBalance = useMemo(() => {
+    const points = {};
+    workoutHistory.forEach((entry) => {
+      if (entry.type === 'strength') {
+        const addPoints = (name) => {
+          const mapping = EXERCISE_MUSCLE_MAP[name];
+          if (mapping) {
+            Object.entries(mapping).forEach(([muscle, pts]) => {
+              points[muscle] = (points[muscle] || 0) + pts;
+            });
+          }
+        };
+        if (entry.details?.lifts) entry.details.lifts.forEach(l => addPoints(l.name));
+        if (entry.details?.accessories) entry.details.accessories.forEach(a => addPoints(a.name));
+      }
+    });
+    const labels = { chest: 'Chest', shoulders: 'Shoulders', lats: 'Lats', traps: 'Traps', biceps: 'Biceps', triceps: 'Triceps', forearms: 'Forearms', core: 'Core', obliques: 'Obliques', lowerBack: 'Lower Back', quads: 'Quads', hamstrings: 'Hamstrings', glutes: 'Glutes', calves: 'Calves' };
+    const list = Object.entries(points)
+      .map(([key, val]) => ({ key, label: labels[key] || key, points: val }))
+      .sort((a, b) => b.points - a.points);
+    if (list.length === 0) return [];
+    const maxPts = list[0].points;
+    return list.map(m => ({
+      ...m,
+      pct: Math.round((m.points / maxPts) * 100),
+      color: m.points >= maxPts * 0.7 ? '#10B981' : m.points >= maxPts * 0.3 ? '#F59E0B' : '#6B7280',
     }));
   }, [workoutHistory]);
 
-  // HIC Distribution
-  const hicDistribution = useMemo(() => {
-    const cats = {};
-    workoutHistory.forEach((e) => {
-      if (e.type === 'tri' && e.details?.hic && !e.details.hic.skipped) {
-        const hic = e.details.hic;
-        const cat = hic.category || 'Unknown';
-        cats[cat] = (cats[cat] || 0) + 1;
-      }
-    });
-    return Object.entries(cats).map(([name, value]) => ({ name, value }));
-  }, [workoutHistory]);
-
-  // Cumulative Distance
-  const cumulativeDistance = useMemo(() => {
-    const sorted = [...workoutHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
-    let bike = 0, run = 0, swim = 0;
-    return sorted
-      .filter((e) => e.details?.cardio?.metrics)
-      .map((e) => {
-        const d = new Date(e.date);
-        const label = `${d.getMonth() + 1}/${d.getDate()}`;
-        const m = e.details.cardio.metrics;
-        const cn = e.details.cardio.name.toLowerCase();
-        if (cn.includes('bike') && m.distance) bike += parseFloat(m.distance) || 0;
-        if (cn.includes('run') && m.distance) run += parseFloat(m.distance) || 0;
-        if (cn.includes('swim') && m.totalDistance) swim += parseFloat(m.totalDistance) || 0;
-        return { date: label, bike, run, swim };
-      });
-  }, [workoutHistory]);
-
-  // Training Load Heatmap (GitHub-style)
-  const trainingHeatmap = useMemo(() => {
-    const map = {};
-    workoutHistory.forEach((e) => {
-      const d = new Date(e.date).toISOString().split('T')[0];
-      map[d] = (map[d] || 0) + 1;
-    });
+  // Streak & Consistency - last 12 weeks
+  const weeklyConsistency = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const weeks = [];
-    const now = new Date();
-    for (let w = 25; w >= 0; w--) {
-      const weekDays = [];
+    for (let w = 11; w >= 0; w--) {
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay() - w * 7);
+      let logged = 0, planned = 0;
       for (let d = 0; d < 7; d++) {
-        const date = new Date(now);
-        date.setDate(now.getDate() - (w * 7) + d - now.getDay());
-        const key = date.toISOString().split('T')[0];
-        weekDays.push({ date: key, count: map[key] || 0 });
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + d);
+        const workout = getSwappedWorkoutForDate(date, weekSwaps);
+        if (workout.type !== 'rest') planned++;
+        if (workoutHistory.some(e => new Date(e.date).toDateString() === date.toDateString())) logged++;
       }
-      weeks.push(weekDays);
+      const pct = planned > 0 ? Math.round((logged / planned) * 100) : 0;
+      weeks.push({ weekStart, pct, logged, planned });
     }
     return weeks;
-  }, [workoutHistory]);
-
-  // Personal Records
-  const personalRecords = useMemo(() => {
-    const prs = {};
-    workoutHistory
-      .filter((e) => e.type === 'strength' && e.details?.lifts)
-      .forEach((entry) => {
-        entry.details.lifts.forEach((lift) => {
-          if (!prs[lift.name] || lift.weight > prs[lift.name].weight) {
-            prs[lift.name] = { weight: lift.weight, reps: lift.reps, date: entry.date };
-          }
-        });
-      });
-    return Object.entries(prs).map(([name, data]) => ({ name, ...data }));
-  }, [workoutHistory]);
-
-  const heatColor = (count) => {
-    if (count === 0) return '#1e293b';
-    if (count === 1) return '#164e63';
-    if (count === 2) return '#0e7490';
-    return '#10b981';
-  };
+  }, [workoutHistory, weekSwaps]);
 
   if (workoutHistory.length === 0) {
     return (
-      <div className="px-4 py-16 text-center">
-        <Activity size={48} className="text-slate-700 mx-auto mb-4" />
-        <h2 className="text-lg font-bold text-slate-300 mb-2">No Stats Yet</h2>
-        <p className="text-sm text-slate-500">Complete some workouts to see your progress.</p>
+      <div className="px-5 py-16 text-center">
+        <Activity size={48} className="text-[#333333] mx-auto mb-4" />
+        <h2 className="text-2xl font-semibold text-white mb-2">No Stats Yet</h2>
+        <p className="text-sm text-[#666666]">Complete some workouts to see your progress.</p>
       </div>
     );
   }
 
-  const MUSCLE_COLORS = {
-    chest: '#ef4444', shoulders: '#f59e0b', lats: '#3b82f6', traps: '#8b5cf6',
-    biceps: '#10b981', triceps: '#14b8a6', forearms: '#6366f1', core: '#f97316',
-    obliques: '#ec4899', lowerBack: '#a855f7', quads: '#06b6d4', hamstrings: '#84cc16',
-    glutes: '#e11d48', calves: '#0ea5e9',
-  };
-
   return (
-    <div className="px-4 py-4 pb-8 space-y-6">
-      {/* E1RM Trend Lines */}
-      {e1rmData.length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp size={16} className="text-accent-blue" />
-            <h3 className="text-sm font-semibold text-slate-200">Estimated 1RM Trends</h3>
-          </div>
-          <p className="text-[10px] text-slate-500 mb-2">Epley formula: weight x (1 + reps/30)</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={e1rmData}>
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={40} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }}
-                formatter={(value, name) => [`${value} lbs`, name]}
-              />
-              <Legend wrapperStyle={{ fontSize: '11px' }} />
-              {OPERATOR_LIFTS.map((lift) => (
-                <Line
-                  key={lift.name}
-                  type="monotone"
-                  dataKey={lift.name}
-                  stroke={LIFT_COLORS[lift.name]}
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: LIFT_COLORS[lift.name], cursor: 'pointer' }}
-                  activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
-                  connectNulls
+    <div className="px-5 py-5 pb-8 space-y-5">
+      {/* STRENGTH JOURNEY */}
+      <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Strength Journey</h2>
+
+        {/* Lift tabs */}
+        <div className="flex gap-1 bg-dark-600 rounded-xl p-1 mb-4">
+          {LIFT_TABS.map(lift => (
+            <button
+              key={lift.name}
+              onClick={() => setSelectedLift(lift.name)}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                selectedLift === lift.name
+                  ? 'bg-accent-blue text-white'
+                  : 'text-[#666666] hover:text-[#999999]'
+              }`}
+            >
+              {lift.short}
+            </button>
+          ))}
+        </div>
+
+        {/* Time range */}
+        <div className="flex justify-end gap-1 mb-3">
+          {TIME_RANGES.map(r => (
+            <button
+              key={r}
+              onClick={() => setTimeRange(r)}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors ${
+                timeRange === r ? 'bg-accent-blue/20 text-accent-blue' : 'text-[#666666]'
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
+        {chartData.length > 0 ? (
+          <>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={chartData}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={35} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
+                  formatter={(value, name) => [`${value} lbs`, name === 'e1rm' ? 'E1RM' : 'Weight']}
                 />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+                <Line type="monotone" dataKey="weight" stroke={LIFT_COLORS[selectedLift]} strokeWidth={2} dot={{ r: 4, fill: LIFT_COLORS[selectedLift] }} activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }} />
+                <Line type="monotone" dataKey="e1rm" stroke={LIFT_COLORS[selectedLift]} strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
 
-      {/* Volume Load Bar Chart */}
-      {volumeData.length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-3">Weekly Volume Tonnage</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={volumeData}>
-              <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={45}
-                tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }}
-                formatter={(value, name) => [`${value.toLocaleString()} lbs`, name]}
-              />
-              {volumeMuscles.map((muscle, i) => (
-                <Bar key={muscle} dataKey={muscle} stackId="vol" fill={MUSCLE_COLORS[muscle] || COLORS[i % COLORS.length]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {volumeMuscles.map((muscle, i) => (
-              <div key={muscle} className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: MUSCLE_COLORS[muscle] || COLORS[i % COLORS.length] }} />
-                <span className="text-[9px] text-slate-500 capitalize">{muscle}</span>
+            {/* Personal Best */}
+            {personalBest && (
+              <div className="mt-4 flex items-center gap-3 bg-dark-600 rounded-xl px-4 py-3">
+                <Trophy size={18} className="text-amber-400" />
+                <div>
+                  <div className="text-sm font-semibold text-white">{personalBest.weight} lbs <span className="text-[#666666] font-normal">x{personalBest.reps}</span></div>
+                  <div className="text-[10px] text-[#666666]">Personal Best - {new Date(personalBest.fullDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Muscle Heatmap */}
-      <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-200">Muscle Impact</h3>
-          <div className="flex gap-1 bg-dark-800 rounded-lg p-0.5">
-            {['week', 'month'].map((p) => (
-              <button key={p} onClick={() => setHeatmapPeriod(p)}
-                className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-colors ${
-                  heatmapPeriod === p ? 'bg-accent-blue text-white' : 'text-slate-500'
-                }`}>
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-        <MuscleHeatmap period={heatmapPeriod} />
+            )}
+          </>
+        ) : (
+          <p className="text-center text-sm text-[#666666] py-8">No data for this lift in this time range.</p>
+        )}
       </div>
 
-      {/* Personal Records */}
-      {personalRecords.length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Trophy size={16} className="text-amber-400" />
-            <h3 className="text-sm font-semibold text-slate-200">Personal Records</h3>
-          </div>
-          <div className="space-y-2">
-            {personalRecords.map((pr) => (
-              <div key={pr.name} className="flex items-center justify-between bg-dark-600 rounded-lg px-3 py-2">
-                <span className="text-sm text-white font-medium">{pr.name}</span>
-                <div className="text-right">
-                  <span className="text-sm font-bold text-amber-400">{pr.weight} lbs</span>
-                  <span className="text-xs text-slate-500 ml-1">x{pr.reps}</span>
+      {/* VOLUME THIS WEEK */}
+      <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Volume This Week</h2>
+        <ResponsiveContainer width="100%" height={160}>
+          <BarChart data={volumeWeek} barCategoryGap="20%">
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
+            <Tooltip
+              contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
+              formatter={(value) => [`${value.toLocaleString()} lbs`, 'Tonnage']}
+            />
+            <Bar dataKey="tonnage" radius={[4, 4, 0, 0]}>
+              {volumeWeek.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={entry.isToday ? '#3B82F6' : (TYPE_BAR_COLORS[entry.type] || '#333333')}
+                  opacity={entry.tonnage === 0 ? 0.15 : 1}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* BODY BALANCE */}
+      {muscleBalance.length > 0 && (
+        <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+          <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Body Balance</h2>
+          <div className="space-y-2.5">
+            {muscleBalance.map(m => (
+              <div key={m.key}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-[#B3B3B3]">{m.label}</span>
+                  <span className="text-[10px] text-[#666666]">{m.points} pts</span>
+                </div>
+                <div className="h-2 bg-dark-600 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${m.pct}%`, backgroundColor: m.color }}
+                  />
                 </div>
               </div>
             ))}
@@ -325,121 +283,35 @@ export default function Stats() {
         </div>
       )}
 
-      {/* Strength Progress */}
-      {Object.keys(strengthProgress).length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp size={16} className="text-accent-blue" />
-            <h3 className="text-sm font-semibold text-slate-200">Strength Progress</h3>
-          </div>
-          {Object.entries(strengthProgress).map(([lift, data]) => (
-            <div key={lift} className="mb-4 last:mb-0">
-              <h4 className="text-xs text-slate-400 mb-2">{lift}</h4>
-              <ResponsiveContainer width="100%" height={120}>
-                <LineChart data={data}>
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={35} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+      {/* STREAK & CONSISTENCY */}
+      <div className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03]">
+        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Streak & Consistency</h2>
+        <p className="text-xs text-[#666666] mb-3">Last 12 weeks</p>
+        <div className="grid grid-cols-12 gap-1.5">
+          {weeklyConsistency.map((w, i) => (
+            <div
+              key={i}
+              className="aspect-square rounded-sm"
+              style={{
+                backgroundColor: w.pct === 0 ? '#1a1a1a' :
+                  w.pct <= 33 ? '#F59E0B33' :
+                  w.pct <= 66 ? '#F59E0B80' :
+                  w.pct <= 99 ? '#10B98180' : '#10B981',
+              }}
+              title={`${w.logged}/${w.planned} workouts (${w.pct}%)`}
+            />
           ))}
         </div>
-      )}
-
-      {/* Average Workout Duration */}
-      {durationData.length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Timer size={16} className="text-accent-purple" />
-            <h3 className="text-sm font-semibold text-slate-200">Avg Duration by Type</h3>
+        <div className="flex items-center justify-between mt-3 text-[10px] text-[#666666]">
+          <span>Less</span>
+          <div className="flex gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#1a1a1a' }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#F59E0B33' }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#F59E0B80' }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#10B98180' }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#10B981' }} />
           </div>
-          <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={durationData}>
-              <XAxis dataKey="type" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={35} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }}
-                formatter={(value) => [`${value} min`, 'Avg Duration']}
-              />
-              <Bar dataKey="avg" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Weekly Compliance Radar */}
-      {complianceData.length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-3">Weekly Compliance</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <RadarChart data={complianceData}>
-              <PolarGrid stroke="#334155" />
-              <PolarAngleAxis dataKey="type" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <Radar dataKey="completion" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Cumulative Distance */}
-      {cumulativeDistance.length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-3">Cumulative Distance</h3>
-          <div className="flex justify-center gap-4 mb-2 text-[11px]">
-            <span className="text-accent-blue">Bike (mi)</span>
-            <span className="text-emerald-400">Run (mi)</span>
-            <span className="text-purple-400">Swim (yds)</span>
-          </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={cumulativeDistance}>
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} width={35} />
-              <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }} />
-              <Area type="monotone" dataKey="bike" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
-              <Area type="monotone" dataKey="run" stackId="2" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
-              <Area type="monotone" dataKey="swim" stackId="3" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* HIC Distribution */}
-      {hicDistribution.length > 0 && (
-        <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-3">HIC Distribution</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={hicDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                {hicDistribution.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Training Load Heatmap */}
-      <div className="bg-dark-700 rounded-2xl p-4 border border-white/5">
-        <h3 className="text-sm font-semibold text-slate-200 mb-3">Training Load (26 Weeks)</h3>
-        <div className="overflow-x-auto no-scrollbar">
-          <div className="flex gap-[3px]" style={{ minWidth: `${26 * 14}px` }}>
-            {trainingHeatmap.map((week, wi) => (
-              <div key={wi} className="flex flex-col gap-[3px]">
-                {week.map((day) => (
-                  <div key={day.date} className="w-[10px] h-[10px] rounded-[2px]" style={{ backgroundColor: heatColor(day.count) }} title={`${day.date}: ${day.count} workouts`} />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-1 mt-2">
-          <span className="text-[9px] text-slate-600">Less</span>
-          {[0, 1, 2, 3].map((c) => (
-            <div key={c} className="w-[10px] h-[10px] rounded-[2px]" style={{ backgroundColor: heatColor(c) }} />
-          ))}
-          <span className="text-[9px] text-slate-600">More</span>
+          <span>More</span>
         </div>
       </div>
     </div>

@@ -91,7 +91,6 @@ export default function CalendarPage() {
     if (todayRef.current) todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
-  // Custom collision detection: prefer pointerWithin, fallback to rectIntersection
   const collisionDetection = useCallback((args) => {
     const pw = pointerWithin(args);
     if (pw.length > 0) return pw;
@@ -99,25 +98,25 @@ export default function CalendarPage() {
   }, []);
 
   return (
-    <div className="px-4 py-4 pb-8">
+    <div className="px-5 py-5 pb-8">
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrentMonth((m) => subMonths(m, 1))} className="p-2 text-slate-500">
+        <button onClick={() => setCurrentMonth((m) => subMonths(m, 1))} className="p-2 text-[#666666]">
           <ChevronLeft size={20} />
         </button>
-        <h2 className="text-lg font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <button onClick={() => setCurrentMonth((m) => addMonths(m, 1))} className="p-2 text-slate-500">
+        <h2 className="text-lg font-semibold text-white">{format(currentMonth, 'MMMM yyyy')}</h2>
+        <button onClick={() => setCurrentMonth((m) => addMonths(m, 1))} className="p-2 text-[#666666]">
           <ChevronRight size={20} />
         </button>
       </div>
 
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <ArrowLeftRight size={14} className="text-slate-500" />
-          <span className="text-xs text-slate-500">
+          <ArrowLeftRight size={14} className="text-[#666666]" />
+          <span className="text-xs text-[#666666]">
             {activeId ? 'Drop on a day in the same week to swap' : 'Hold & drag to swap days'}
           </span>
         </div>
-        <button onClick={resetSwaps} className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-accent-blue transition-colors">
+        <button onClick={resetSwaps} className="flex items-center gap-1 text-[10px] text-[#666666] hover:text-accent-blue transition-colors">
           <RotateCcw size={10} />
           Reset
         </button>
@@ -126,7 +125,7 @@ export default function CalendarPage() {
       {/* Day Headers */}
       <div className="grid grid-cols-7 gap-1.5 mb-1">
         {DAY_LABELS.map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-semibold text-slate-600 py-1">{d}</div>
+          <div key={i} className="text-center text-[10px] font-semibold text-[#666666] py-1">{d}</div>
         ))}
       </div>
 
@@ -147,18 +146,16 @@ export default function CalendarPage() {
             const hasSkippedHic = log?.details?.hic?.skipped;
             const isDragging = activeId === `day-${idx}`;
 
-            // Determine if this cell is a valid drop target (same week as dragged item)
             const cellWeekStart = dayInfo.isCurrentMonth ? startOfWeek(dayInfo.date, { weekStartsOn: 0 }).getTime() : null;
             const isValidTarget = activeId && !isDragging && dayInfo.isCurrentMonth && cellWeekStart === activeWeekStart;
 
             let bgColor = summary ? `${summary.color}33` : '#0a0a0a';
-            let borderColor = '#1e293b';
+            let borderColor = '#111111';
             if (isToday) { borderColor = '#e2e8f0'; bgColor = summary ? `${summary.color}66` : '#1a1a1a'; }
             else if (isLogged) borderColor = '#10b981';
             else if (summary) borderColor = `${summary.accent}44`;
-            if (!dayInfo.isCurrentMonth) bgColor = '#060606';
+            if (!dayInfo.isCurrentMonth) bgColor = '#050505';
 
-            // Highlight valid drop targets
             if (isValidTarget) {
               borderColor = '#f59e0b';
               bgColor = summary ? `${summary.color}55` : '#1a1a1a';
@@ -224,7 +221,6 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
     if (todayRef) todayRef.current = node;
   }, [setDragRef, setDropRef, todayRef]);
 
-  // When being hovered during drag, brighten the border
   const activeBorder = isOver && isValidTarget ? '#fbbf24' : borderColor;
   const activeBg = isOver && isValidTarget ? '#fbbf2422' : bgColor;
 
@@ -246,9 +242,9 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
   return (
     <div ref={ref} style={style} {...attributes} {...listeners} className="relative overflow-hidden cursor-grab active:cursor-grabbing select-none">
       {dayInfo.isCurrentMonth && (
-        <GripVertical size={8} className="absolute top-0.5 right-0.5 text-slate-700/50" />
+        <GripVertical size={8} className="absolute top-0.5 right-0.5 text-white/10" />
       )}
-      <span className={`text-[11px] ${isToday ? 'font-bold text-white' : 'text-slate-300'}`}>
+      <span className={`text-[11px] ${isToday ? 'font-bold text-white' : 'text-[#B3B3B3]'}`}>
         {dayInfo.date.getDate()}
       </span>
       {dayInfo.isCurrentMonth && summary && summary.label !== 'Rest' && (

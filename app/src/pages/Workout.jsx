@@ -51,59 +51,111 @@ function getCardioPresetsForWorkout(workout, week) {
   return null;
 }
 
+const ENERGY_LEVELS = [
+  { key: 'ready', emoji: '\uD83D\uDD25', label: 'Ready', desc: 'Full intensity', color: '#10B981' },
+  { key: 'good', emoji: '\uD83D\uDCAA', label: 'Good', desc: '85% intensity', color: '#3B82F6' },
+  { key: 'low', emoji: '\uD83D\uDE10', label: 'Low', desc: 'Reduced volume', color: '#F59E0B' },
+  { key: 'recovery', emoji: '\uD83E\uDD15', label: 'Recovery', desc: 'Active recovery', color: '#EF4444' },
+];
+
+function EnergyModal({ onSelect, onClose }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 100, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg bg-dark-800 rounded-t-3xl p-6 pb-10 border-t border-white/[0.05]"
+      >
+        <div className="w-10 h-1 bg-[#333333] rounded-full mx-auto mb-6" />
+        <h2 className="text-2xl font-semibold text-white mb-1">How are you feeling?</h2>
+        <p className="text-sm text-[#666666] mb-6">This adjusts your workout intensity</p>
+        <div className="space-y-3">
+          {ENERGY_LEVELS.map((level) => (
+            <button
+              key={level.key}
+              onClick={() => onSelect(level.key)}
+              className="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] transition-colors active:scale-[0.98]"
+            >
+              <span className="text-3xl">{level.emoji}</span>
+              <div className="text-left flex-1">
+                <div className="text-sm font-semibold text-white">{level.label}</div>
+                <div className="text-xs text-[#666666]">{level.desc}</div>
+              </div>
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: level.color }} />
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function UpcomingWorkoutCard({ date, workout, settings }) {
   const loadingInfo = OPERATOR_LOADING.find((l) => l.week === settings.week) || OPERATOR_LOADING[0];
 
   if (workout.type === 'rest') {
     return (
-      <div className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5">
+      <div className="bg-dark-800 rounded-xl px-4 py-3 border border-white/[0.03]">
         <div className="flex items-center justify-between mb-1">
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-[#666666]">
             {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
-          <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles.rest}`}>rest</span>
+          <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-gray-500/15 text-gray-400">rest</span>
         </div>
-        <div className="text-sm font-medium text-slate-400">Rest Day</div>
+        <div className="text-sm font-medium text-[#B3B3B3]">Rest Day</div>
       </div>
     );
   }
 
   const cardioInfo = getCardioPresetsForWorkout(workout, settings.week);
+  const typeBadge = {
+    strength: 'bg-amber-500/15 text-amber-400',
+    tri: 'bg-teal-500/15 text-teal-400',
+    long: 'bg-emerald-500/15 text-emerald-400',
+  };
 
   return (
-    <div className="bg-dark-700 rounded-xl px-4 py-3 border border-white/5">
+    <div className="bg-dark-800 rounded-xl px-4 py-3 border border-white/[0.03]">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-[#666666]">
           {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
-        <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[workout.type]}`}>
+        <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadge[workout.type] || 'bg-gray-500/15 text-gray-400'}`}>
           {workout.type}
         </span>
       </div>
-      <div className="text-sm font-bold text-slate-200 mb-2">{workout.name}</div>
+      <div className="text-sm font-semibold text-white mb-2">{workout.name}</div>
 
-      {/* Strength detail */}
       {workout.type === 'strength' && (
         <div className="space-y-1.5">
-          <div className="text-[10px] text-slate-500">
+          <div className="text-[10px] text-[#666666]">
             Wk {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}%
           </div>
           {OPERATOR_LIFTS.map((lift) => {
             const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
             return (
-              <div key={lift.name} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-1.5">
-                <span className="text-xs text-slate-300">{lift.name}</span>
-                <span className="text-xs text-slate-400">{weight} lbs × {loadingInfo.sets}×{loadingInfo.reps}</span>
+              <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-1.5">
+                <span className="text-xs text-[#B3B3B3]">{lift.name}</span>
+                <span className="text-xs text-[#666666]">{weight} lbs</span>
               </div>
             );
           })}
           {workout.accessories && (
-            <div className="mt-1.5 pt-1.5 border-t border-white/5">
-              <div className="text-[10px] text-slate-500 mb-1">Accessories {workout.accessories}</div>
+            <div className="mt-1.5 pt-1.5 border-t border-white/[0.03]">
+              <div className="text-[10px] text-[#666666] mb-1">Accessories {workout.accessories}</div>
               {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
                 <div key={idx} className="flex items-center justify-between py-0.5">
-                  <span className="text-[11px] text-slate-400">{acc.name}</span>
-                  <span className="text-[11px] text-slate-500">{acc.sets}×{acc.reps} · {acc.category}</span>
+                  <span className="text-[11px] text-[#B3B3B3]">{acc.name}</span>
+                  <span className="text-[11px] text-[#666666]">{acc.sets}x{acc.reps}</span>
                 </div>
               ))}
             </div>
@@ -111,26 +163,21 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
         </div>
       )}
 
-      {/* Tri / Long cardio detail */}
       {cardioInfo && (
         <div className="space-y-1.5">
-          <div className="text-[10px] uppercase text-slate-500">{cardioInfo.modality}</div>
+          <div className="text-[10px] uppercase text-[#666666]">{cardioInfo.modality}</div>
           {cardioInfo.presets.map((preset, idx) => (
-            <div key={idx} className="bg-white/5 rounded-lg px-3 py-2">
-              <div className="text-xs font-medium text-slate-300">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">{preset.time}{preset.distance ? ` · ${preset.distance}` : ''}</div>
-              <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">{preset.description}</div>
+            <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2">
+              <div className="text-xs font-medium text-[#B3B3B3]">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
+              <div className="text-[10px] text-[#666666] mt-0.5">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
             </div>
           ))}
-
-          {/* HIC for tri */}
           {workout.type === 'tri' && (
-            <div className="mt-1.5 pt-1.5 border-t border-white/5">
-              <div className="text-[10px] uppercase text-slate-500 mb-1">HIC Options</div>
+            <div className="mt-1.5 pt-1.5 border-t border-white/[0.03]">
+              <div className="text-[10px] uppercase text-[#666666] mb-1">HIC Options</div>
               {HIC_PRESETS.slice(0, 3).map((hic, idx) => (
                 <div key={idx} className="py-1">
-                  <div className="text-[11px] text-slate-300 font-medium">{hic.name} <span className="text-slate-500">· {hic.time}</span></div>
-                  <div className="text-[10px] text-slate-500">{hic.description}</div>
+                  <div className="text-[11px] text-[#B3B3B3] font-medium">{hic.name} <span className="text-[#666666]">{hic.time}</span></div>
                 </div>
               ))}
             </div>
@@ -140,26 +187,22 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
     </div>
   );
 }
+
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import RestTimer from '../components/RestTimer';
 
 const typeBadgeStyles = {
-  strength: 'bg-red-500/20 text-red-400',
-  tri: 'bg-teal-500/20 text-teal-400',
-  long: 'bg-indigo-500/20 text-indigo-400',
-  rest: 'bg-slate-500/20 text-slate-400',
-};
-
-const typeGradient = {
-  rest: 'from-slate-800 to-slate-900',
-  strength: 'from-red-950 to-red-900/50',
-  tri: 'from-teal-950 to-teal-900/50',
-  long: 'from-indigo-950 to-indigo-900/50',
+  strength: 'bg-amber-500/15 text-amber-400',
+  tri: 'bg-teal-500/15 text-teal-400',
+  long: 'bg-emerald-500/15 text-emerald-400',
+  rest: 'bg-gray-500/15 text-gray-400',
 };
 
 export default function Workout({ showToast }) {
   const { settings, workoutHistory, setWorkoutHistory, weekSwaps } = useApp();
   const [loggingMode, setLoggingMode] = useState(false);
+  const [showEnergyModal, setShowEnergyModal] = useState(false);
+  const [energyLevel, setEnergyLevel] = useState(null);
   const [selectedCardio, setSelectedCardio] = useState(null);
   const [cardioMetrics, setCardioMetrics] = useState({});
   const [selectedHic, setSelectedHic] = useState(null);
@@ -263,10 +306,25 @@ export default function Workout({ showToast }) {
     return null;
   }
 
+  // Energy-adjusted weight
+  const getWeightMultiplier = () => {
+    if (energyLevel === 'good') return 0.85;
+    if (energyLevel === 'low') return OPERATOR_LOADING[0].percentage / 100; // week 1 percentage
+    return 1;
+  };
+
   const getTodayLiftWeight = (liftName) => {
     const lift = OPERATOR_LIFTS.find((l) => l.name === liftName);
     if (!lift) return 0;
-    return Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
+    const base = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
+    if (energyLevel === 'ready' || !energyLevel) return base;
+    return Math.round(base * getWeightMultiplier());
+  };
+
+  // For low energy: use only first 2 lifts
+  const getActiveLifts = () => {
+    if (energyLevel === 'low') return OPERATOR_LIFTS.slice(0, 2);
+    return OPERATOR_LIFTS;
   };
 
   const getLastAccessoryData = (exerciseName) => {
@@ -310,7 +368,6 @@ export default function Workout({ showToast }) {
           byLift[lift.name].push(lift.weight);
         });
       });
-    // Keep last 8 sessions per lift
     Object.keys(byLift).forEach((k) => { byLift[k] = byLift[k].slice(-8); });
     return byLift;
   }, [workoutHistory]);
@@ -318,9 +375,23 @@ export default function Workout({ showToast }) {
   const recommendedHics = useMemo(() => getRecommendedHics(workoutHistory), [workoutHistory]);
   const hicFields = HIC_INPUT_FIELDS[selectedHic] || DEFAULT_HIC_FIELDS;
 
+  const handleLogWorkout = () => {
+    setShowEnergyModal(true);
+  };
+
+  const handleEnergySelect = (level) => {
+    setEnergyLevel(level);
+    setShowEnergyModal(false);
+    if (level === 'recovery') {
+      // Show recovery mode - still enter logging but with recovery message
+    }
+    setLoggingMode(true);
+  };
+
   const handleComplete = () => {
     if (todayWorkout.type === 'strength') {
-      const lifts = OPERATOR_LIFTS.map((lift) => {
+      const activeLifts = getActiveLifts();
+      const lifts = activeLifts.map((lift) => {
         const weight = parseInt(liftData[`${lift.name}-weight`]) || getTodayLiftWeight(lift.name);
         const reps = parseInt(liftData[`${lift.name}-reps`]) || loadingInfo.reps;
         let setsCompleted = 0;
@@ -344,6 +415,7 @@ export default function Workout({ showToast }) {
         workoutName: todayWorkout.name,
         type: 'strength',
         ...(dur ? { duration: dur } : {}),
+        ...(energyLevel ? { energyLevel } : {}),
         details: { lifts, accessories, loading: { sets: loadingInfo.sets, reps: loadingInfo.reps, percentage: loadingInfo.percentage } },
       }]);
     } else if (todayWorkout.type === 'tri') {
@@ -355,6 +427,7 @@ export default function Workout({ showToast }) {
         workoutName: todayWorkout.name,
         type: 'tri',
         ...(durTri ? { duration: durTri } : {}),
+        ...(energyLevel ? { energyLevel } : {}),
         details: {
           cardio: { name: selectedCardio, metrics: { ...cardioMetrics } },
           hic: skippedHic ? { name: 'Skipped', skipped: true } : { name: selectedHic, metrics: { ...hicMetrics } },
@@ -368,6 +441,7 @@ export default function Workout({ showToast }) {
         workoutName: todayWorkout.name,
         type: 'long',
         ...(durLong ? { duration: durLong } : {}),
+        ...(energyLevel ? { energyLevel } : {}),
         details: { cardio: { name: selectedCardio, metrics: { ...cardioMetrics } }, notes: longNotes },
       }]);
     }
@@ -377,18 +451,20 @@ export default function Workout({ showToast }) {
     setTimeout(() => setShowCelebration(false), 2500);
   };
 
+  const energyBadge = energyLevel ? ENERGY_LEVELS.find(e => e.key === energyLevel) : null;
+
   // REST DAY
   if (todayWorkout.type === 'rest') {
     return (
-      <div className="px-4 py-4 pb-8 space-y-4">
+      <div className="px-5 py-5 pb-8 space-y-4">
         <div className="text-center py-8">
-          <Moon size={48} className="text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-200 mb-2">Rest Day</h2>
-          <p className="text-sm text-slate-500">Take time to recover and prepare for tomorrow.</p>
+          <Moon size={48} className="text-[#333333] mx-auto mb-4" />
+          <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
+          <p className="text-sm text-[#666666]">Take time to recover and prepare for tomorrow.</p>
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Upcoming</h3>
+          <h3 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-3">Upcoming</h3>
           <div className="space-y-3">
             {upcomingWorkouts.map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
@@ -402,7 +478,7 @@ export default function Workout({ showToast }) {
   // OVERVIEW MODE
   if (!loggingMode) {
     return (
-      <div className="px-4 py-4 pb-8 space-y-4">
+      <div className="px-5 py-5 pb-8 space-y-4">
         <AnimatePresence>
           {showCelebration && (
             <motion.div
@@ -414,9 +490,15 @@ export default function Workout({ showToast }) {
               <div className="text-center">
                 <Sparkles size={64} className="text-amber-400 mx-auto mb-4 animate-pulse" />
                 <h2 className="text-3xl font-bold text-white mb-2">Workout Complete!</h2>
-                <p className="text-slate-400">Great work today.</p>
+                <p className="text-[#666666]">Great work today.</p>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showEnergyModal && (
+            <EnergyModal onSelect={handleEnergySelect} onClose={() => setShowEnergyModal(false)} />
           )}
         </AnimatePresence>
 
@@ -424,97 +506,94 @@ export default function Workout({ showToast }) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`bg-gradient-to-br ${typeGradient[todayWorkout.type]} rounded-2xl p-5 border border-white/5 relative overflow-hidden`}
+          className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03] active:scale-[0.98] transition-transform"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.02] rounded-full -translate-y-8 translate-x-8" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-slate-400">
-                {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-              </p>
-              <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
-                {todayWorkout.type}
-              </span>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-[#666666]">
+              {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </p>
+            <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
+              {todayWorkout.type}
+            </span>
+          </div>
+          <h2 className="text-2xl font-semibold text-white mb-3">{todayWorkout.name}</h2>
+
+          {todayLogged && (
+            <div className="bg-emerald-950/30 border border-emerald-800/20 rounded-xl px-4 py-2 text-emerald-400 text-sm font-medium flex items-center gap-2 mb-3">
+              <Check size={16} /> Already logged today
             </div>
-            <h2 className="text-xl font-bold text-white mb-3">{todayWorkout.name}</h2>
+          )}
 
-            {todayLogged && (
-              <div className="bg-emerald-950/50 border border-emerald-800/30 rounded-xl px-4 py-2 text-emerald-300 text-sm font-medium flex items-center gap-2 mb-3">
-                <Check size={16} /> Already logged today
+          {/* Strength preview */}
+          {todayWorkout.type === 'strength' && (
+            <div className="space-y-2 mb-4">
+              <div className="text-xs text-[#666666]">
+                Week {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}% | Rest {loadingInfo.restMin}-{loadingInfo.restMax}
               </div>
-            )}
-
-            {/* Strength preview */}
-            {todayWorkout.type === 'strength' && (
-              <div className="space-y-2 mb-4">
-                <div className="text-xs text-slate-400">
-                  Week {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}% | Rest {loadingInfo.restMin}-{loadingInfo.restMax}
-                </div>
-                <div className="space-y-1.5">
-                  {OPERATOR_LIFTS.map((lift) => {
-                    const weight = getTodayLiftWeight(lift.name);
-                    return (
-                      <div key={lift.name} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium text-white">{lift.name}</span>
-                          <Sparkline data={liftSparklines[lift.name]} />
-                        </div>
-                        <span className="text-sm text-slate-300">{weight} lbs x {loadingInfo.sets}x{loadingInfo.reps}</span>
+              <div className="space-y-1.5">
+                {OPERATOR_LIFTS.map((lift) => {
+                  const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
+                  return (
+                    <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-white">{lift.name}</span>
+                        <Sparkline data={liftSparklines[lift.name]} />
                       </div>
-                    );
-                  })}
-                </div>
-                {todayWorkout.accessories && (
-                  <div className="mt-2">
-                    <div className="text-[10px] uppercase text-slate-500 mb-1">Accessories ({todayWorkout.accessories})</div>
-                    {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => (
-                      <div key={idx} className="text-xs text-slate-400 py-0.5">
-                        {acc.name} - {acc.sets}x{acc.reps}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tri preview */}
-            {todayWorkout.type === 'tri' && (
-              <div className="space-y-1 mb-4">
-                <div className="text-sm text-slate-300">
-                  {todayWorkout.name.includes('Run') ? 'Run session' : 'Swim or Bike session'} + HIC conditioning
-                </div>
-                {(() => {
-                  const recommended = recommendedHics.slice(0, 2);
-                  return recommended.length > 0 && (
-                    <div className="text-xs text-slate-500 mt-1">
-                      Recommended HICs: {recommended.map(h => h.name).join(', ')}
+                      <span className="text-sm text-[#B3B3B3]">{weight} lbs x {loadingInfo.sets}x{loadingInfo.reps}</span>
                     </div>
                   );
-                })()}
+                })}
               </div>
-            )}
+              {todayWorkout.accessories && (
+                <div className="mt-2">
+                  <div className="text-[10px] uppercase text-[#666666] mb-1">Accessories ({todayWorkout.accessories})</div>
+                  {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => (
+                    <div key={idx} className="text-xs text-[#B3B3B3] py-0.5">
+                      {acc.name} - {acc.sets}x{acc.reps}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Long preview */}
-            {todayWorkout.type === 'long' && (
-              <div className="mb-4">
-                <div className="text-sm text-slate-300">Endurance session - Bike or Run</div>
+          {/* Tri preview */}
+          {todayWorkout.type === 'tri' && (
+            <div className="space-y-1 mb-4">
+              <div className="text-sm text-[#B3B3B3]">
+                {todayWorkout.name.includes('Run') ? 'Run session' : 'Swim or Bike session'} + HIC conditioning
               </div>
-            )}
+              {(() => {
+                const recommended = recommendedHics.slice(0, 2);
+                return recommended.length > 0 && (
+                  <div className="text-xs text-[#666666] mt-1">
+                    Recommended HICs: {recommended.map(h => h.name).join(', ')}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setLoggingMode(true)}
-              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-            >
-              Log Workout
-              <ChevronRight size={18} />
-            </motion.button>
-          </div>
+          {/* Long preview */}
+          {todayWorkout.type === 'long' && (
+            <div className="mb-4">
+              <div className="text-sm text-[#B3B3B3]">Endurance session - Bike or Run</div>
+            </div>
+          )}
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleLogWorkout}
+            className="w-full py-3.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-sm tracking-wide transition-colors flex items-center justify-center gap-2"
+          >
+            Log Workout
+            <ChevronRight size={18} />
+          </motion.button>
         </motion.div>
 
         {/* Upcoming Workouts */}
         <div>
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Upcoming</h3>
+          <h3 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-3">Upcoming</h3>
           <div className="space-y-3">
             {upcomingWorkouts.map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
@@ -527,7 +606,7 @@ export default function Workout({ showToast }) {
 
   // LOGGING MODE
   return (
-    <div className="px-4 py-4 pb-8 space-y-4">
+    <div className="px-5 py-5 pb-8 space-y-4">
       <AnimatePresence>
         {showCelebration && (
           <motion.div
@@ -539,19 +618,24 @@ export default function Workout({ showToast }) {
             <div className="text-center">
               <Sparkles size={64} className="text-amber-400 mx-auto mb-4 animate-pulse" />
               <h2 className="text-3xl font-bold text-white mb-2">Workout Complete!</h2>
-              <p className="text-slate-400">Great work today.</p>
+              <p className="text-[#666666]">Great work today.</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       <div className="flex items-center justify-between">
-        <button onClick={() => setLoggingMode(false)} className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm">
+        <button onClick={() => { setLoggingMode(false); setEnergyLevel(null); }} className="flex items-center gap-1.5 text-[#666666] hover:text-white transition-colors text-sm">
           <ArrowLeft size={18} />
           Back
         </button>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-dark-500 text-slate-400 text-xs">
+          {energyBadge && (
+            <span className="text-xs px-2.5 py-1 rounded-lg border border-white/[0.05]" style={{ color: energyBadge.color }}>
+              {energyBadge.emoji} {energyBadge.label}
+            </span>
+          )}
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-dark-500 text-[#666666] text-xs">
             <Clock size={12} />
             <span className="tabular-nums">{Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')}</span>
           </div>
@@ -560,45 +644,74 @@ export default function Workout({ showToast }) {
       </div>
 
       <div>
-        <p className="text-xs text-slate-500">{today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-        <h2 className="text-lg font-bold text-white">{todayWorkout.name}</h2>
+        <p className="text-xs text-[#666666]">{today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+        <h2 className="text-xl font-semibold text-white">{todayWorkout.name}</h2>
+        {energyLevel && energyLevel !== 'ready' && (
+          <p className="text-xs mt-1" style={{ color: energyBadge?.color }}>
+            {energyLevel === 'good' && 'Adjusted to 85% intensity'}
+            {energyLevel === 'low' && 'Reduced volume - 2 main lifts, week 1 loading'}
+            {energyLevel === 'recovery' && 'Recovery mode - light mobility & cardio'}
+          </p>
+        )}
       </div>
 
       {todayLogged && (
-        <div className="bg-emerald-950/50 border border-emerald-800/30 rounded-xl px-4 py-3 text-emerald-300 text-sm font-medium flex items-center gap-2">
+        <div className="bg-emerald-950/30 border border-emerald-800/20 rounded-xl px-4 py-3 text-emerald-400 text-sm font-medium flex items-center gap-2">
           <Check size={16} /> Already logged today. Logging again will add another entry.
         </div>
       )}
 
+      {/* RECOVERY MODE */}
+      {energyLevel === 'recovery' && (
+        <div className="bg-dark-800 rounded-xl p-5 border border-white/[0.03]">
+          <h3 className="text-lg font-semibold text-white mb-3">Recovery Workout</h3>
+          <div className="space-y-3">
+            <div className="bg-white/[0.03] rounded-lg px-4 py-3">
+              <div className="text-sm font-medium text-white">Mobility Work</div>
+              <div className="text-xs text-[#666666] mt-1">15 min full body stretching & foam rolling</div>
+            </div>
+            <div className="bg-white/[0.03] rounded-lg px-4 py-3">
+              <div className="text-sm font-medium text-white">Light Cardio</div>
+              <div className="text-xs text-[#666666] mt-1">20 min easy walk or bike at conversational pace</div>
+            </div>
+            <div className="bg-white/[0.03] rounded-lg px-4 py-3">
+              <div className="text-sm font-medium text-white">Core Activation</div>
+              <div className="text-xs text-[#666666] mt-1">3x30s plank, 3x10 dead bugs, 3x10 bird dogs</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* STRENGTH */}
-      {todayWorkout.type === 'strength' && (
+      {todayWorkout.type === 'strength' && energyLevel !== 'recovery' && (
         <div className="space-y-3">
-          <div className="bg-dark-700 rounded-xl p-3 border border-white/5 text-center">
-            <span className="text-sm text-slate-400">Week {settings.week}: </span>
-            <span className="text-sm font-bold text-white">{loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}%</span>
-            <span className="text-xs text-slate-500 ml-2">Rest {loadingInfo.restMin}-{loadingInfo.restMax}</span>
+          <div className="bg-dark-800 rounded-xl p-3 border border-white/[0.03] text-center">
+            <span className="text-sm text-[#B3B3B3]">Week {settings.week}: </span>
+            <span className="text-sm font-semibold text-white">{loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}%</span>
+            <span className="text-xs text-[#666666] ml-2">Rest {loadingInfo.restMin}-{loadingInfo.restMax}</span>
+            {energyLevel === 'good' && <span className="text-xs text-accent-blue ml-2">(85%)</span>}
           </div>
 
-          {OPERATOR_LIFTS.map((lift) => {
+          {getActiveLifts().map((lift) => {
             const weight = getTodayLiftWeight(lift.name);
             return (
-              <div key={lift.name} className="bg-dark-700 rounded-xl p-4 border border-white/5">
+              <div key={lift.name} className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-white">{lift.name}</h3>
-                  <span className="text-xs text-slate-500 bg-dark-500 px-2 py-0.5 rounded">{weight} lbs</span>
+                  <span className="text-xs text-[#666666] bg-dark-500 px-2 py-0.5 rounded">{weight} lbs</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block mb-1">Weight</label>
+                    <label className="text-[10px] uppercase text-[#666666] block mb-1">Weight</label>
                     <input type="number" placeholder={weight.toString()} value={liftData[`${lift.name}-weight`] || ''}
                       onChange={(e) => setLiftData((p) => ({ ...p, [`${lift.name}-weight`]: e.target.value }))}
-                      className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+                      className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block mb-1">Reps</label>
+                    <label className="text-[10px] uppercase text-[#666666] block mb-1">Reps</label>
                     <input type="number" placeholder={loadingInfo.reps.toString()} value={liftData[`${lift.name}-reps`] || ''}
                       onChange={(e) => setLiftData((p) => ({ ...p, [`${lift.name}-reps`]: e.target.value }))}
-                      className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+                      className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -608,9 +721,9 @@ export default function Workout({ showToast }) {
                     return (
                       <button key={i} onClick={() => setCompletedSets((p) => ({ ...p, [key]: !p[key] }))}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                          done ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-800/30' : 'bg-dark-600 text-slate-400 border border-white/5'
+                          done ? 'bg-emerald-950/30 text-emerald-400 border border-emerald-800/20' : 'bg-dark-600 text-[#B3B3B3] border border-white/[0.03]'
                         }`}>
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'}`}>
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${done ? 'bg-emerald-500 border-emerald-500' : 'border-[#333333]'}`}>
                           {done && <Check size={12} className="text-white" />}
                         </div>
                         Set {i + 1} of {loadingInfo.sets}
@@ -623,34 +736,34 @@ export default function Workout({ showToast }) {
           })}
 
           <div>
-            <h3 className="text-sm font-semibold text-slate-300 mb-2">Accessories {todayWorkout.accessories}</h3>
+            <h3 className="text-sm font-semibold text-[#B3B3B3] mb-2">Accessories {todayWorkout.accessories}</h3>
             {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => {
               const lastData = getLastAccessoryData(acc.name);
               const isExpanded = expandedLifts[acc.name] !== false;
               return (
-                <div key={idx} className="bg-dark-700 rounded-xl p-4 border border-white/5 mb-2">
+                <div key={idx} className="bg-dark-800 rounded-xl p-4 border border-white/[0.03] mb-2">
                   <button className="w-full flex items-center justify-between" onClick={() => setExpandedLifts((p) => ({ ...p, [acc.name]: !isExpanded }))}>
                     <div className="text-left">
                       <div className="font-medium text-white text-sm">{acc.name}</div>
-                      <div className="text-xs text-slate-500">{acc.sets}x{acc.reps} - {acc.category}</div>
+                      <div className="text-xs text-[#666666]">{acc.sets}x{acc.reps} - {acc.category}</div>
                     </div>
-                    {isExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                    {isExpanded ? <ChevronUp size={16} className="text-[#666666]" /> : <ChevronDown size={16} className="text-[#666666]" />}
                   </button>
                   {isExpanded && (
                     <div className="mt-3">
-                      {lastData && <p className="text-[11px] text-slate-600 italic mb-2">Last: {lastData.weight || 0} lbs x {lastData.reps}</p>}
+                      {lastData && <p className="text-[11px] text-[#666666] italic mb-2">Last: {lastData.weight || 0} lbs x {lastData.reps}</p>}
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
-                          <label className="text-[10px] uppercase text-slate-500 block mb-1">Weight</label>
+                          <label className="text-[10px] uppercase text-[#666666] block mb-1">Weight</label>
                           <input type="number" placeholder={lastData ? lastData.weight?.toString() : ''} value={accessoryData[`${acc.name}-weight`] || ''}
                             onChange={(e) => setAccessoryData((p) => ({ ...p, [`${acc.name}-weight`]: e.target.value }))}
-                            className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+                            className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
                         </div>
                         <div>
-                          <label className="text-[10px] uppercase text-slate-500 block mb-1">Reps</label>
+                          <label className="text-[10px] uppercase text-[#666666] block mb-1">Reps</label>
                           <input type="number" placeholder={acc.reps.toString()} value={accessoryData[`${acc.name}-reps`] || ''}
                             onChange={(e) => setAccessoryData((p) => ({ ...p, [`${acc.name}-reps`]: e.target.value }))}
-                            className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+                            className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -660,9 +773,9 @@ export default function Workout({ showToast }) {
                           return (
                             <button key={i} onClick={() => setCompletedAccessorySets((p) => ({ ...p, [key]: !p[key] }))}
                               className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                done ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-800/30' : 'bg-dark-600 text-slate-400 border border-white/5'
+                                done ? 'bg-emerald-950/30 text-emerald-400 border border-emerald-800/20' : 'bg-dark-600 text-[#B3B3B3] border border-white/[0.03]'
                               }`}>
-                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'}`}>
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${done ? 'bg-emerald-500 border-emerald-500' : 'border-[#333333]'}`}>
                                 {done && <Check size={10} className="text-white" />}
                               </div>
                               Set {i + 1}
@@ -680,17 +793,17 @@ export default function Workout({ showToast }) {
       )}
 
       {/* TRI / LONG - Cardio Section */}
-      {(todayWorkout.type === 'tri' || todayWorkout.type === 'long') && (
+      {(todayWorkout.type === 'tri' || todayWorkout.type === 'long') && energyLevel !== 'recovery' && (
         <div className="space-y-3">
-          <div className="bg-dark-700 rounded-xl p-4 border border-white/5">
-            <h3 className="text-sm font-semibold text-slate-200 mb-3">Cardio Session</h3>
+          <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
+            <h3 className="text-sm font-semibold text-white mb-3">Cardio Session</h3>
             {getAvailableModalities().length > 1 && (
-              <div className="flex gap-1 mb-3 bg-dark-800 rounded-lg p-0.5">
+              <div className="flex gap-1 mb-3 bg-dark-600 rounded-lg p-1">
                 {getAvailableModalities().map((mod) => (
                   <button key={mod.value}
                     onClick={() => { setCardioModality(mod.value); setSelectedCardio(null); setCardioMetrics({}); }}
                     className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors ${
-                      cardioModality === mod.value ? 'bg-accent-blue text-white' : 'text-slate-500'
+                      cardioModality === mod.value ? 'bg-accent-blue text-white' : 'text-[#666666]'
                     }`}>
                     {mod.label}
                   </button>
@@ -702,31 +815,31 @@ export default function Workout({ showToast }) {
                 <button key={idx}
                   onClick={() => { setSelectedCardio(preset.name); setCardioMetrics({}); }}
                   className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    selectedCardio === preset.name ? 'bg-accent-blue/10 border-accent-blue/40 text-white' : 'bg-dark-600 border-white/5 text-slate-300'
+                    selectedCardio === preset.name ? 'bg-accent-blue/10 border-accent-blue/30 text-white' : 'bg-dark-600 border-white/[0.03] text-[#B3B3B3]'
                   }`}>
                   <div className="font-medium text-sm">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
-                  <div className="text-xs text-slate-400 mt-2 whitespace-pre-line leading-relaxed">{preset.description}</div>
+                  <div className="text-[11px] text-[#666666] mt-0.5">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
+                  <div className="text-xs text-[#B3B3B3] mt-2 whitespace-pre-line leading-relaxed">{preset.description}</div>
                 </button>
               ))}
             </div>
             <button onClick={() => setShowAllCardio(!showAllCardio)}
-              className="w-full mt-2 py-2 text-xs text-slate-500 hover:text-accent-blue transition-colors">
+              className="w-full mt-2 py-2 text-xs text-[#666666] hover:text-accent-blue transition-colors">
               {showAllCardio ? 'Show This Week Only' : 'Show All Weeks'}
             </button>
           </div>
 
           {selectedCardio && (
-            <div className="bg-dark-700 rounded-xl p-4 border border-white/5">
-              <h3 className="text-sm font-semibold text-slate-200 mb-3">{selectedCardio} - Log</h3>
+            <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
+              <h3 className="text-sm font-semibold text-white mb-3">{selectedCardio} - Log</h3>
               {(() => {
                 const preset = getCardioPresetsForModality(true).find((p) => p.name === selectedCardio);
                 return preset?.inputFields?.map((field, idx) => (
                   <div key={idx} className="mb-3">
-                    <label className="text-[10px] uppercase text-slate-500 block mb-1">{field.label}</label>
+                    <label className="text-[10px] uppercase text-[#666666] block mb-1">{field.label}</label>
                     <input type={field.type} placeholder={field.label} value={cardioMetrics[field.key] || ''}
                       onChange={(e) => setCardioMetrics((p) => ({ ...p, [field.key]: e.target.value }))}
-                      className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+                      className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
                   </div>
                 ));
               })()}
@@ -735,13 +848,13 @@ export default function Workout({ showToast }) {
 
           {/* HIC Section - only for tri */}
           {todayWorkout.type === 'tri' && (
-            <div className="bg-dark-700 rounded-xl p-4 border border-white/5">
+            <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-slate-200">HIC</h3>
+                <h3 className="text-sm font-semibold text-white">HIC</h3>
                 <button
                   onClick={() => { setSkippedHic(!skippedHic); if (!skippedHic) { setSelectedHic(null); setHicMetrics({}); } }}
                   className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
-                    skippedHic ? 'bg-amber-600 border-amber-500 text-white' : 'border-slate-700 text-slate-500 hover:border-amber-600'
+                    skippedHic ? 'bg-amber-600 border-amber-500 text-white' : 'border-[#333333] text-[#666666] hover:border-amber-600'
                   }`}>
                   {skippedHic ? 'HIC Skipped' : 'Skip HIC'}
                 </button>
@@ -752,20 +865,20 @@ export default function Workout({ showToast }) {
                     <button key={idx}
                       onClick={() => { setSelectedHic(hic.name); setSkippedHic(false); setHicMetrics({}); }}
                       className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        selectedHic === hic.name ? 'bg-accent-blue/10 border-accent-blue/40' : 'bg-dark-600 border-white/5'
+                        selectedHic === hic.name ? 'bg-accent-blue/10 border-accent-blue/30' : 'bg-dark-600 border-white/[0.03]'
                       }`}>
-                      <div className="text-[10px] text-slate-500 uppercase">{hic.category}</div>
+                      <div className="text-[10px] text-[#666666] uppercase">{hic.category}</div>
                       <div className="font-medium text-sm text-white">{hic.name}</div>
-                      <div className="text-[11px] text-slate-500">{hic.time}</div>
-                      <div className="text-xs text-slate-400 mt-1">{hic.description}</div>
+                      <div className="text-[11px] text-[#666666]">{hic.time}</div>
+                      <div className="text-xs text-[#B3B3B3] mt-1">{hic.description}</div>
                     </button>
                   ))}
                 </div>
               )}
-              {skippedHic && <p className="text-center text-sm text-slate-600 italic py-4">HIC skipped for today</p>}
+              {skippedHic && <p className="text-center text-sm text-[#666666] italic py-4">HIC skipped for today</p>}
               {!skippedHic && (
                 <button onClick={() => setShowAllHics(!showAllHics)}
-                  className="w-full mt-2 py-2 text-xs text-slate-500 hover:text-accent-blue transition-colors">
+                  className="w-full mt-2 py-2 text-xs text-[#666666] hover:text-accent-blue transition-colors">
                   {showAllHics ? 'Hide All HICs' : 'Show All HICs'}
                 </button>
               )}
@@ -775,23 +888,23 @@ export default function Workout({ showToast }) {
                     <button key={idx}
                       onClick={() => { setSelectedHic(hic.name); setSkippedHic(false); setHicMetrics({}); setShowAllHics(false); }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
-                        selectedHic === hic.name ? 'bg-accent-blue/10 border border-accent-blue/40 text-white' : 'bg-dark-600 text-slate-400 border border-white/5'
+                        selectedHic === hic.name ? 'bg-accent-blue/10 border border-accent-blue/30 text-white' : 'bg-dark-600 text-[#B3B3B3] border border-white/[0.03]'
                       }`}>
                       <span className="font-medium">{hic.name}</span>
-                      <span className="text-slate-600 ml-2">{hic.time}</span>
+                      <span className="text-[#666666] ml-2">{hic.time}</span>
                     </button>
                   ))}
                 </div>
               )}
               {!skippedHic && selectedHic && (
-                <div className="mt-3 pt-3 border-t border-white/5">
-                  <h4 className="text-xs font-semibold text-slate-400 mb-2">{selectedHic} - Log</h4>
+                <div className="mt-3 pt-3 border-t border-white/[0.03]">
+                  <h4 className="text-xs font-semibold text-[#B3B3B3] mb-2">{selectedHic} - Log</h4>
                   {hicFields.map((field, idx) => (
                     <div key={idx} className="mb-2">
-                      <label className="text-[10px] uppercase text-slate-500 block mb-1">{field.label}</label>
+                      <label className="text-[10px] uppercase text-[#666666] block mb-1">{field.label}</label>
                       <input type={field.type} placeholder={field.label} value={hicMetrics[field.key] || ''}
                         onChange={(e) => setHicMetrics((p) => ({ ...p, [field.key]: e.target.value }))}
-                        className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+                        className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
                     </div>
                   ))}
                 </div>
@@ -801,27 +914,27 @@ export default function Workout({ showToast }) {
 
           {/* Long notes */}
           {todayWorkout.type === 'long' && (
-            <div className="bg-dark-700 rounded-xl p-4 border border-white/5">
-              <label className="text-[10px] uppercase text-slate-500 block mb-1">Workout Notes</label>
+            <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
+              <label className="text-[10px] uppercase text-[#666666] block mb-1">Workout Notes</label>
               <textarea value={longNotes} onChange={(e) => setLongNotes(e.target.value)}
                 placeholder="Describe your workout..."
-                className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white min-h-[100px] resize-y" />
+                className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white min-h-[100px] resize-y" />
             </div>
           )}
         </div>
       )}
 
-      <div className="bg-dark-700 rounded-xl p-4 border border-white/5">
-        <label className="text-[10px] uppercase text-slate-500 block mb-1">Duration (minutes, optional)</label>
+      <div className="bg-dark-800 rounded-xl p-4 border border-white/[0.03]">
+        <label className="text-[10px] uppercase text-[#666666] block mb-1">Duration (minutes, optional)</label>
         <input type="number" placeholder={elapsedSeconds > 60 ? `~${Math.round(elapsedSeconds / 60)} min (auto)` : 'e.g. 45'}
           value={durationMin} onChange={(e) => setDurationMin(e.target.value)}
-          className="w-full bg-dark-500 border border-white/5 rounded-lg px-3 py-2 text-sm text-white" />
+          className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
       </div>
 
       <motion.button
         whileTap={{ scale: 0.97 }}
         onClick={handleComplete}
-        className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider transition-colors"
+        className="w-full py-4 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-sm tracking-wide transition-colors"
       >
         Complete Workout
       </motion.button>

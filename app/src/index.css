@@ -3,11 +3,11 @@
 @theme {
   --color-dark-900: #0a0a0a;
   --color-dark-800: #111111;
-  --color-dark-700: #1a1a1a;
-  --color-dark-600: #222222;
-  --color-dark-500: #2a2a2a;
-  --color-dark-400: #333333;
-  --color-dark-300: #444444;
+  --color-dark-700: #111111;
+  --color-dark-600: #1a1a1a;
+  --color-dark-500: #222222;
+  --color-dark-400: #2a2a2a;
+  --color-dark-300: #333333;
 
   --color-accent-blue: #3b82f6;
   --color-accent-green: #10b981;
@@ -17,12 +17,13 @@
   --color-accent-teal: #14b8a6;
   --color-accent-orange: #f97316;
 
-  --color-strength: #dc2626;
-  --color-tri: #0d9488;
-  --color-long: #6366f1;
-  --color-rest: #475569;
+  --color-strength: #f59e0b;
+  --color-tri: #14b8a6;
+  --color-hic: #8b5cf6;
+  --color-long: #10b981;
+  --color-rest: #6b7280;
 
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: -apple-system, 'SF Pro Display', system-ui, sans-serif;
 }
 
 * {
@@ -34,7 +35,7 @@
 html, body, #root {
   height: 100%;
   font-family: var(--font-sans);
-  background: var(--color-dark-900);
+  background: #000000;
   color: #e5e7eb;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
@@ -65,7 +66,7 @@ input[type="number"] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #222222;
   border-radius: 2px;
 }
 
@@ -76,4 +77,14 @@ input[type="number"] {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s infinite;
 }
