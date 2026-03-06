@@ -113,7 +113,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
   );
 
   return (
-    <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-5">
+    <div className="px-5 pt-4 pb-36 bg-black space-y-5">
       <h2 className="text-[28px] font-bold text-white mb-2">Settings</h2>
 
       {/* Card 1: PROFILE */}

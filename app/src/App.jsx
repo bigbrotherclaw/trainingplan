@@ -121,7 +121,7 @@ export default function App() {
             />
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={showProfile ? 'profile' : activeTab}
@@ -130,7 +130,7 @@ export default function App() {
                 animate="animate"
                 exit="exit"
                 transition={{ duration: 0.2 }}
-                className="min-h-full"
+                className="min-h-full will-change-auto"
               >
                 {renderPage()}
               </motion.div>
