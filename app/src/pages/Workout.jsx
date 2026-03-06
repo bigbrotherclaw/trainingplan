@@ -83,7 +83,7 @@ function EnergyModal({ onSelect, onClose }) {
             <button
               key={level.key}
               onClick={() => onSelect(level.key)}
-              className="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] transition-colors active:scale-[0.98]"
+              className="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.12] transition-colors active:scale-[0.98]"
             >
               <span className="text-3xl">{level.emoji}</span>
               <div className="text-left flex-1">
@@ -104,7 +104,7 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
 
   if (workout.type === 'rest') {
     return (
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-4 mb-3">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4 mb-3">
         <div className="flex justify-between items-center mb-2">
           <div className="text-[15px] font-semibold text-white">
             {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -124,7 +124,7 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
   };
 
   return (
-    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-4 mb-3">
+    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4 mb-3">
       <div className="flex justify-between items-center mb-2">
         <div className="text-[15px] font-semibold text-white">
           {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -588,7 +588,7 @@ export default function Workout({ showToast }) {
                     <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Same Type, Different Focus</div>
                     <button
                       onClick={() => handleSwap(swapOptions.optionA.day)}
-                      className="w-full text-left min-h-[52px] p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
+                      className="w-full text-left min-h-[52px] p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.12] active:scale-[0.98] transition-all"
                     >
                       <div className="text-[15px] font-semibold text-white">{swapOptions.optionA.workout.name}</div>
                       <div className="text-[13px] text-[#666666] mt-0.5">{swapOptions.optionA.description}</div>
@@ -601,7 +601,7 @@ export default function Workout({ showToast }) {
                     <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Different Modality</div>
                     <button
                       onClick={() => handleSwap(swapOptions.optionB.day)}
-                      className="w-full text-left min-h-[52px] p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
+                      className="w-full text-left min-h-[52px] p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.12] active:scale-[0.98] transition-all"
                     >
                       <div className="text-[15px] font-semibold text-white">{swapOptions.optionB.workout.name}</div>
                       <div className="text-[13px] text-[#666666] mt-0.5">{swapOptions.optionB.description}</div>
@@ -634,7 +634,7 @@ export default function Workout({ showToast }) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`bg-[#111111] rounded-2xl border border-white/[0.08] p-6 border-l-4 ${
+          className={`bg-[#141414] rounded-2xl border border-white/[0.12] p-6 border-l-4 ${
             todayWorkout.type === 'strength' ? 'border-l-amber-500' :
             todayWorkout.type === 'tri' ? 'border-l-teal-500' :
             todayWorkout.type === 'long' ? 'border-l-emerald-500' : 'border-l-gray-500'
@@ -726,7 +726,7 @@ export default function Workout({ showToast }) {
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setShowSwapSheet(true)}
-                className="w-full min-h-[48px] rounded-2xl border border-white/[0.08] bg-transparent text-[#A0A0A0] font-medium text-[15px] tracking-wide transition-colors flex items-center justify-center gap-2"
+                className="w-full min-h-[48px] rounded-2xl border border-white/[0.12] bg-transparent text-[#A0A0A0] font-medium text-[15px] tracking-wide transition-colors flex items-center justify-center gap-2"
               >
                 <RefreshCw size={15} />
                 Swap This Workout
@@ -775,7 +775,7 @@ export default function Workout({ showToast }) {
         </button>
         <div className="flex items-center gap-2">
           {energyBadge && (
-            <span className="px-4 py-2 rounded-full bg-[#111111] border border-white/[0.06] text-[15px]" style={{ color: energyBadge.color }}>
+            <span className="px-4 py-2 rounded-full bg-[#141414] border border-white/[0.10] text-[15px]" style={{ color: energyBadge.color }}>
               {energyBadge.emoji} {energyBadge.label}
             </span>
           )}
@@ -807,7 +807,7 @@ export default function Workout({ showToast }) {
 
       {/* RECOVERY MODE */}
       {energyLevel === 'recovery' && (
-        <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+        <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-[17px] font-semibold text-white">Recovery Session</h3>
             <span className="text-[13px] text-[#666666]">~50 min total</span>
@@ -848,7 +848,7 @@ export default function Workout({ showToast }) {
       {/* STRENGTH */}
       {todayWorkout.type === 'strength' && energyLevel !== 'recovery' && (
         <div className="space-y-3">
-          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-4 text-center">
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
             <span className="text-[15px] text-[#A0A0A0]">Week {settings.week}: </span>
             <span className="text-[15px] font-semibold text-white">{loadingInfo.sets}×{loadingInfo.reps} @ {loadingInfo.percentage}%</span>
             <span className="text-[13px] text-[#666666] ml-2">· Rest {loadingInfo.restMin}–{loadingInfo.restMax}</span>
@@ -858,12 +858,12 @@ export default function Workout({ showToast }) {
           {getActiveLifts().map((lift) => {
             const weight = getTodayLiftWeight(lift.name);
             return (
-              <div key={lift.name} className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 mb-4">
+              <div key={lift.name} className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
                 <h3 className="text-[17px] font-semibold text-white mb-1">{lift.name}</h3>
                 <p className="text-[13px] text-[#666666] mb-4">{loadingInfo.sets} × {loadingInfo.reps} @ {weight} lbs</p>
                 {/* Set table */}
                 <div>
-                  <div className="flex items-center py-2 border-b border-white/[0.06] gap-3">
+                  <div className="flex items-center py-2 border-b border-white/[0.10] gap-3">
                     <div className="w-12 text-[12px] uppercase tracking-wider text-[#555555]">SET</div>
                     <div className="flex-1 text-[12px] uppercase tracking-wider text-[#555555] text-center">WEIGHT</div>
                     <div className="w-20 text-[12px] uppercase tracking-wider text-[#555555] text-center">REPS</div>
@@ -883,7 +883,7 @@ export default function Workout({ showToast }) {
                           className="w-20 bg-[#1A1A1A] rounded-lg px-3 py-2.5 text-center text-[17px] text-white min-h-[44px] border-0 outline-none" />
                         <button onClick={() => setCompletedSets((p) => ({ ...p, [key]: !p[key] }))}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                            done ? 'bg-emerald-500' : 'bg-[#1A1A1A] border border-white/[0.06]'
+                            done ? 'bg-emerald-500' : 'bg-[#1A1A1A] border border-white/[0.10]'
                           }`}>
                           {done && <Check size={14} className="text-white" />}
                         </button>
@@ -901,7 +901,7 @@ export default function Workout({ showToast }) {
               const lastData = getLastAccessoryData(acc.name);
               const isExpanded = expandedLifts[acc.name] !== false;
               return (
-                <div key={idx} className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 mb-4">
+                <div key={idx} className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
                   <button className="w-full flex items-center justify-between mb-1" onClick={() => setExpandedLifts((p) => ({ ...p, [acc.name]: !isExpanded }))}>
                     <div className="text-left">
                       <div className="text-[17px] font-semibold text-white">{acc.name}</div>
@@ -913,7 +913,7 @@ export default function Workout({ showToast }) {
                     <div className="mt-3">
                       {/* Set table */}
                       <div>
-                        <div className="flex items-center py-2 border-b border-white/[0.06] gap-3">
+                        <div className="flex items-center py-2 border-b border-white/[0.10] gap-3">
                           <div className="w-12 text-[12px] uppercase tracking-wider text-[#555555]">SET</div>
                           <div className="flex-1 text-[12px] uppercase tracking-wider text-[#555555] text-center">WEIGHT</div>
                           <div className="w-20 text-[12px] uppercase tracking-wider text-[#555555] text-center">REPS</div>
@@ -933,7 +933,7 @@ export default function Workout({ showToast }) {
                                 className="w-20 bg-[#1A1A1A] rounded-lg px-3 py-2.5 text-center text-[17px] text-white min-h-[44px] border-0 outline-none" />
                               <button onClick={() => setCompletedAccessorySets((p) => ({ ...p, [key]: !p[key] }))}
                                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                  done ? 'bg-emerald-500' : 'bg-[#1A1A1A] border border-white/[0.06]'
+                                  done ? 'bg-emerald-500' : 'bg-[#1A1A1A] border border-white/[0.10]'
                                 }`}>
                                 {done && <Check size={14} className="text-white" />}
                               </button>
@@ -953,7 +953,7 @@ export default function Workout({ showToast }) {
       {/* TRI / LONG - Cardio Section */}
       {(todayWorkout.type === 'tri' || todayWorkout.type === 'long') && energyLevel !== 'recovery' && (
         <div className="space-y-3">
-          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
             <h3 className="text-[17px] font-semibold text-white mb-3">Cardio Session</h3>
             {energyLevel && energyLevel !== 'ready' && (
               <div className="mb-3 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05]">
@@ -996,7 +996,7 @@ export default function Workout({ showToast }) {
           </div>
 
           {selectedCardio && (
-            <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
               <h3 className="text-[17px] font-semibold text-white mb-4">{selectedCardio} - Log</h3>
               {(() => {
                 const preset = getCardioPresetsForModality(true).find((p) => p.name === selectedCardio);
@@ -1014,7 +1014,7 @@ export default function Workout({ showToast }) {
 
           {/* HIC Section - only for tri */}
           {todayWorkout.type === 'tri' && (
-            <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-[17px] font-semibold text-white">HIC</h3>
                 <button
@@ -1063,7 +1063,7 @@ export default function Workout({ showToast }) {
                 </div>
               )}
               {!skippedHic && selectedHic && (
-                <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                <div className="mt-4 pt-4 border-t border-white/[0.10]">
                   <h4 className="text-[15px] font-semibold text-white mb-3">{selectedHic} - Log</h4>
                   {hicFields.map((field, idx) => (
                     <div key={idx} className="mb-4">
@@ -1080,7 +1080,7 @@ export default function Workout({ showToast }) {
 
           {/* Long notes */}
           {todayWorkout.type === 'long' && (
-            <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
               <label className="text-[13px] text-[#666666] block mb-1">Workout Notes</label>
               <textarea value={longNotes} onChange={(e) => setLongNotes(e.target.value)}
                 placeholder="Describe your workout..."
@@ -1092,7 +1092,7 @@ export default function Workout({ showToast }) {
 
       {energyLevel !== 'recovery' && (
         <>
-          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
             <label className="text-[13px] text-[#666666] block mb-1">Duration (minutes, optional)</label>
             <input type="number" placeholder={elapsedSeconds > 60 ? `~${Math.round(elapsedSeconds / 60)} min (auto)` : 'e.g. 45'}
               value={durationMin} onChange={(e) => setDurationMin(e.target.value)}

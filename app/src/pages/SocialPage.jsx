@@ -38,7 +38,7 @@ function SectionHeader({ icon: Icon, title }) {
 // --- Friends Section ---
 function FriendsSection({ friends, pendingRequests, onAddFriend, onAccept, onDecline, onRemove }) {
   return (
-    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Users size={16} className="text-[#3B82F6]" />
@@ -77,7 +77,7 @@ function FriendsSection({ friends, pendingRequests, onAddFriend, onAccept, onDec
                   </button>
                   <button
                     onClick={() => onDecline(req.id)}
-                    className="text-xs text-[#666666] px-3 py-2 rounded-lg border border-white/[0.06] active:scale-[0.98] transition-transform"
+                    className="text-xs text-[#666666] px-3 py-2 rounded-lg border border-white/[0.10] active:scale-[0.98] transition-transform"
                   >
                     Decline
                   </button>
@@ -153,7 +153,7 @@ function LeaderboardSection({ friends, getLeaderboard }) {
   }
 
   return (
-    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Trophy size={16} className="text-[#3B82F6]" />
@@ -262,7 +262,7 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
   }
 
   return (
-    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
       <SectionHeader icon={Share2} title="Shared Plans" />
 
       {sharedPlans.length > 0 && (
@@ -291,20 +291,20 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
             onChange={(e) => setShareName(e.target.value)}
             placeholder="Plan name"
             autoFocus
-            className="bg-black border border-white/[0.06] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
+            className="bg-black border border-white/[0.10] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
           />
           <input
             type="text"
             value={shareDesc}
             onChange={(e) => setShareDesc(e.target.value)}
             placeholder="Description (optional)"
-            className="bg-black border border-white/[0.06] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
+            className="bg-black border border-white/[0.10] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors"
           />
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setShowShareForm(false)}
-              className="flex-1 min-h-[48px] rounded-xl border border-white/[0.06] text-[#B3B3B3] text-sm font-semibold active:scale-[0.98] transition-transform"
+              className="flex-1 min-h-[48px] rounded-xl border border-white/[0.10] text-[#B3B3B3] text-sm font-semibold active:scale-[0.98] transition-transform"
             >
               Cancel
             </button>
@@ -334,7 +334,7 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
             value={joinCode}
             onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setJoinError('') }}
             placeholder="Enter code (e.g. A1B2C3)"
-            className="flex-1 bg-black border border-white/[0.06] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors font-mono uppercase tracking-wider"
+            className="flex-1 bg-black border border-white/[0.10] rounded-xl px-4 py-3.5 min-h-[48px] text-white text-sm placeholder:text-[#444] outline-none focus:border-[#3B82F6]/60 transition-colors font-mono uppercase tracking-wider"
             maxLength={6}
           />
           <button
@@ -361,7 +361,7 @@ function SharedPlansSection({ sharedPlans, sharePlan, joinPlan, deleteSharedPlan
             <motion.div
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 bg-black rounded-xl border border-white/[0.06] p-3"
+              className="mt-3 bg-black rounded-xl border border-white/[0.10] p-3"
             >
               <p className="text-white text-sm font-medium">{joinResult.name}</p>
               {joinResult.description && (

@@ -103,13 +103,13 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-[22px] font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h2>
         <div className="flex items-center gap-1">
-          <button onClick={() => setCurrentMonth((m) => subMonths(m, 1))} className="w-11 h-11 flex items-center justify-center rounded-full bg-[#111111]">
+          <button onClick={() => setCurrentMonth((m) => subMonths(m, 1))} className="w-11 h-11 flex items-center justify-center rounded-full bg-[#141414]">
             <ChevronLeft size={18} className="text-white" />
           </button>
           <button onClick={() => setCurrentMonth(new Date())} className="text-[15px] text-accent-blue font-medium min-h-[44px] px-2">
             Today
           </button>
-          <button onClick={() => setCurrentMonth((m) => addMonths(m, 1))} className="w-11 h-11 flex items-center justify-center rounded-full bg-[#111111]">
+          <button onClick={() => setCurrentMonth((m) => addMonths(m, 1))} className="w-11 h-11 flex items-center justify-center rounded-full bg-[#141414]">
             <ChevronRight size={18} className="text-white" />
           </button>
         </div>
@@ -130,7 +130,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Calendar Card */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-4">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4">
         {/* Day Headers */}
         <div className="grid grid-cols-7 gap-1 mb-1">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (

@@ -31,9 +31,9 @@
   --text-secondary: #A0A0A0;
   --text-tertiary: #666666;
   --text-muted: #444444;
-  --card-bg: #111111;
-  --card-bg-secondary: #1A1A1A;
-  --card-border: rgba(255,255,255,0.06);
+  --card-bg: #141414;
+  --card-bg-secondary: #1C1C1C;
+  --card-border: rgba(255,255,255,0.10);
   --card-radius: 16px;
 }
 

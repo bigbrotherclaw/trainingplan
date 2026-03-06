@@ -123,7 +123,7 @@ export default function Dashboard({ onNavigate }) {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-[#111111] rounded-2xl border border-white/[0.10] p-5"
+        className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
       >
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3">Your Week</h2>
         <div className="flex justify-between">
@@ -166,7 +166,7 @@ export default function Dashboard({ onNavigate }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="relative overflow-hidden bg-[#111111] rounded-2xl border border-white/[0.10]"
+        className="relative overflow-hidden bg-[#141414] rounded-2xl border border-white/[0.10]"
       >
         {/* Left color accent bar */}
         <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: todayColor }} />
@@ -208,15 +208,15 @@ export default function Dashboard({ onNavigate }) {
         transition={{ delay: 0.1 }}
         className="flex gap-3"
       >
-        <div className="flex-1 bg-[#111111] rounded-2xl border border-white/[0.10] p-4 text-center">
+        <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
           <div className="text-[28px] font-bold text-white leading-none">{streak}</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Streak</div>
         </div>
-        <div className="flex-1 bg-[#111111] rounded-2xl border border-white/[0.10] p-4 text-center">
+        <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
           <div className="text-[28px] font-bold text-white leading-none">{workoutHistory.length}</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Workouts</div>
         </div>
-        <div className="flex-1 bg-[#111111] rounded-2xl border border-white/[0.10] p-4 text-center">
+        <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
           <div className="text-[28px] font-bold text-white leading-none">{compliancePct}%</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Compliance</div>
         </div>
@@ -227,7 +227,7 @@ export default function Dashboard({ onNavigate }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="bg-[#111111] rounded-2xl border border-white/[0.10] p-5"
+        className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
       >
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Weekly Compliance</h2>
         <div className="flex justify-center">

@@ -115,7 +115,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       <h2 className="text-[28px] font-bold text-white mb-2">Settings</h2>
 
       {/* Card 1: PROFILE */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden">
         <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold px-5 pt-5 pb-3">Profile</p>
         <div className="px-5 pb-5">
           <input
@@ -129,7 +129,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
 
       {/* Card 2: 1RM VALUES */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden">
         <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold px-5 pt-5 pb-3">1RM Values</p>
         <StepperRow label="Bench Press" settingsKey="benchPress1RM" />
         <div className="border-b border-white/[0.04] mx-5" />
@@ -139,7 +139,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
 
       {/* Card 3: PROGRAM */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden">
         <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold px-5 pt-5 pb-3">Program</p>
         <StepperRow label="Current Block" settingsKey="block" step={1} showUnit={false} />
         <div className="border-b border-white/[0.04] mx-5" />
@@ -147,7 +147,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
 
       {/* Card 4: LACTATE THRESHOLDS */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden">
         <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold px-5 pt-5 pb-3">Lactate Thresholds</p>
 
         <div className="flex items-center justify-between px-5 py-4 min-h-[52px]">
@@ -208,7 +208,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
 
       {/* Card 5: SOCIAL */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden">
         <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold px-5 pt-5 pb-3">Social</p>
         <button
           onClick={onNavigateToSocial}
@@ -220,7 +220,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
 
       {/* Card 6: DATA */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden">
         <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold px-5 pt-5 pb-3">Data</p>
         <div className="px-5 pb-5 flex flex-col gap-3">
           <button
@@ -242,7 +242,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
 
       {/* Card 7: DANGER ZONE */}
-      <div className="bg-[#111111] rounded-2xl border border-red-500/10 overflow-hidden">
+      <div className="bg-[#141414] rounded-2xl border border-red-500/10 overflow-hidden">
         <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold px-5 pt-5 pb-3">Danger Zone</p>
         <button
           onClick={handleResetClick}

@@ -172,7 +172,7 @@ export default function Stats() {
       <h1 className="text-[28px] font-bold text-white mb-2">Stats</h1>
 
       {/* STRENGTH JOURNEY */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Strength Journey</h2>
 
         {/* Lift tabs */}
@@ -238,7 +238,7 @@ export default function Stats() {
       </div>
 
       {/* VOLUME THIS WEEK */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Volume This Week</h2>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={volumeWeek} barCategoryGap="20%">
@@ -263,7 +263,7 @@ export default function Stats() {
 
       {/* BODY BALANCE */}
       {muscleBalance.length > 0 && (
-        <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+        <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
           <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Body Balance</h2>
           <div className="space-y-3">
             {muscleBalance.map(m => (
@@ -285,7 +285,7 @@ export default function Stats() {
       )}
 
       {/* CONSISTENCY GRID */}
-      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Streak & Consistency</h2>
         <p className="text-[11px] text-[#555555] mb-3">Last 12 weeks</p>
         <div className="grid grid-cols-12 gap-1.5">

@@ -51,7 +51,7 @@ function DeleteConfirmModal({ onConfirm, onCancel, loading }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
-        className="relative w-full max-w-sm bg-[#111111] rounded-2xl border border-white/[0.06] p-6 z-10"
+        className="relative w-full max-w-sm bg-[#141414] rounded-2xl border border-white/[0.10] p-6 z-10"
       >
         <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
           <Trash2 className="text-red-400" size={20} />
@@ -63,7 +63,7 @@ function DeleteConfirmModal({ onConfirm, onCancel, loading }) {
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 min-h-[48px] border border-white/[0.06] text-[#B3B3B3] font-semibold rounded-xl text-sm transition-colors"
+            className="flex-1 min-h-[48px] border border-white/[0.10] text-[#B3B3B3] font-semibold rounded-xl text-sm transition-colors"
           >
             Cancel
           </button>
@@ -199,7 +199,7 @@ export default function ProfilePage() {
                   </button>
                   <button
                     onClick={handleCancelName}
-                    className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] border border-white/[0.06] text-[#B3B3B3] text-sm font-semibold rounded-xl transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] border border-white/[0.10] text-[#B3B3B3] text-sm font-semibold rounded-xl transition-colors"
                   >
                     <X size={14} />
                     Cancel
@@ -225,7 +225,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Account info card */}
-          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 space-y-4">
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 space-y-4">
             <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold">Account</p>
             {memberSince && (
               <div className="flex justify-between py-2 border-b border-white/[0.04]">
@@ -242,7 +242,7 @@ export default function ProfilePage() {
           {/* Export */}
           <button
             onClick={handleExport}
-            className="w-full min-h-[48px] bg-[#111111] border border-white/[0.06] rounded-2xl text-[15px] font-medium text-white flex items-center justify-center gap-2"
+            className="w-full min-h-[48px] bg-[#141414] border border-white/[0.10] rounded-2xl text-[15px] font-medium text-white flex items-center justify-center gap-2"
           >
             <Download size={16} />
             Export Data
