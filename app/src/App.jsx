@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LayoutDashboard, Dumbbell, Calendar, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, Calendar, BarChart3, Settings, Users } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Workout from './pages/Workout';
 import CalendarPage from './pages/CalendarPage';
 import Stats from './pages/Stats';
 import SettingsPage from './pages/SettingsPage';
+import SocialPage from './pages/SocialPage';
 import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
 import MigrationModal from './components/MigrationModal';
@@ -18,6 +19,7 @@ const tabs = [
   { id: 'workout', label: 'Workout', icon: Dumbbell },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'stats', label: 'Stats', icon: BarChart3 },
+  { id: 'social', label: 'Social', icon: Users, requiresAuth: true },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -76,6 +78,8 @@ export default function App() {
         return <CalendarPage onNavigate={setActiveTab} />;
       case 'stats':
         return <Stats />;
+      case 'social':
+        return <SocialPage />;
       case 'settings':
         return <SettingsPage showToast={showToast} />;
       default:
@@ -138,7 +142,7 @@ export default function App() {
           </main>
 
           <nav className="shrink-0 border-t border-white/[0.03] bg-black/90 backdrop-blur-xl flex justify-around items-center px-1 pb-safe">
-            {tabs.map((tab) => {
+            {tabs.filter((tab) => !tab.requiresAuth || user).map((tab) => {
               const Icon = tab.icon;
               const isActive = !showProfile && activeTab === tab.id;
               return (
