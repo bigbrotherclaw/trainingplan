@@ -9,6 +9,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const APP_URL = Deno.env.get('APP_URL') || 'https://bigbrotherclaw.github.io/trainingplan/'
 
+// Custom URL scheme registered in iOS Info.plist
+const NATIVE_SCHEME = 'com.bigbrother.trainingplan'
+
 const SCOPES = 'read:recovery read:cycles read:workout read:sleep read:profile read:body_measurement'
 
 const corsHeaders = {
@@ -16,8 +19,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * Redirect helper: for native apps, use custom URL scheme (auto-closes SFSafariViewController).
+ * For web, redirect to APP_URL.
+ */
+function appRedirect(params: Record<string, string>, isNative: boolean) {
+  const qs = new URLSearchParams(params).toString()
+  if (isNative) {
+    // Custom URL scheme redirect - iOS/Android will intercept this and close the browser
+    return Response.redirect(`${NATIVE_SCHEME}://whoop-callback?${qs}`, 302)
+  }
+  return Response.redirect(`${APP_URL}?${qs}`, 302)
+}
+
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -26,7 +41,7 @@ serve(async (req: Request) => {
   const path = url.pathname.split('/').pop()
 
   try {
-    // Step 1: Initiate OAuth - redirect user to Whoop
+    // ── Step 1: Initiate OAuth ──
     if (path === 'login' || path === 'whoop-auth') {
       const userToken = req.headers.get('Authorization')?.replace('Bearer ', '')
       if (!userToken) {
@@ -36,8 +51,11 @@ serve(async (req: Request) => {
         })
       }
 
-      // Generate state with user token embedded (encrypted in production)
-      const state = btoa(JSON.stringify({ token: userToken, ts: Date.now() }))
+      // Read platform hint from query or body
+      const platform = url.searchParams.get('platform') || 'web'
+
+      // Encode user token + platform in state
+      const state = btoa(JSON.stringify({ token: userToken, platform, ts: Date.now() }))
 
       const redirectUri = `${SUPABASE_URL}/functions/v1/whoop-auth/callback`
       const authUrl = `${WHOOP_AUTH_URL}?` +
@@ -52,45 +70,49 @@ serve(async (req: Request) => {
       })
     }
 
-    // Step 2: OAuth callback - exchange code for tokens
+    // ── Step 2: OAuth Callback ──
     if (path === 'callback') {
-      const errorPage = (title: string, detail: string) => new Response(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>body{background:#0a0a0a;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
-        .card{padding:2rem;max-width:400px}.icon{font-size:3rem;margin-bottom:1rem}h2{color:#ef4444}pre{color:#888;font-size:0.75rem;text-align:left;background:#1a1a1a;padding:1rem;border-radius:8px;overflow-x:auto;margin-top:1rem;white-space:pre-wrap}</style></head>
-        <body><div class="card"><div class="icon">❌</div><h2>${title}</h2><pre>${detail}</pre></div></body></html>`,
-        { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-      )
-
       const code = url.searchParams.get('code')
       const state = url.searchParams.get('state')
       const error = url.searchParams.get('error')
 
-      // Whoop may redirect back with an error param
+      // Default to native (most common case for this app)
+      let isNative = true
+      let userToken = ''
+
+      // Whoop returned an error
       if (error) {
-        const desc = url.searchParams.get('error_description') || 'Unknown'
+        const desc = url.searchParams.get('error_description') || 'Unknown error'
         console.error('Whoop OAuth error:', error, desc)
-        return errorPage('Whoop Authorization Failed', `Error: ${error}\n${desc}`)
+        // Try to decode state for platform info
+        try {
+          const stateData = JSON.parse(atob(decodeURIComponent(state || '')))
+          isNative = stateData.platform !== 'web'
+        } catch {}
+        return appRedirect({ whoop: 'error', reason: desc }, isNative)
       }
 
       if (!code || !state) {
-        return errorPage('Missing Parameters', `code: ${!!code}, state: ${!!state}\nURL: ${url.pathname}${url.search}`)
+        console.error('Missing code or state in callback')
+        return appRedirect({ whoop: 'error', reason: 'missing_params' }, isNative)
       }
 
-      // Decode state to get user token
-      let userToken: string
+      // Decode state
+      let stateData: { token: string; platform: string; ts: number }
       try {
-        const stateData = JSON.parse(atob(decodeURIComponent(state)))
+        stateData = JSON.parse(atob(decodeURIComponent(state)))
         userToken = stateData.token
-        console.log('State decoded, token length:', userToken?.length, 'timestamp:', stateData.ts)
+        isNative = stateData.platform !== 'web'
+        console.log('State decoded OK, platform:', stateData.platform, 'token length:', userToken?.length)
       } catch (e) {
         console.error('State decode failed:', e)
-        return errorPage('Invalid State', `Could not decode state parameter.\n${e.message}`)
+        return appRedirect({ whoop: 'error', reason: 'invalid_state' }, isNative)
       }
 
-      // Exchange code for tokens
+      // Exchange authorization code for tokens
       const redirectUri = `${SUPABASE_URL}/functions/v1/whoop-auth/callback`
-      console.log('Exchanging code for tokens, redirect_uri:', redirectUri)
+      console.log('Exchanging code, redirect_uri:', redirectUri)
+
       const tokenResp = await fetch(WHOOP_TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -106,24 +128,24 @@ serve(async (req: Request) => {
       if (!tokenResp.ok) {
         const err = await tokenResp.text()
         console.error('Token exchange failed:', tokenResp.status, err)
-        return errorPage('Token Exchange Failed', `Whoop API returned ${tokenResp.status}\n\n${err}`)
+        return appRedirect({ whoop: 'error', reason: 'token_exchange_failed' }, isNative)
       }
 
       const tokens = await tokenResp.json()
-      console.log('Token exchange success, has access_token:', !!tokens.access_token, 'has refresh_token:', !!tokens.refresh_token, 'expires_in:', tokens.expires_in)
+      console.log('Token exchange OK, access_token:', !!tokens.access_token, 'refresh_token:', !!tokens.refresh_token, 'expires_in:', tokens.expires_in)
 
-      // Get user ID from Supabase token
+      // Verify Supabase user
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
       const { data: { user }, error: userError } = await supabase.auth.getUser(userToken)
 
       if (userError || !user) {
-        console.error('Failed to get user:', userError)
-        return errorPage('User Authentication Failed', `Could not verify Supabase user token.\n\nError: ${userError?.message || 'User not found'}\n\nThis can happen if:\n- Your session expired\n- You logged out\n\nTry going back to the app and reconnecting.`)
+        console.error('Failed to verify user:', userError?.message)
+        return appRedirect({ whoop: 'error', reason: 'user_auth_failed' }, isNative)
       }
 
       console.log('User verified:', user.id)
 
-      // Store tokens
+      // Store Whoop tokens
       const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
       const { error: upsertError } = await supabase
         .from('whoop_tokens')
@@ -137,27 +159,17 @@ serve(async (req: Request) => {
         })
 
       if (upsertError) {
-        console.error('Failed to store tokens:', upsertError)
-        return errorPage('Database Error', `Failed to store Whoop tokens.\n\n${JSON.stringify(upsertError, null, 2)}`)
+        console.error('DB upsert failed:', JSON.stringify(upsertError))
+        return appRedirect({ whoop: 'error', reason: 'db_error' }, isNative)
       }
 
-      console.log('Whoop tokens stored successfully for user:', user.id)
+      console.log('Whoop tokens stored for user:', user.id)
 
-      // Success page - closes in-app browser, falls back to redirect
-      return new Response(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>body{background:#0a0a0a;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
-        .card{padding:2rem}.check{font-size:3rem;margin-bottom:1rem}p{color:#888;font-size:0.9rem;margin-top:0.5rem}</style></head>
-        <body><div class="card"><div class="check">✅</div><h2>Whoop Connected!</h2><p>Returning to your app...</p></div>
-        <script>
-          setTimeout(function() { try { window.close(); } catch(e) {} }, 1500);
-          setTimeout(function() { window.location.href = '${APP_URL}?whoop=connected'; }, 3000);
-        </script></body></html>`,
-        { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-      )
+      // Redirect back to app via custom URL scheme (native) or web URL
+      return appRedirect({ whoop: 'connected' }, isNative)
     }
 
-    // Step 3: Check connection status
+    // ── Step 3: Check connection status ──
     if (path === 'status') {
       const userToken = req.headers.get('Authorization')?.replace('Bearer ', '')
       if (!userToken) {
@@ -190,7 +202,7 @@ serve(async (req: Request) => {
       })
     }
 
-    // Step 4: Disconnect Whoop
+    // ── Step 4: Disconnect ──
     if (path === 'disconnect') {
       const userToken = req.headers.get('Authorization')?.replace('Bearer ', '')
       if (!userToken) {

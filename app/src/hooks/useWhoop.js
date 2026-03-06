@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -15,8 +15,9 @@ export function useWhoop() {
     cycle: [],
     workout: [],
   });
+  const pendingOAuth = useRef(false);
 
-  // Check connection status
+  // ── Check connection status ──
   const checkStatus = useCallback(async () => {
     if (!session?.access_token) {
       setConnected(false);
@@ -29,67 +30,147 @@ export function useWhoop() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const result = await resp.json();
+      console.log('[Whoop] status check:', result);
       setConnected(result.connected);
+      return result.connected;
     } catch (err) {
-      console.error('Whoop status check failed:', err);
+      console.error('[Whoop] status check failed:', err);
       setConnected(false);
+      return false;
     } finally {
       setLoading(false);
     }
   }, [session]);
 
+  // Initial status check
   useEffect(() => {
     checkStatus();
   }, [checkStatus]);
 
-  // Check URL params for OAuth callback result
+  // ── Deep link listener for native OAuth callback ──
+  // When the edge function redirects to com.bigbrother.trainingplan://whoop-callback?whoop=connected,
+  // Capacitor fires appUrlOpen. This closes the SFSafariViewController automatically.
+  useEffect(() => {
+    if (!window.Capacitor?.isNativePlatform()) return;
+
+    let appListener = null;
+
+    const setup = async () => {
+      try {
+        const { App: CapApp } = await import('@capacitor/app');
+        appListener = await CapApp.addListener('appUrlOpen', async (event) => {
+          console.log('[Whoop] Deep link received:', event.url);
+
+          if (event.url.includes('whoop-callback')) {
+            const params = new URL(event.url).searchParams;
+            const status = params.get('whoop');
+
+            if (status === 'connected') {
+              console.log('[Whoop] OAuth success via deep link');
+              setConnected(true);
+              pendingOAuth.current = false;
+              // Trigger initial data sync
+              setTimeout(async () => {
+                await syncDataDirect(7);
+                await loadCachedData(30);
+              }, 500);
+            } else if (status === 'error') {
+              const reason = params.get('reason') || 'unknown';
+              console.error('[Whoop] OAuth failed:', reason);
+              pendingOAuth.current = false;
+            }
+          }
+        });
+      } catch (err) {
+        console.error('[Whoop] Failed to set up deep link listener:', err);
+      }
+    };
+
+    setup();
+
+    return () => {
+      if (appListener) appListener.remove();
+    };
+  }, [session]);
+
+  // ── Also listen for browser close (fallback) ──
+  useEffect(() => {
+    if (!window.Capacitor?.isNativePlatform()) return;
+    if (!pendingOAuth.current) return;
+
+    // Poll for connection after browser closes (in case deep link doesn't fire)
+    let browserListener = null;
+
+    const setup = async () => {
+      try {
+        const { Browser } = await import('@capacitor/browser');
+        browserListener = await Browser.addListener('browserFinished', async () => {
+          console.log('[Whoop] Browser closed, checking status...');
+          browserListener?.remove();
+          if (pendingOAuth.current) {
+            const isConnected = await checkStatus();
+            if (isConnected) {
+              await loadCachedData(30);
+            }
+            pendingOAuth.current = false;
+          }
+        });
+      } catch (err) {
+        console.error('[Whoop] Failed to set up browser listener:', err);
+      }
+    };
+
+    setup();
+
+    return () => {
+      if (browserListener) browserListener.remove();
+    };
+  }, [pendingOAuth.current, checkStatus]);
+
+  // ── Web URL params check (for web OAuth flow) ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const whoopStatus = params.get('whoop');
     if (whoopStatus === 'connected') {
       setConnected(true);
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
-      // Trigger initial sync
-      syncData(30);
+      syncDataDirect(7);
     } else if (whoopStatus === 'error') {
-      console.error('Whoop connection failed');
+      console.error('[Whoop] OAuth failed (web):', params.get('reason'));
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
-  // Initiate Whoop connection
+  // ── Initiate Whoop connection ──
   const connect = useCallback(async () => {
     if (!session?.access_token) return;
 
     try {
-      const resp = await fetch(`${EDGE_BASE}/whoop-auth/login`, {
+      const isNative = window.Capacitor?.isNativePlatform();
+      const platform = isNative ? 'native' : 'web';
+
+      const resp = await fetch(`${EDGE_BASE}/whoop-auth/login?platform=${platform}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const result = await resp.json();
+      console.log('[Whoop] Got auth URL, platform:', platform);
 
       if (result.url) {
-        // On native iOS, use Capacitor Browser
-        if (window.Capacitor?.isNativePlatform()) {
+        pendingOAuth.current = true;
+
+        if (isNative) {
           const { Browser } = await import('@capacitor/browser');
-          // Listen for browser close to re-check connection status
-          const listener = await Browser.addListener('browserFinished', () => {
-            listener.remove();
-            // Re-check connection after OAuth flow completes
-            setTimeout(() => checkStatus(), 500);
-            setTimeout(() => { checkStatus(); loadCachedData(30); }, 2000);
-          });
           await Browser.open({ url: result.url });
         } else {
           window.location.href = result.url;
         }
       }
     } catch (err) {
-      console.error('Failed to start Whoop connection:', err);
+      console.error('[Whoop] Failed to start connection:', err);
     }
   }, [session]);
 
-  // Disconnect Whoop
+  // ── Disconnect ──
   const disconnect = useCallback(async () => {
     if (!session?.access_token) return;
 
@@ -104,17 +185,18 @@ export function useWhoop() {
       setConnected(false);
       setData({ recovery: [], sleep: [], cycle: [], workout: [] });
     } catch (err) {
-      console.error('Failed to disconnect Whoop:', err);
+      console.error('[Whoop] Disconnect failed:', err);
     }
   }, [session]);
 
-  // Sync data from Whoop
-  const syncData = useCallback(async (days = 7) => {
-    if (!session?.access_token || !connected) return;
+  // ── Sync data (direct, doesn't depend on `connected` state) ──
+  const syncDataDirect = useCallback(async (days = 7) => {
+    if (!session?.access_token) return;
 
     setSyncing(true);
     try {
-      await fetch(`${EDGE_BASE}/whoop-sync`, {
+      console.log('[Whoop] Syncing data, days:', days);
+      const resp = await fetch(`${EDGE_BASE}/whoop-sync`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -122,17 +204,23 @@ export function useWhoop() {
         },
         body: JSON.stringify({ type: 'all', days }),
       });
-
-      // Fetch cached data from Supabase
+      const result = await resp.json();
+      console.log('[Whoop] Sync result:', result);
       await loadCachedData(days);
     } catch (err) {
-      console.error('Whoop sync failed:', err);
+      console.error('[Whoop] Sync failed:', err);
     } finally {
       setSyncing(false);
     }
-  }, [session, connected]);
+  }, [session]);
 
-  // Load cached data from Supabase
+  // ── Public sync (checks connected state) ──
+  const syncData = useCallback(async (days = 7) => {
+    if (!connected) return;
+    return syncDataDirect(days);
+  }, [connected, syncDataDirect]);
+
+  // ── Load cached data from Supabase ──
   const loadCachedData = useCallback(async (days = 30) => {
     if (!session) return;
 
@@ -155,9 +243,15 @@ export function useWhoop() {
           grouped[r.data_type].push({ date: r.date, ...r.data });
         }
       }
+      console.log('[Whoop] Loaded cached data:', {
+        recovery: grouped.recovery.length,
+        sleep: grouped.sleep.length,
+        cycle: grouped.cycle.length,
+        workout: grouped.workout.length,
+      });
       setData(grouped);
     } catch (err) {
-      console.error('Failed to load cached Whoop data:', err);
+      console.error('[Whoop] Failed to load cached data:', err);
     }
   }, [session]);
 
@@ -168,10 +262,10 @@ export function useWhoop() {
     }
   }, [connected, loadCachedData]);
 
-  // Derived data
-  const latestRecovery = data.recovery[data.recovery.length - 1];
-  const latestSleep = data.sleep[data.sleep.length - 1];
-  const latestCycle = data.cycle[data.cycle.length - 1];
+  // ── Derived latest values ──
+  const latestRecovery = data.recovery.length > 0 ? data.recovery[data.recovery.length - 1] : null;
+  const latestSleep = data.sleep.length > 0 ? data.sleep[data.sleep.length - 1] : null;
+  const latestCycle = data.cycle.length > 0 ? data.cycle[data.cycle.length - 1] : null;
 
   return {
     connected,
