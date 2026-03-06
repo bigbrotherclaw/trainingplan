@@ -110,7 +110,7 @@ function RecoveryBanner({ latestRecovery, latestSleep, latestCycle }) {
         <div className="flex-1 min-w-0">
           <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-1">Recovery</h2>
           <p className="text-[15px] font-semibold text-white mb-2">
-            {score}% <span className="font-normal" style={{ color: zoneColor }}>&middot; {zoneLabel}</span>
+            <span className="font-normal" style={{ color: zoneColor }}>{zoneLabel}</span>
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <div className="flex items-center gap-1.5">
@@ -232,14 +232,14 @@ function RecoverySuggestionCard({ suggestion, onAccept, onDismiss }) {
         <div className="flex gap-3">
           <button
             onClick={onAccept}
-            className="flex-1 text-[14px] font-semibold py-2.5 rounded-xl transition-colors active:scale-[0.98]"
-            style={{ backgroundColor: zoneColor + '20', color: zoneColor }}
+            className="flex-1 text-[14px] font-semibold rounded-xl transition-colors active:scale-[0.98] min-h-[44px] text-white"
+            style={{ backgroundColor: zoneColor }}
           >
             Accept Adjustment
           </button>
           <button
             onClick={onDismiss}
-            className="flex-1 text-[14px] font-semibold py-2.5 rounded-xl bg-white/[0.06] text-[#A0A0A0] transition-colors active:scale-[0.98]"
+            className="flex-1 text-[14px] font-semibold rounded-xl transition-colors active:scale-[0.98] min-h-[44px] text-[#A0A0A0] border border-white/[0.15] bg-transparent"
           >
             Dismiss
           </button>
@@ -403,7 +403,7 @@ export default function Dashboard({ onNavigate, acceptedSuggestion, onAcceptSugg
         className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
       >
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3">Your Week</h2>
-        <div className="flex justify-between">
+        <div className="flex justify-between px-1">
           {weekData.map((day, i) => {
             const color = TYPE_COLORS[day.workout.type];
             const filled = day.isLogged;
@@ -500,18 +500,20 @@ export default function Dashboard({ onNavigate, acceptedSuggestion, onAcceptSugg
         transition={{ delay: 0.1 }}
         className="flex gap-3"
       >
-        <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
-          <div className="text-[22px] font-bold text-white leading-none">{streak}</div>
+        {(() => { const allZero = streak === 0 && workoutHistory.length === 0 && compliancePct === 0; const numColor = allZero ? 'text-[#555555]' : 'text-white'; const cardOpacity = allZero ? 'opacity-50' : ''; return (<>
+        <div className={`flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center ${cardOpacity}`}>
+          <div className={`text-[22px] font-bold leading-none ${numColor}`}>{streak}</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Streak</div>
         </div>
-        <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
-          <div className="text-[22px] font-bold text-white leading-none">{workoutHistory.length}</div>
+        <div className={`flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center ${cardOpacity}`}>
+          <div className={`text-[22px] font-bold leading-none ${numColor}`}>{workoutHistory.length}</div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Workouts</div>
         </div>
-        <div className="flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center">
-          <div className="text-[22px] font-bold text-white leading-none">{compliancePct}%</div>
+        <div className={`flex-1 bg-[#141414] rounded-2xl border border-white/[0.10] p-4 text-center ${cardOpacity}`}>
+          <div className={`text-[22px] font-bold leading-none ${numColor}`}>{compliancePct}<span className="text-[14px] font-semibold">%</span></div>
           <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Compliance</div>
         </div>
+        </>); })()}
       </motion.div>
 
       {/* WEEKLY COMPLIANCE RING */}
@@ -522,9 +524,13 @@ export default function Dashboard({ onNavigate, acceptedSuggestion, onAcceptSugg
         className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
       >
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Weekly Compliance</h2>
-        <div className="flex justify-center">
-          <ComplianceRing weekWorkouts={weekWorkouts} size={80} />
-        </div>
+        {weekWorkouts === 0 ? (
+          <p className="text-[13px] text-[#555555] text-center py-1">Complete your first workout to track compliance</p>
+        ) : (
+          <div className="flex justify-center">
+            <ComplianceRing weekWorkouts={weekWorkouts} size={80} />
+          </div>
+        )}
       </motion.div>
 
     </div>

@@ -118,12 +118,12 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
 
   if (workout.type === 'rest') {
     return (
-      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
         <div className="flex justify-between items-center mb-3">
           <div className="text-[15px] font-semibold text-white">
             {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
-          <span className="text-[12px] px-2.5 py-1 rounded-full bg-gray-500/15 text-gray-400">Rest</span>
+          <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-gray-500/15 text-gray-400">Rest</span>
         </div>
         <div className="text-[15px] text-[#A0A0A0]">Rest Day</div>
       </div>
@@ -138,12 +138,12 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
   };
 
   return (
-    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
+    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
       <div className="flex justify-between items-center mb-3">
         <div className="text-[15px] font-semibold text-white">
           {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
-        <span className={`text-[12px] px-2.5 py-1 rounded-full ${typeBadge[workout.type] || 'bg-gray-500/15 text-gray-400'}`}>
+        <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${typeBadge[workout.type] || 'bg-gray-500/15 text-gray-400'}`}>
           {workout.type}
         </span>
       </div>
@@ -152,7 +152,7 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
       {workout.type === 'strength' && (
         <div className="space-y-2.5">
           <div className="text-[10px] text-[#666666] mb-1">
-            Wk {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}%
+            Wk {settings.week}: {loadingInfo.sets}×{loadingInfo.reps} @ {loadingInfo.percentage}%
           </div>
           {OPERATOR_LIFTS.map((lift) => {
             const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
@@ -170,7 +170,7 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
                 {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
                   <div key={idx} className="flex items-center justify-between py-1">
                     <span className="text-[11px] text-[#B3B3B3]">{acc.name}</span>
-                    <span className="text-[11px] text-[#666666]">{acc.sets}x{acc.reps}</span>
+                    <span className="text-[11px] text-[#666666]">{acc.sets}×{acc.reps}</span>
                   </div>
                 ))}
               </div>
@@ -185,7 +185,7 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
           {cardioInfo.presets.map((preset, idx) => (
             <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2.5">
               <div className="text-xs font-medium text-[#B3B3B3]">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
-              <div className="text-[10px] text-[#666666] mt-1">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
+              <div className="text-[11px] text-[#888888] mt-1">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
             </div>
           ))}
           {workout.type === 'tri' && (
@@ -239,7 +239,7 @@ export default function Workout({ showToast }) {
   const [accessoryData, setAccessoryData] = useState({});
   const [hicMetrics, setHicMetrics] = useState({});
   const [longNotes, setLongNotes] = useState('');
-  const [showAllHics, setShowAllHics] = useState(false);
+  const [showAllHics, setShowAllHics] = useState(true);
   const [showAllCardio, setShowAllCardio] = useState(false);
   const [cardioModality, setCardioModality] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -687,7 +687,7 @@ export default function Workout({ showToast }) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`bg-[#141414] rounded-2xl border border-white/[0.12] p-6 border-l-4 ${
+          className={`bg-[#141414] rounded-2xl border border-white/[0.12] p-5 pr-5 border-l-4 ${
             todayWorkout.type === 'strength' ? 'border-l-amber-500' :
             todayWorkout.type === 'tri' ? 'border-l-teal-500' :
             todayWorkout.type === 'long' ? 'border-l-emerald-500' : 'border-l-gray-500'
@@ -697,7 +697,7 @@ export default function Workout({ showToast }) {
             <p className="text-[15px] text-[#A0A0A0]">
               {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
-            <span className={`text-[12px] px-2.5 py-1 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
+            <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
               {todayWorkout.type}
             </span>
           </div>
@@ -735,12 +735,13 @@ export default function Workout({ showToast }) {
                 })}
               </div>
               {todayWorkout.accessories && (
-                <div className="mt-4 pt-3 border-t border-white/[0.05]">
+                <div className="mt-6 pt-3 border-t border-white/[0.05]">
                   <div className="text-[10px] uppercase text-[#666666] mb-2">Accessories ({todayWorkout.accessories})</div>
-                  <div className="space-y-2 pl-1">
+                  <div className="divide-y divide-white/[0.05]">
                     {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => (
-                      <div key={idx} className="text-xs text-[#B3B3B3] py-1">
-                        {acc.name} - {acc.sets}x{acc.reps}
+                      <div key={idx} className="flex items-center justify-between py-2">
+                        <span className="text-xs text-[#B3B3B3]">{acc.name}</span>
+                        <span className="text-xs text-[#666666]">{acc.sets}×{acc.reps}</span>
                       </div>
                     ))}
                   </div>
@@ -797,8 +798,8 @@ export default function Workout({ showToast }) {
 
         {/* Upcoming Workouts */}
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4 mt-10">Upcoming</h3>
-          <div className="space-y-4">
+          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4 mt-6">Upcoming</h3>
+          <div className="space-y-3">
             {upcomingWorkouts.map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
             ))}
