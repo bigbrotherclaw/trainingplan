@@ -104,14 +104,14 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
 
   if (workout.type === 'rest') {
     return (
-      <div className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-xs text-[#666666]">
+      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-4 mb-3">
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-[15px] font-semibold text-white">
             {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
-          <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-gray-500/15 text-gray-400">rest</span>
+          <span className="text-[12px] px-2.5 py-1 rounded-full bg-gray-500/15 text-gray-400">Rest</span>
         </div>
-        <div className="text-sm font-medium text-[#B3B3B3]">Rest Day</div>
+        <div className="text-[15px] text-[#A0A0A0]">Rest Day</div>
       </div>
     );
   }
@@ -124,16 +124,16 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
   };
 
   return (
-    <div className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs text-[#666666]">
+    <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-4 mb-3">
+      <div className="flex justify-between items-center mb-2">
+        <div className="text-[15px] font-semibold text-white">
           {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
-        <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadge[workout.type] || 'bg-gray-500/15 text-gray-400'}`}>
+        <span className={`text-[12px] px-2.5 py-1 rounded-full ${typeBadge[workout.type] || 'bg-gray-500/15 text-gray-400'}`}>
           {workout.type}
         </span>
       </div>
-      <div className="text-sm font-semibold text-white mb-2">{workout.name}</div>
+      <div className="text-[15px] text-[#A0A0A0] mb-2">{workout.name}</div>
 
       {workout.type === 'strength' && (
         <div className="space-y-1.5">
@@ -516,7 +516,7 @@ export default function Workout({ showToast }) {
   // REST DAY
   if (todayWorkout.type === 'rest') {
     return (
-      <div className="px-5 pt-4 pb-24 space-y-4">
+      <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-4">
         <div className="text-center py-8">
           <Moon size={48} className="text-[#333333] mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
@@ -538,7 +538,7 @@ export default function Workout({ showToast }) {
   // OVERVIEW MODE
   if (!loggingMode) {
     return (
-      <div className="px-5 pt-4 pb-24 space-y-4">
+      <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-4">
         <AnimatePresence>
           {showCelebration && (
             <motion.div
@@ -581,17 +581,17 @@ export default function Workout({ showToast }) {
               >
                 <div className="w-10 h-1 bg-[#333333] rounded-full mx-auto mb-6" />
                 <h2 className="text-xl font-semibold text-white mb-1">Swap This Workout</h2>
-                <p className="text-sm text-[#666666] mb-5">Choose an alternative for today</p>
+                <p className="text-[15px] text-[#666666] mb-5">Choose an alternative for today</p>
 
                 {swapOptions.optionA && (
                   <div className="mb-4">
                     <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Same Type, Different Focus</div>
                     <button
                       onClick={() => handleSwap(swapOptions.optionA.day)}
-                      className="w-full text-left p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
+                      className="w-full text-left min-h-[52px] p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
                     >
-                      <div className="text-sm font-semibold text-white">{swapOptions.optionA.workout.name}</div>
-                      <div className="text-xs text-[#666666] mt-0.5">{swapOptions.optionA.description}</div>
+                      <div className="text-[15px] font-semibold text-white">{swapOptions.optionA.workout.name}</div>
+                      <div className="text-[13px] text-[#666666] mt-0.5">{swapOptions.optionA.description}</div>
                     </button>
                   </div>
                 )}
@@ -601,25 +601,25 @@ export default function Workout({ showToast }) {
                     <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Different Modality</div>
                     <button
                       onClick={() => handleSwap(swapOptions.optionB.day)}
-                      className="w-full text-left p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
+                      className="w-full text-left min-h-[52px] p-4 rounded-xl bg-dark-600 border border-white/[0.03] hover:border-white/[0.08] active:scale-[0.98] transition-all"
                     >
-                      <div className="text-sm font-semibold text-white">{swapOptions.optionB.workout.name}</div>
-                      <div className="text-xs text-[#666666] mt-0.5">{swapOptions.optionB.description}</div>
+                      <div className="text-[15px] font-semibold text-white">{swapOptions.optionB.workout.name}</div>
+                      <div className="text-[13px] text-[#666666] mt-0.5">{swapOptions.optionB.description}</div>
                     </button>
                   </div>
                 )}
 
                 <div className="mb-2">
                   <div className="text-[10px] uppercase tracking-widest text-[#666666] mb-2">Just Move</div>
-                  <div className="p-4 rounded-xl bg-dark-600 border border-white/[0.03]">
+                  <div className="min-h-[52px] p-4 rounded-xl bg-dark-600 border border-white/[0.03]">
                     <div className="space-y-2">
                       {['30-min walk outside', 'Pickup basketball', 'Yoga / stretching session', 'Swimming easy laps'].map((opt) => (
-                        <div key={opt} className="text-sm text-[#B3B3B3]">\u2022 {opt}</div>
+                        <div key={opt} className="text-[15px] text-[#B3B3B3]">\u2022 {opt}</div>
                       ))}
                     </div>
                     <button
                       onClick={() => setShowSwapSheet(false)}
-                      className="w-full mt-3 py-2 text-xs text-[#666666] hover:text-white transition-colors"
+                      className="w-full mt-3 py-2 text-[13px] text-[#666666] hover:text-white transition-colors"
                     >
                       Got it, just move today
                     </button>
@@ -634,17 +634,21 @@ export default function Workout({ showToast }) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06] active:scale-[0.98] transition-transform"
+          className={`bg-[#111111] rounded-2xl border border-white/[0.08] p-6 border-l-4 ${
+            todayWorkout.type === 'strength' ? 'border-l-amber-500' :
+            todayWorkout.type === 'tri' ? 'border-l-teal-500' :
+            todayWorkout.type === 'long' ? 'border-l-emerald-500' : 'border-l-gray-500'
+          } active:scale-[0.98] transition-transform`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs text-[#666666]">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[15px] text-[#A0A0A0]">
               {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
-            <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
+            <span className={`text-[12px] px-2.5 py-1 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
               {todayWorkout.type}
             </span>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-3">{todayWorkout.name}</h2>
+          <h2 className="text-[22px] font-bold text-white mb-3">{todayWorkout.name}</h2>
 
           {todayLogged && (
             <div className="bg-emerald-950/30 border border-emerald-800/20 rounded-xl px-4 py-2 text-emerald-400 text-sm font-medium flex items-center gap-2 mb-3">
@@ -709,29 +713,31 @@ export default function Workout({ showToast }) {
             </div>
           )}
 
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleLogWorkout}
-            className="w-full min-h-[52px] rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-base tracking-wide transition-colors flex items-center justify-center gap-2"
-          >
-            Log Workout
-            <ChevronRight size={18} />
-          </motion.button>
-          {todayWorkout.type !== 'rest' && (
+          <div className="flex flex-col gap-3 mt-4">
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={() => setShowSwapSheet(true)}
-              className="w-full mt-2 min-h-[48px] rounded-xl border border-white/[0.06] bg-transparent text-[#B3B3B3] font-semibold text-sm tracking-wide transition-colors flex items-center justify-center gap-2"
+              onClick={handleLogWorkout}
+              className="w-full min-h-[52px] rounded-2xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-[17px] tracking-wide transition-colors flex items-center justify-center gap-2"
             >
-              <RefreshCw size={15} />
-              Swap This Workout
+              Log Workout
+              <ChevronRight size={18} />
             </motion.button>
-          )}
+            {todayWorkout.type !== 'rest' && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowSwapSheet(true)}
+                className="w-full min-h-[48px] rounded-2xl border border-white/[0.08] bg-transparent text-[#A0A0A0] font-medium text-[15px] tracking-wide transition-colors flex items-center justify-center gap-2"
+              >
+                <RefreshCw size={15} />
+                Swap This Workout
+              </motion.button>
+            )}
+          </div>
         </motion.div>
 
         {/* Upcoming Workouts */}
         <div>
-          <h3 className="text-xs font-semibold text-[#555555] uppercase tracking-widest mb-3">Upcoming</h3>
+          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3 mt-6">Upcoming</h3>
           <div className="space-y-3">
             {upcomingWorkouts.map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
@@ -744,7 +750,7 @@ export default function Workout({ showToast }) {
 
   // LOGGING MODE
   return (
-    <div className="px-5 pt-4 pb-24 space-y-4">
+    <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-4">
       <AnimatePresence>
         {showCelebration && (
           <motion.div
@@ -769,7 +775,7 @@ export default function Workout({ showToast }) {
         </button>
         <div className="flex items-center gap-2">
           {energyBadge && (
-            <span className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.05]" style={{ color: energyBadge.color }}>
+            <span className="px-4 py-2 rounded-full bg-[#111111] border border-white/[0.06] text-[15px]" style={{ color: energyBadge.color }}>
               {energyBadge.emoji} {energyBadge.label}
             </span>
           )}
@@ -801,12 +807,12 @@ export default function Workout({ showToast }) {
 
       {/* RECOVERY MODE */}
       {energyLevel === 'recovery' && (
-        <div className="bg-[#111111] rounded-xl p-5 border border-white/[0.06]">
+        <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-lg font-semibold text-white">Recovery Session</h3>
-            <span className="text-xs text-[#666666]">~50 min total</span>
+            <h3 className="text-[17px] font-semibold text-white">Recovery Session</h3>
+            <span className="text-[13px] text-[#666666]">~50 min total</span>
           </div>
-          <p className="text-xs text-[#666666] mb-4">Check off each item as you complete it</p>
+          <p className="text-[13px] text-[#666666] mb-4">Check off each item as you complete it</p>
           <div className="space-y-2">
             {RECOVERY_ITEMS.map((item) => {
               const checked = !!recoveryChecked[item.id];
@@ -832,7 +838,7 @@ export default function Workout({ showToast }) {
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleCompleteRecovery}
-            className="w-full mt-4 min-h-[52px] py-3.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-sm tracking-wide transition-colors"
+            className="w-full mt-4 min-h-[52px] rounded-2xl bg-accent-green hover:bg-accent-green/90 text-white font-semibold text-[17px] tracking-wide transition-colors"
           >
             Complete Recovery
           </motion.button>
@@ -842,49 +848,46 @@ export default function Workout({ showToast }) {
       {/* STRENGTH */}
       {todayWorkout.type === 'strength' && energyLevel !== 'recovery' && (
         <div className="space-y-3">
-          <div className="bg-[#111111] rounded-xl p-3 border border-white/[0.06] text-center">
-            <span className="text-sm text-[#B3B3B3]">Week {settings.week}: </span>
-            <span className="text-sm font-semibold text-white">{loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}%</span>
-            <span className="text-xs text-[#666666] ml-2">Rest {loadingInfo.restMin}-{loadingInfo.restMax}</span>
-            {energyLevel === 'good' && <span className="text-xs text-accent-blue ml-2">(85%)</span>}
+          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-4 text-center">
+            <span className="text-[15px] text-[#A0A0A0]">Week {settings.week}: </span>
+            <span className="text-[15px] font-semibold text-white">{loadingInfo.sets}×{loadingInfo.reps} @ {loadingInfo.percentage}%</span>
+            <span className="text-[13px] text-[#666666] ml-2">· Rest {loadingInfo.restMin}–{loadingInfo.restMax}</span>
+            {energyLevel === 'good' && <span className="text-[13px] text-accent-blue ml-2">(85%)</span>}
           </div>
 
           {getActiveLifts().map((lift) => {
             const weight = getTodayLiftWeight(lift.name);
             return (
-              <div key={lift.name} className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-white">{lift.name}</h3>
-                  <span className="text-xs text-[#666666] bg-dark-500 px-2 py-0.5 rounded">{weight} lbs</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div>
-                    <label className="text-[10px] uppercase text-[#666666] block mb-1">Weight</label>
-                    <input type="number" placeholder={weight.toString()} value={liftData[`${lift.name}-weight`] || ''}
-                      onChange={(e) => setLiftData((p) => ({ ...p, [`${lift.name}-weight`]: e.target.value }))}
-                      className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
+              <div key={lift.name} className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 mb-4">
+                <h3 className="text-[17px] font-semibold text-white mb-1">{lift.name}</h3>
+                <p className="text-[13px] text-[#666666] mb-4">{loadingInfo.sets} × {loadingInfo.reps} @ {weight} lbs</p>
+                {/* Set table */}
+                <div>
+                  <div className="flex items-center py-2 border-b border-white/[0.06] gap-3">
+                    <div className="w-12 text-[12px] uppercase tracking-wider text-[#555555]">SET</div>
+                    <div className="flex-1 text-[12px] uppercase tracking-wider text-[#555555] text-center">WEIGHT</div>
+                    <div className="w-20 text-[12px] uppercase tracking-wider text-[#555555] text-center">REPS</div>
+                    <div className="w-8 text-[12px] uppercase tracking-wider text-[#555555] text-center">✓</div>
                   </div>
-                  <div>
-                    <label className="text-[10px] uppercase text-[#666666] block mb-1">Reps</label>
-                    <input type="number" placeholder={loadingInfo.reps.toString()} value={liftData[`${lift.name}-reps`] || ''}
-                      onChange={(e) => setLiftData((p) => ({ ...p, [`${lift.name}-reps`]: e.target.value }))}
-                      className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
                   {Array.from({ length: loadingInfo.sets }).map((_, i) => {
                     const key = `${lift.name}-${i + 1}`;
                     const done = completedSets[key];
                     return (
-                      <button key={i} onClick={() => setCompletedSets((p) => ({ ...p, [key]: !p[key] }))}
-                        className={`w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-lg text-sm transition-colors ${
-                          done ? 'bg-emerald-950/30 text-emerald-400 border border-emerald-800/20' : 'bg-dark-600 text-[#B3B3B3] border border-white/[0.03]'
-                        }`}>
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${done ? 'bg-emerald-500 border-emerald-500' : 'border-[#333333]'}`}>
-                          {done && <Check size={12} className="text-white" />}
-                        </div>
-                        Set {i + 1} of {loadingInfo.sets}
-                      </button>
+                      <div key={i} className="flex items-center py-3 min-h-[48px] gap-3">
+                        <div className="w-12 text-[15px] text-[#666666]">{i + 1}</div>
+                        <input type="number" placeholder={weight.toString()} value={liftData[`${lift.name}-weight`] || ''}
+                          onChange={(e) => setLiftData((p) => ({ ...p, [`${lift.name}-weight`]: e.target.value }))}
+                          className="flex-1 bg-[#1A1A1A] rounded-lg px-3 py-2.5 text-center text-[17px] text-white min-h-[44px] border-0 outline-none" />
+                        <input type="number" placeholder={loadingInfo.reps.toString()} value={liftData[`${lift.name}-reps`] || ''}
+                          onChange={(e) => setLiftData((p) => ({ ...p, [`${lift.name}-reps`]: e.target.value }))}
+                          className="w-20 bg-[#1A1A1A] rounded-lg px-3 py-2.5 text-center text-[17px] text-white min-h-[44px] border-0 outline-none" />
+                        <button onClick={() => setCompletedSets((p) => ({ ...p, [key]: !p[key] }))}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                            done ? 'bg-emerald-500' : 'bg-[#1A1A1A] border border-white/[0.06]'
+                          }`}>
+                          {done && <Check size={14} className="text-white" />}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -893,50 +896,48 @@ export default function Workout({ showToast }) {
           })}
 
           <div>
-            <h3 className="text-sm font-semibold text-[#B3B3B3] mb-2">Accessories {todayWorkout.accessories}</h3>
+            <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3">Accessories {todayWorkout.accessories}</h3>
             {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => {
               const lastData = getLastAccessoryData(acc.name);
               const isExpanded = expandedLifts[acc.name] !== false;
               return (
-                <div key={idx} className="bg-[#111111] rounded-xl p-4 border border-white/[0.06] mb-2">
-                  <button className="w-full flex items-center justify-between" onClick={() => setExpandedLifts((p) => ({ ...p, [acc.name]: !isExpanded }))}>
+                <div key={idx} className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 mb-4">
+                  <button className="w-full flex items-center justify-between mb-1" onClick={() => setExpandedLifts((p) => ({ ...p, [acc.name]: !isExpanded }))}>
                     <div className="text-left">
-                      <div className="font-medium text-white text-sm">{acc.name}</div>
-                      <div className="text-xs text-[#666666]">{acc.sets}x{acc.reps} - {acc.category}</div>
+                      <div className="text-[17px] font-semibold text-white">{acc.name}</div>
+                      <div className="text-[13px] text-[#666666]">{acc.sets} × {acc.reps}{acc.category ? ` · ${acc.category}` : ''}{lastData ? ` · Last: ${lastData.weight || 0} lbs` : ''}</div>
                     </div>
                     {isExpanded ? <ChevronUp size={16} className="text-[#666666]" /> : <ChevronDown size={16} className="text-[#666666]" />}
                   </button>
                   {isExpanded && (
                     <div className="mt-3">
-                      {lastData && <p className="text-[11px] text-[#666666] italic mb-2">Last: {lastData.weight || 0} lbs x {lastData.reps}</p>}
-                      <div className="grid grid-cols-2 gap-2 mb-2">
-                        <div>
-                          <label className="text-[10px] uppercase text-[#666666] block mb-1">Weight</label>
-                          <input type="number" placeholder={lastData ? lastData.weight?.toString() : ''} value={accessoryData[`${acc.name}-weight`] || ''}
-                            onChange={(e) => setAccessoryData((p) => ({ ...p, [`${acc.name}-weight`]: e.target.value }))}
-                            className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
+                      {/* Set table */}
+                      <div>
+                        <div className="flex items-center py-2 border-b border-white/[0.06] gap-3">
+                          <div className="w-12 text-[12px] uppercase tracking-wider text-[#555555]">SET</div>
+                          <div className="flex-1 text-[12px] uppercase tracking-wider text-[#555555] text-center">WEIGHT</div>
+                          <div className="w-20 text-[12px] uppercase tracking-wider text-[#555555] text-center">REPS</div>
+                          <div className="w-8 text-[12px] uppercase tracking-wider text-[#555555] text-center">✓</div>
                         </div>
-                        <div>
-                          <label className="text-[10px] uppercase text-[#666666] block mb-1">Reps</label>
-                          <input type="number" placeholder={acc.reps.toString()} value={accessoryData[`${acc.name}-reps`] || ''}
-                            onChange={(e) => setAccessoryData((p) => ({ ...p, [`${acc.name}-reps`]: e.target.value }))}
-                            className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
                         {Array.from({ length: acc.sets }).map((_, i) => {
                           const key = `${acc.name}-${i + 1}`;
                           const done = completedAccessorySets[key];
                           return (
-                            <button key={i} onClick={() => setCompletedAccessorySets((p) => ({ ...p, [key]: !p[key] }))}
-                              className={`w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-lg text-xs transition-colors ${
-                                done ? 'bg-emerald-950/30 text-emerald-400 border border-emerald-800/20' : 'bg-dark-600 text-[#B3B3B3] border border-white/[0.03]'
-                              }`}>
-                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${done ? 'bg-emerald-500 border-emerald-500' : 'border-[#333333]'}`}>
-                                {done && <Check size={10} className="text-white" />}
-                              </div>
-                              Set {i + 1}
-                            </button>
+                            <div key={i} className="flex items-center py-3 min-h-[48px] gap-3">
+                              <div className="w-12 text-[15px] text-[#666666]">{i + 1}</div>
+                              <input type="number" placeholder={lastData?.weight?.toString() || ''} value={accessoryData[`${acc.name}-weight`] || ''}
+                                onChange={(e) => setAccessoryData((p) => ({ ...p, [`${acc.name}-weight`]: e.target.value }))}
+                                className="flex-1 bg-[#1A1A1A] rounded-lg px-3 py-2.5 text-center text-[17px] text-white min-h-[44px] border-0 outline-none" />
+                              <input type="number" placeholder={acc.reps.toString()} value={accessoryData[`${acc.name}-reps`] || ''}
+                                onChange={(e) => setAccessoryData((p) => ({ ...p, [`${acc.name}-reps`]: e.target.value }))}
+                                className="w-20 bg-[#1A1A1A] rounded-lg px-3 py-2.5 text-center text-[17px] text-white min-h-[44px] border-0 outline-none" />
+                              <button onClick={() => setCompletedAccessorySets((p) => ({ ...p, [key]: !p[key] }))}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                  done ? 'bg-emerald-500' : 'bg-[#1A1A1A] border border-white/[0.06]'
+                                }`}>
+                                {done && <Check size={14} className="text-white" />}
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -952,8 +953,8 @@ export default function Workout({ showToast }) {
       {/* TRI / LONG - Cardio Section */}
       {(todayWorkout.type === 'tri' || todayWorkout.type === 'long') && energyLevel !== 'recovery' && (
         <div className="space-y-3">
-          <div className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
-            <h3 className="text-sm font-semibold text-white mb-3">Cardio Session</h3>
+          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+            <h3 className="text-[17px] font-semibold text-white mb-3">Cardio Session</h3>
             {energyLevel && energyLevel !== 'ready' && (
               <div className="mb-3 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05]">
                 <p className="text-xs" style={{ color: energyBadge?.color }}>
@@ -995,16 +996,16 @@ export default function Workout({ showToast }) {
           </div>
 
           {selectedCardio && (
-            <div className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
-              <h3 className="text-sm font-semibold text-white mb-3">{selectedCardio} - Log</h3>
+            <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+              <h3 className="text-[17px] font-semibold text-white mb-4">{selectedCardio} - Log</h3>
               {(() => {
                 const preset = getCardioPresetsForModality(true).find((p) => p.name === selectedCardio);
                 return preset?.inputFields?.map((field, idx) => (
-                  <div key={idx} className="mb-3">
-                    <label className="text-[10px] uppercase text-[#666666] block mb-1">{field.label}</label>
+                  <div key={idx} className="mb-4">
+                    <label className="text-[13px] text-[#666666] block mb-1">{field.label}</label>
                     <input type={field.type} placeholder={field.label} value={cardioMetrics[field.key] || ''}
                       onChange={(e) => setCardioMetrics((p) => ({ ...p, [field.key]: e.target.value }))}
-                      className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
+                      className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3 min-h-[48px] text-[17px] text-white border-0 outline-none" />
                   </div>
                 ));
               })()}
@@ -1013,9 +1014,9 @@ export default function Workout({ showToast }) {
 
           {/* HIC Section - only for tri */}
           {todayWorkout.type === 'tri' && (
-            <div className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
+            <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">HIC</h3>
+                <h3 className="text-[17px] font-semibold text-white">HIC</h3>
                 <button
                   onClick={() => { setSkippedHic(!skippedHic); if (!skippedHic) { setSelectedHic(null); setHicMetrics({}); } }}
                   className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
@@ -1062,14 +1063,14 @@ export default function Workout({ showToast }) {
                 </div>
               )}
               {!skippedHic && selectedHic && (
-                <div className="mt-3 pt-3 border-t border-white/[0.03]">
-                  <h4 className="text-xs font-semibold text-[#B3B3B3] mb-2">{selectedHic} - Log</h4>
+                <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                  <h4 className="text-[15px] font-semibold text-white mb-3">{selectedHic} - Log</h4>
                   {hicFields.map((field, idx) => (
-                    <div key={idx} className="mb-2">
-                      <label className="text-[10px] uppercase text-[#666666] block mb-1">{field.label}</label>
+                    <div key={idx} className="mb-4">
+                      <label className="text-[13px] text-[#666666] block mb-1">{field.label}</label>
                       <input type={field.type} placeholder={field.label} value={hicMetrics[field.key] || ''}
                         onChange={(e) => setHicMetrics((p) => ({ ...p, [field.key]: e.target.value }))}
-                        className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
+                        className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3 min-h-[48px] text-[17px] text-white border-0 outline-none" />
                     </div>
                   ))}
                 </div>
@@ -1079,11 +1080,11 @@ export default function Workout({ showToast }) {
 
           {/* Long notes */}
           {todayWorkout.type === 'long' && (
-            <div className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
-              <label className="text-[10px] uppercase text-[#666666] block mb-1">Workout Notes</label>
+            <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+              <label className="text-[13px] text-[#666666] block mb-1">Workout Notes</label>
               <textarea value={longNotes} onChange={(e) => setLongNotes(e.target.value)}
                 placeholder="Describe your workout..."
-                className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white min-h-[100px] resize-y" />
+                className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3 text-[17px] text-white min-h-[100px] resize-y border-0 outline-none" />
             </div>
           )}
         </div>
@@ -1091,17 +1092,17 @@ export default function Workout({ showToast }) {
 
       {energyLevel !== 'recovery' && (
         <>
-          <div className="bg-[#111111] rounded-xl p-4 border border-white/[0.06]">
-            <label className="text-[10px] uppercase text-[#666666] block mb-1">Duration (minutes, optional)</label>
+          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+            <label className="text-[13px] text-[#666666] block mb-1">Duration (minutes, optional)</label>
             <input type="number" placeholder={elapsedSeconds > 60 ? `~${Math.round(elapsedSeconds / 60)} min (auto)` : 'e.g. 45'}
               value={durationMin} onChange={(e) => setDurationMin(e.target.value)}
-              className="w-full bg-dark-500 border border-white/[0.03] rounded-lg px-3 py-2 text-sm text-white" />
+              className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3 min-h-[48px] text-[17px] text-white border-0 outline-none" />
           </div>
 
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleComplete}
-            className="w-full min-h-[52px] py-4 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-sm tracking-wide transition-colors"
+            className="w-full min-h-[52px] rounded-2xl bg-accent-green hover:bg-accent-green/90 text-white font-semibold text-[17px] tracking-wide transition-colors"
           >
             Complete Workout
           </motion.button>

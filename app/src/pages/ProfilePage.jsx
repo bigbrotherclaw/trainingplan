@@ -26,18 +26,14 @@ function Avatar({ profile, user }) {
       <img
         src={profile.avatar_url}
         alt={name}
-        className="w-20 h-20 rounded-full object-cover border-2 border-white/[0.06]"
+        className="w-20 h-20 rounded-full object-cover"
       />
     );
   }
 
   return (
-    <div className="w-20 h-20 rounded-full bg-[#3B82F6]/20 border-2 border-[#3B82F6]/30 flex items-center justify-center">
-      {initials ? (
-        <span className="text-[#3B82F6] text-2xl font-bold">{initials}</span>
-      ) : (
-        <User className="text-[#3B82F6]" size={32} />
-      )}
+    <div className="w-20 h-20 rounded-full bg-accent-blue text-[28px] font-bold text-white flex items-center justify-center">
+      {initials ? initials : <User size={32} />}
     </div>
   );
 }
@@ -172,118 +168,104 @@ export default function ProfilePage() {
 
   return (
     <>
-      <div className="px-5 pt-4 pb-24 bg-black min-h-screen">
-        <div className="max-w-[440px] mx-auto flex flex-col gap-4">
+      <div className="px-5 pt-4 pb-28 min-h-screen bg-black">
+        <div className="max-w-[440px] mx-auto flex flex-col gap-5">
 
-          {/* Profile header card */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#111111] rounded-2xl border border-white/[0.06] p-6"
-          >
-            <div className="flex flex-col items-center gap-4">
-              <Avatar profile={profile} user={user} />
+          {/* Top: Avatar + Name + Email */}
+          <div className="flex flex-col items-center text-center mb-8">
+            <Avatar profile={profile} user={user} />
 
-              {/* Name */}
-              <div className="text-center w-full">
-                {editingName ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <input
-                      ref={inputRef}
-                      value={nameValue}
-                      onChange={(e) => setNameValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveName();
-                        if (e.key === 'Escape') handleCancelName();
-                      }}
-                      className="bg-[#1A1A1A] border border-[#3B82F6]/40 rounded-xl px-4 py-3 min-h-[48px] text-white text-center text-base font-semibold focus:outline-none w-56"
-                    />
-                    {nameError && <p className="text-red-400 text-xs">{nameError}</p>}
-                    <div className="flex gap-2 w-full">
-                      <button
-                        onClick={handleSaveName}
-                        disabled={nameLoading}
-                        className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] bg-[#3B82F6] disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
-                      >
-                        {nameLoading ? <Spinner /> : <Check size={14} />}
-                        Save
-                      </button>
-                      <button
-                        onClick={handleCancelName}
-                        className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] border border-white/[0.06] text-[#B3B3B3] text-sm font-semibold rounded-xl transition-colors"
-                      >
-                        <X size={14} />
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-white font-bold text-xl">
-                      {profile?.display_name || 'Unnamed Operator'}
-                    </span>
-                    <button
-                      onClick={handleEditName}
-                      className="text-[#666666] active:text-[#B3B3B3] transition-colors"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                  </div>
-                )}
-
-                <p className="text-sm text-[#666666] mt-1">{user?.email}</p>
-
-                {memberSince && (
-                  <p className="text-[#666666] text-xs mt-2">Member since {memberSince}</p>
-                )}
+            {editingName ? (
+              <div className="flex flex-col items-center gap-2 mt-4 w-full">
+                <input
+                  ref={inputRef}
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') handleCancelName();
+                  }}
+                  className="bg-[#1A1A1A] border border-[#3B82F6]/40 rounded-xl px-4 py-3 min-h-[48px] text-white text-center text-base font-semibold focus:outline-none w-56"
+                />
+                {nameError && <p className="text-red-400 text-xs">{nameError}</p>}
+                <div className="flex gap-2 w-56">
+                  <button
+                    onClick={handleSaveName}
+                    disabled={nameLoading}
+                    className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] bg-[#3B82F6] disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+                  >
+                    {nameLoading ? <Spinner /> : <Check size={14} />}
+                    Save
+                  </button>
+                  <button
+                    onClick={handleCancelName}
+                    className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] border border-white/[0.06] text-[#B3B3B3] text-sm font-semibold rounded-xl transition-colors"
+                  >
+                    <X size={14} />
+                    Cancel
+                  </button>
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <h1 className="text-[22px] font-bold text-white">
+                    {profile?.display_name || 'Unnamed Operator'}
+                  </h1>
+                  <button
+                    onClick={handleEditName}
+                    className="text-[#666666] active:text-[#B3B3B3] transition-colors"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
+                <p className="text-[15px] text-[#666666] mt-1">{user?.email}</p>
+              </>
+            )}
+          </div>
+
+          {/* Account info card */}
+          <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 space-y-4">
+            <p className="text-[12px] uppercase tracking-widest text-[#555555] font-semibold">Account</p>
+            {memberSince && (
+              <div className="flex justify-between py-2 border-b border-white/[0.04]">
+                <span className="text-[15px] text-[#A0A0A0]">Member since</span>
+                <span className="text-[15px] font-semibold text-white">{memberSince}</span>
+              </div>
+            )}
+            <div className="flex justify-between py-2">
+              <span className="text-[15px] text-[#A0A0A0]">Email</span>
+              <span className="text-[15px] font-semibold text-white truncate ml-4 max-w-[200px]">{user?.email}</span>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Data card */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 flex flex-col gap-3"
+          {/* Export */}
+          <button
+            onClick={handleExport}
+            className="w-full min-h-[48px] bg-[#111111] border border-white/[0.06] rounded-2xl text-[15px] font-medium text-white flex items-center justify-center gap-2"
           >
-            <p className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Data</p>
+            <Download size={16} />
+            Export Data
+          </button>
 
-            <button
-              onClick={handleExport}
-              className="w-full flex items-center gap-3 px-4 min-h-[48px] rounded-xl bg-[#1A1A1A] border border-white/[0.06] text-white text-sm font-medium active:bg-[#222222] active:scale-[0.98] transition-transform"
-            >
-              <Download className="text-[#3B82F6]" size={18} />
-              Export Data
-            </button>
-          </motion.div>
-
-          {/* Account card */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5 flex flex-col gap-3"
+          {/* Sign Out */}
+          <button
+            onClick={handleSignOut}
+            disabled={signOutLoading}
+            className="w-full min-h-[48px] border border-red-500/20 rounded-2xl text-red-400 text-[15px] font-medium flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <p className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Account</p>
+            {signOutLoading ? <Spinner /> : <LogOut size={16} />}
+            Sign Out
+          </button>
 
-            <button
-              onClick={handleSignOut}
-              disabled={signOutLoading}
-              className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border border-red-500/30 text-red-400 text-sm font-semibold disabled:opacity-50 active:bg-red-950/20 active:scale-[0.98] transition-transform"
-            >
-              {signOutLoading ? <Spinner /> : <LogOut size={16} />}
-              Sign Out
-            </button>
+          {/* Delete Account */}
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full min-h-[48px] text-red-400/50 text-[13px] flex items-center justify-center"
+          >
+            Delete Account
+          </button>
 
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-red-500/10 text-red-400 text-sm font-semibold active:bg-red-500/20 active:scale-[0.98] transition-transform"
-            >
-              <Trash2 size={16} />
-              Delete Account
-            </button>
-          </motion.div>
         </div>
       </div>
 

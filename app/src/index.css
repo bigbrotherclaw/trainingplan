@@ -26,6 +26,17 @@
   --font-sans: -apple-system, 'SF Pro Display', system-ui, sans-serif;
 }
 
+:root {
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --text-tertiary: #666666;
+  --text-muted: #444444;
+  --card-bg: #111111;
+  --card-bg-secondary: #1A1A1A;
+  --card-border: rgba(255,255,255,0.06);
+  --card-radius: 16px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -36,21 +47,22 @@ html, body, #root {
   height: 100%;
   font-family: var(--font-sans);
   background: #000000;
-  color: #e5e7eb;
+  color: var(--text-primary);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
 }
 
-html {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+body {
+  font-size: 17px;
 }
 
-@supports (padding: env(safe-area-inset-top)) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+/* Safe area classes for Capacitor iOS */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 #root {

@@ -7,7 +7,7 @@
   },
   "ios": {
     "backgroundColor": "#000000",
-    "contentInset": "always"
+    "contentInset": "automatic"
   },
   "backgroundColor": "#000000"
 }

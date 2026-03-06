@@ -403,7 +403,8 @@ export default function SocialPage() {
   }
 
   return (
-    <div className="px-5 pt-4 pb-24 bg-black min-h-screen">
+    <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-5">
+      <h2 className="text-[28px] font-bold text-white mb-2">Social</h2>
       <motion.div
         variants={containerVariants}
         initial="hidden"

@@ -34,9 +34,9 @@ function UserAvatar({ user, profile, onClick }) {
     <button
       onClick={onClick}
       aria-label="Profile"
-      className="w-7 h-7 rounded-full bg-accent-blue flex items-center justify-center shrink-0 active:opacity-70 transition-opacity"
+      className="w-8 h-8 rounded-full bg-accent-blue flex items-center justify-center shrink-0 active:opacity-70 transition-opacity"
     >
-      <span className="text-white text-[11px] font-semibold leading-none">{initial}</span>
+      <span className="text-white text-[13px] font-semibold leading-none">{initial}</span>
     </button>
   );
 }
@@ -109,10 +109,10 @@ export default function App() {
           transition={{ duration: 0.25 }}
           className="flex flex-col h-dvh bg-black"
         >
-          <header className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 py-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] flex items-center justify-between">
+          <header className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 py-3 safe-top flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-semibold text-white tracking-tight">Training Plan</h1>
-              <p className="text-xs text-[#666666] mt-0.5">Block {settings.block} / Week {settings.week}</p>
+              <h1 className="text-[22px] font-bold text-white tracking-tight">Training Plan</h1>
+              <p className="text-[13px] text-[#666666] mt-0.5">Block {settings.block} / Week {settings.week}</p>
             </div>
             <UserAvatar
               user={user}
@@ -138,8 +138,7 @@ export default function App() {
           </main>
 
           <nav
-            className="shrink-0 border-t border-white/[0.06] bg-black flex justify-around items-center px-1"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            className="shrink-0 border-t border-white/[0.06] bg-black flex justify-around items-center px-1 py-2 safe-bottom"
           >
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -152,7 +151,7 @@ export default function App() {
                     isActive ? 'text-accent-blue' : 'text-[#666666] active:text-[#999999]'
                   }`}
                 >
-                  <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+                  <Icon size={24} strokeWidth={isActive ? 2.5 : 1.5} />
                   <span className="text-[11px] font-medium">{tab.label}</span>
                   {isActive && <div className="w-1 h-1 rounded-full bg-accent-blue" />}
                 </button>

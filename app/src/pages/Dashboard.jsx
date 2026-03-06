@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Flame } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
@@ -13,10 +13,10 @@ const TYPE_COLORS = {
 };
 
 const TYPE_BADGE_BG = {
-  rest: 'bg-gray-500/15 text-gray-400',
-  strength: 'bg-amber-500/15 text-amber-400',
-  tri: 'bg-teal-500/15 text-teal-400',
-  long: 'bg-emerald-500/15 text-emerald-400',
+  rest: 'bg-gray-500/20 text-gray-400',
+  strength: 'bg-amber-500/20 text-amber-400',
+  tri: 'bg-teal-500/20 text-teal-400',
+  long: 'bg-emerald-500/20 text-emerald-400',
 };
 
 export default function Dashboard({ onNavigate }) {
@@ -77,8 +77,6 @@ export default function Dashboard({ onNavigate }) {
       .map(d => new Date(d))
       .sort((a, b) => b - a);
 
-    // Current streak: go back from today, counting days that have workouts
-    // Allow rest days (days in the template that are rest) to not break the streak
     let current = 0;
     const check = new Date(today);
     while (true) {
@@ -90,16 +88,13 @@ export default function Dashboard({ onNavigate }) {
         current++;
         check.setDate(check.getDate() - 1);
       } else if (isRest && check <= today) {
-        // Rest days don't break streak but don't add to it
         check.setDate(check.getDate() - 1);
       } else {
         break;
       }
-      // Safety: don't go back more than 365 days
       if (today - check > 365 * 24 * 60 * 60 * 1000) break;
     }
 
-    // Best streak: simple consecutive logged days
     let best = 0, run = 0, prev = null;
     const allDates = [...new Set(workoutHistory.map(e => {
       const d = new Date(e.date); d.setHours(0,0,0,0); return d.getTime();
@@ -117,25 +112,28 @@ export default function Dashboard({ onNavigate }) {
     return { streak: current, bestStreak: Math.max(best, current) };
   }, [workoutHistory, loggedDates, today, weekSwaps]);
 
+  const compliancePct = Math.min(100, Math.round((weekWorkouts / 6) * 100));
   const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const todayColor = TYPE_COLORS[todayWorkout.type];
 
   return (
-    <div className="px-5 pt-4 pb-24 space-y-4">
+    <div className="px-5 pt-4 pb-28 space-y-5">
+
       {/* YOUR WEEK */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03] active:scale-[0.98] transition-transform"
+        className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5"
       >
-        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-3">Your Week</h2>
-        <div className="flex justify-between gap-3 mb-4">
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3">Your Week</h2>
+        <div className="flex justify-between">
           {weekData.map((day, i) => {
             const color = TYPE_COLORS[day.workout.type];
             const filled = day.isLogged;
             const isToday = day.isToday;
             return (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-[#666666] font-medium mb-1">{dayLabels[i]}</span>
+              <div key={i} className="flex flex-col items-center">
+                <span className="text-[11px] text-[#666666] mb-1">{dayLabels[i]}</span>
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     isToday ? 'animate-pulse-ring' : ''
@@ -146,21 +144,21 @@ export default function Dashboard({ onNavigate }) {
                     opacity: !filled && day.isPast && !isToday ? 0.3 : 1,
                   }}
                 >
-                  {filled && <span className="text-black text-xs font-bold">{day.date.getDate()}</span>}
-                  {!filled && <span className="text-[11px] font-medium" style={{ color: color + (isToday ? '' : '80') }}>{day.date.getDate()}</span>}
+                  {filled
+                    ? <span className="text-black text-xs font-bold">{day.date.getDate()}</span>
+                    : <span className="text-[11px] font-medium" style={{ color: color + (isToday ? '' : '80') }}>{day.date.getDate()}</span>
+                  }
                 </div>
               </div>
             );
           })}
         </div>
-        <div className="flex items-center justify-between mt-3">
-          <p className="text-sm text-[#B3B3B3]">
-            <span className="text-white font-semibold">{weekWorkouts}</span> of {plannedWorkouts} workouts complete
-          </p>
+        <p className="text-[15px] text-[#A0A0A0] mt-3">
+          <span className="text-white font-semibold">{weekWorkouts}</span> of {plannedWorkouts} complete
           {weekTonnage > 0 && (
-            <p className="text-xs text-[#666666]">{weekTonnage.toLocaleString()} lbs lifted</p>
+            <span className="text-[13px] text-[#555555] ml-2">· {weekTonnage.toLocaleString()} lbs lifted</span>
           )}
-        </div>
+        </p>
       </motion.div>
 
       {/* TODAY'S WORKOUT */}
@@ -168,68 +166,75 @@ export default function Dashboard({ onNavigate }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03] active:scale-[0.98] transition-transform"
+        className="relative overflow-hidden bg-[#111111] rounded-2xl border border-white/[0.08]"
       >
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest">Today</h2>
-          <span className={`text-[10px] font-semibold uppercase px-3 py-1.5 rounded-full ${TYPE_BADGE_BG[todayWorkout.type]}`}>
-            {todayWorkout.type}
-          </span>
-        </div>
-        <h3 className="text-xl font-bold text-white mb-1">{todayWorkout.name}</h3>
-        <p className="text-sm text-[#666666] mb-4">
-          {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-        </p>
-
-        {todayLogged ? (
-          <div className="flex items-center gap-2 text-accent-green text-sm font-medium">
-            <div className="w-2 h-2 rounded-full bg-accent-green" />
-            Completed today
+        {/* Left color accent bar */}
+        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: todayColor }} />
+        <div className="p-6 pl-7">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Today</h2>
+            <span className={`text-[12px] font-medium px-3 py-1 rounded-full shrink-0 ${TYPE_BADGE_BG[todayWorkout.type] || 'bg-gray-500/20 text-gray-400'}`}>
+              {todayWorkout.label || todayWorkout.type}
+            </span>
           </div>
-        ) : todayWorkout.type !== 'rest' ? (
-          <button
-            onClick={() => onNavigate('workout')}
-            className="flex items-center justify-center gap-2 w-full bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-3 rounded-xl text-base font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
-          >
-            Start Workout
-            <ChevronRight size={16} />
-          </button>
-        ) : (
-          <p className="text-sm text-[#666666] italic">Take time to recover and prepare for tomorrow.</p>
-        )}
+          <h3 className="text-[22px] font-bold text-white mb-1">{todayWorkout.name}</h3>
+          <p className="text-[15px] text-[#A0A0A0]">
+            {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          </p>
+
+          {todayLogged ? (
+            <div className="flex items-center gap-2 text-accent-green text-[15px] font-medium mt-4">
+              <div className="w-2 h-2 rounded-full bg-accent-green" />
+              Completed today
+            </div>
+          ) : todayWorkout.type !== 'rest' ? (
+            <button
+              onClick={() => onNavigate('workout')}
+              className="flex items-center justify-center gap-2 w-full bg-accent-blue hover:bg-accent-blue/90 text-white rounded-2xl text-[17px] font-semibold transition-colors active:scale-[0.98] mt-4 min-h-[52px]"
+            >
+              Start Workout
+              <ChevronRight size={18} />
+            </button>
+          ) : (
+            <p className="text-[15px] text-[#666666] italic mt-4">Take time to recover and prepare for tomorrow.</p>
+          )}
+        </div>
       </motion.div>
 
-      {/* STREAK */}
+      {/* STATS ROW */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-dark-800 rounded-2xl p-5 border border-white/[0.03] active:scale-[0.98] transition-transform"
+        className="flex gap-3"
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-3">Streak</h2>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-white">{streak}</span>
-              <Flame size={24} className="text-orange-400" />
-            </div>
-            <p className="text-xs text-[#666666] mt-1">Best: {bestStreak} days</p>
-          </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold text-white">{workoutHistory.length}</div>
-            <p className="text-xs text-[#666666]">total workouts</p>
-          </div>
+        <div className="flex-1 bg-[#111111] rounded-2xl border border-white/[0.06] p-4 text-center">
+          <div className="text-[28px] font-bold text-white leading-none">{streak}</div>
+          <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Streak</div>
+        </div>
+        <div className="flex-1 bg-[#111111] rounded-2xl border border-white/[0.06] p-4 text-center">
+          <div className="text-[28px] font-bold text-white leading-none">{workoutHistory.length}</div>
+          <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Workouts</div>
+        </div>
+        <div className="flex-1 bg-[#111111] rounded-2xl border border-white/[0.06] p-4 text-center">
+          <div className="text-[28px] font-bold text-white leading-none">{compliancePct}%</div>
+          <div className="text-[12px] uppercase tracking-wider text-[#555555] mt-1">Compliance</div>
         </div>
       </motion.div>
 
-      {/* COMPLIANCE RING */}
+      {/* WEEKLY COMPLIANCE RING */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
+        className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5"
       >
-        <ComplianceRing weekWorkouts={weekWorkouts} />
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Weekly Compliance</h2>
+        <div className="flex justify-center">
+          <ComplianceRing weekWorkouts={weekWorkouts} size={100} />
+        </div>
       </motion.div>
+
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, Activity } from 'lucide-react';
+import { Trophy, BarChart3 } from 'lucide-react';
 import { OPERATOR_LIFTS, EXERCISE_MUSCLE_MAP } from '../data/training';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 
@@ -159,30 +159,32 @@ export default function Stats() {
 
   if (workoutHistory.length === 0) {
     return (
-      <div className="px-5 pt-4 pb-24 bg-black min-h-screen flex flex-col items-center justify-center text-center">
-        <Activity size={48} className="text-[#333333] mx-auto mb-4" />
-        <h2 className="text-2xl font-semibold text-white mb-2">No Stats Yet</h2>
-        <p className="text-sm text-[#666666]">Log workouts to see your stats.</p>
+      <div className="px-5 pt-4 pb-28 bg-black min-h-screen flex flex-col items-center justify-center text-center">
+        <BarChart3 size={48} className="text-[#333333] mx-auto mb-4" />
+        <p className="text-[17px] text-[#555555] mb-2">Log workouts to see your stats</p>
+        <p className="text-[13px] text-[#444444]">Complete your first workout to unlock charts and trends</p>
       </div>
     );
   }
 
   return (
-    <div className="px-5 pt-4 pb-24 bg-black min-h-screen space-y-4">
+    <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-5">
+      <h1 className="text-[28px] font-bold text-white mb-2">Stats</h1>
+
       {/* STRENGTH JOURNEY */}
-      <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
-        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Strength Journey</h2>
+      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Strength Journey</h2>
 
         {/* Lift tabs */}
-        <div className="flex gap-1 bg-[#1a1a1a] rounded-xl p-1 mb-4">
+        <div className="flex gap-2 mb-4">
           {LIFT_TABS.map(lift => (
             <button
               key={lift.name}
               onClick={() => setSelectedLift(lift.name)}
-              className={`flex-1 min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`px-4 py-2 min-h-[40px] rounded-xl text-[13px] font-medium transition-colors ${
                 selectedLift === lift.name
                   ? 'bg-accent-blue text-white'
-                  : 'text-[#666666] hover:text-[#999999]'
+                  : 'bg-[#1A1A1A] text-[#666666]'
               }`}
             >
               {lift.short}
@@ -190,14 +192,14 @@ export default function Stats() {
           ))}
         </div>
 
-        {/* Time range */}
-        <div className="flex justify-end gap-1 mb-3">
+        {/* Time range toggles */}
+        <div className="flex gap-2 mb-4">
           {TIME_RANGES.map(r => (
             <button
               key={r}
               onClick={() => setTimeRange(r)}
-              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
-                timeRange === r ? 'bg-accent-blue/20 text-accent-blue' : 'text-[#666666]'
+              className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[12px] font-medium transition-colors ${
+                timeRange === r ? 'bg-white/10 text-white' : 'text-[#555555]'
               }`}
             >
               {r}
@@ -222,24 +224,23 @@ export default function Stats() {
 
             {/* Personal Best */}
             {personalBest && (
-              <div className="mt-4 flex items-center gap-3 bg-[#1a1a1a] rounded-xl px-4 py-3">
-                <Trophy size={18} className="text-amber-400" />
-                <div>
-                  <div className="text-sm font-semibold text-white">{personalBest.weight} lbs <span className="text-[#666666] font-normal">x{personalBest.reps}</span></div>
-                  <div className="text-[10px] text-[#666666]">Personal Best - {new Date(personalBest.fullDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                </div>
+              <div className="flex items-center justify-between mt-4 p-3 bg-[#1A1A1A] rounded-xl">
+                <span className="text-[13px] text-[#666666]">Personal Best</span>
+                <span className="text-[17px] font-bold text-accent-amber">
+                  {personalBest.weight} lbs <span className="text-[13px] font-medium text-[#666666]">×{personalBest.reps}</span>
+                </span>
               </div>
             )}
           </>
         ) : (
-          <p className="text-center text-sm text-[#666666] py-8">No data for this lift in this time range.</p>
+          <p className="text-center text-[13px] text-[#555555] py-8">No data for this lift in this time range.</p>
         )}
       </div>
 
       {/* VOLUME THIS WEEK */}
-      <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
-        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Volume This Week</h2>
-        <ResponsiveContainer width="100%" height={160}>
+      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Volume This Week</h2>
+        <ResponsiveContainer width="100%" height={180}>
           <BarChart data={volumeWeek} barCategoryGap="20%">
             <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
@@ -262,18 +263,18 @@ export default function Stats() {
 
       {/* BODY BALANCE */}
       {muscleBalance.length > 0 && (
-        <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
-          <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Body Balance</h2>
-          <div className="space-y-2.5">
+        <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+          <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Body Balance</h2>
+          <div className="space-y-3">
             {muscleBalance.map(m => (
-              <div key={m.key}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-[#B3B3B3]">{m.label}</span>
-                  <span className="text-[10px] text-[#666666]">{m.points} pts</span>
+              <div key={m.key} className="min-h-[40px] flex flex-col justify-center">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[13px] text-[#A0A0A0]">{m.label}</span>
+                  <span className="text-[11px] text-[#555555]">{m.points} pts</span>
                 </div>
-                <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                <div className="bg-[#1A1A1A] h-3 rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all"
+                    className="h-3 rounded-full transition-all"
                     style={{ width: `${m.pct}%`, backgroundColor: m.color }}
                   />
                 </div>
@@ -283,15 +284,15 @@ export default function Stats() {
         </div>
       )}
 
-      {/* STREAK & CONSISTENCY */}
-      <div className="bg-[#111111] rounded-2xl p-5 border border-white/[0.06]">
-        <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest mb-4">Streak & Consistency</h2>
-        <p className="text-xs text-[#666666] mb-3">Last 12 weeks</p>
+      {/* CONSISTENCY GRID */}
+      <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-5">
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Streak & Consistency</h2>
+        <p className="text-[11px] text-[#555555] mb-3">Last 12 weeks</p>
         <div className="grid grid-cols-12 gap-1.5">
           {weeklyConsistency.map((w, i) => (
             <div
               key={i}
-              className="aspect-square rounded-sm"
+              className="w-4 h-4 rounded-sm"
               style={{
                 backgroundColor: w.pct === 0 ? '#1a1a1a' :
                   w.pct <= 33 ? '#F59E0B33' :
@@ -302,14 +303,14 @@ export default function Stats() {
             />
           ))}
         </div>
-        <div className="flex items-center justify-between mt-3 text-[10px] text-[#666666]">
+        <div className="flex items-center justify-between mt-3 text-[11px] text-[#555555]">
           <span>Less</span>
           <div className="flex gap-1">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#1a1a1a' }} />
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#F59E0B33' }} />
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#F59E0B80' }} />
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#10B98180' }} />
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#10B981' }} />
+            <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#1a1a1a' }} />
+            <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#F59E0B33' }} />
+            <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#F59E0B80' }} />
+            <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#10B98180' }} />
+            <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#10B981' }} />
           </div>
           <span>More</span>
         </div>
