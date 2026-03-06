@@ -67,14 +67,51 @@ export function AuthProvider({ children }) {
 
   async function signInWithGoogle() {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin + window.location.pathname },
-      })
-      if (error) return { error }
-      return { data }
+      const isNative = window.Capacitor?.isNativePlatform?.();
+      
+      if (isNative) {
+        // On native iOS, use Capacitor Browser (SFSafariViewController)
+        // which Google allows for OAuth (unlike WKWebView)
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: 'com.bigbrother.trainingplan://login-callback',
+            skipBrowserRedirect: true,
+          },
+        });
+        if (error) return { error };
+        
+        // Open the auth URL in SFSafariViewController
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url: data.url, presentationStyle: 'popover' });
+        
+        // Listen for the app URL callback
+        const { App: CapApp } = await import('@capacitor/app');
+        CapApp.addListener('appUrlOpen', async ({ url }) => {
+          if (url.includes('login-callback')) {
+            // Extract tokens from URL fragment
+            const params = new URLSearchParams(url.split('#')[1] || url.split('?')[1] || '');
+            const access_token = params.get('access_token');
+            const refresh_token = params.get('refresh_token');
+            if (access_token && refresh_token) {
+              await supabase.auth.setSession({ access_token, refresh_token });
+            }
+            await Browser.close();
+          }
+        });
+        
+        return { data };
+      } else {
+        // On web, use standard redirect
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: window.location.origin + window.location.pathname },
+        });
+        if (error) return { error };
+        return { data };
+      }
     } catch (error) {
-      return { error }
+      return { error };
     }
   }
 
