@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
+import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
 
@@ -22,7 +23,16 @@ const TYPE_BADGE_BG = {
 
 export default function Dashboard({ onNavigate }) {
   const { workoutHistory, weekSwaps } = useApp();
-  const { connected } = useWhoop();
+  const { connected, latestRecovery, latestSleep, latestCycle } = useWhoop();
+
+  // Recovery data
+  const recoverySuggestion = useMemo(() => {
+    if (!connected || !latestRecovery) return null;
+    return getRecoverySuggestion(latestRecovery, latestSleep, latestCycle);
+  }, [connected, latestRecovery, latestSleep, latestCycle]);
+
+  const recoveryScore = recoverySuggestion?.score ?? null;
+  const zoneColor = recoverySuggestion ? getZoneColor(recoverySuggestion.zone) : null;
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayWorkout = useMemo(() => getSwappedWorkoutForDate(today, weekSwaps), [today, weekSwaps]);
@@ -162,6 +172,59 @@ export default function Dashboard({ onNavigate }) {
           )}
         </p>
       </motion.div>
+
+      {/* RECOVERY SUMMARY (Whoop) */}
+      {recoverySuggestion && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Recovery</h2>
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: zoneColor + '20', color: zoneColor }}>
+              {recoverySuggestion.zone === 'green' ? 'Green' : recoverySuggestion.zone === 'yellow' ? 'Yellow' : 'Red'}
+            </span>
+          </div>
+
+          {/* Score + metrics row */}
+          <div className="flex items-center gap-4">
+            {/* Recovery arc */}
+            <div className="relative w-14 h-14 shrink-0">
+              <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90">
+                <circle cx="28" cy="28" r="24" fill="none" stroke="#333" strokeWidth="4" />
+                <circle cx="28" cy="28" r="24" fill="none" stroke={zoneColor} strokeWidth="4"
+                  strokeDasharray={`${(recoveryScore / 100) * 150.8} 150.8`}
+                  strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[15px] font-bold" style={{ color: zoneColor }}>{recoveryScore}%</span>
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="flex-1 grid grid-cols-3 gap-2">
+              <div className="text-center">
+                <div className="text-[15px] font-semibold text-white">{recoverySuggestion.hrv?.toFixed(1) ?? '—'}</div>
+                <div className="text-[10px] text-[#666666] uppercase">HRV</div>
+              </div>
+              <div className="text-center">
+                <div className="text-[15px] font-semibold text-white">{recoverySuggestion.sleepScore ?? '—'}%</div>
+                <div className="text-[10px] text-[#666666] uppercase">Sleep</div>
+              </div>
+              <div className="text-center">
+                <div className="text-[15px] font-semibold text-white">{recoverySuggestion.strain?.toFixed(1) ?? '—'}</div>
+                <div className="text-[10px] text-[#666666] uppercase">Strain</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Suggestion headline */}
+          <p className="text-[13px] text-[#A0A0A0] mt-3 leading-snug">{recoverySuggestion.headline}</p>
+        </motion.div>
+      )}
 
       {/* TODAY'S WORKOUT */}
       <motion.div
