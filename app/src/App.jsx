@@ -50,10 +50,12 @@ export default function App() {
   const { settings, workoutHistory, needsMigration, migrateData } = useApp();
   const { user, profile, loading } = useAuth();
 
-  // Show migration modal when needsMigration becomes true (only auto-open, never auto-close)
+  // Auto-migrate silently instead of showing blocking modal
   useEffect(() => {
-    if (needsMigration) setShowMigrationModal(true);
-  }, [needsMigration]);
+    if (needsMigration && migrateData) {
+      migrateData().catch(() => {});
+    }
+  }, [needsMigration, migrateData]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -167,16 +169,7 @@ export default function App() {
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {showMigrationModal && (
-              <MigrationModal
-                workoutCount={workoutHistory.length}
-                onSync={migrateData}
-                onStartFresh={() => setShowMigrationModal(false)}
-                onDismiss={() => setShowMigrationModal(false)}
-              />
-            )}
-          </AnimatePresence>
+          {/* Migration now runs silently — no blocking modal */}
         </motion.div>
       )}
     </AnimatePresence>
