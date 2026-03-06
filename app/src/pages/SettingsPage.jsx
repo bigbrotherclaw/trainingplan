@@ -250,7 +250,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
                     <Zap size={14} className="text-[#44b700]" />
                     <span className="text-[15px] text-white">Recovery</span>
                   </div>
-                  <span className="text-[17px] font-bold text-white">{latestRecovery.score ?? latestRecovery.recovery_score}%</span>
+                  <span className="text-[17px] font-bold text-white">{latestRecovery.score?.recovery_score ?? latestRecovery.recovery_score ?? '--'}%</span>
                 </div>
               )}
 
@@ -260,7 +260,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
                     <Moon size={14} className="text-[#8B8BF5]" />
                     <span className="text-[15px] text-white">Sleep</span>
                   </div>
-                  <span className="text-[17px] font-bold text-white">{latestSleep.score ?? latestSleep.sleep_performance_percentage}%</span>
+                  <span className="text-[17px] font-bold text-white">{latestSleep.score?.sleep_performance_percentage ?? latestSleep.sleep_performance_percentage ?? '--'}%</span>
                 </div>
               )}
 
