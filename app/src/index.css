@@ -50,6 +50,7 @@ html, body, #root {
   color: var(--text-primary);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 body {

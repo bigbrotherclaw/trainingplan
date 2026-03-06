@@ -148,7 +148,7 @@ export default function App() {
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
                   className={`flex flex-col items-center gap-1 py-3 px-3 min-h-[48px] transition-colors ${
-                    isActive ? 'text-accent-blue' : 'text-[#666666] active:text-[#999999]'
+                    isActive ? 'text-accent-blue' : 'text-[#888888] active:text-[#AAAAAA]'
                   }`}
                 >
                   <Icon size={24} strokeWidth={isActive ? 2.5 : 1.5} />
