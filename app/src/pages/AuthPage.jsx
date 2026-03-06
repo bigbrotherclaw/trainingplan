@@ -27,7 +27,7 @@ function InputField({ icon: Icon, type = 'text', placeholder, value, onChange, r
   return (
     <div className="relative">
       {Icon && (
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666666]">
+        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666666] pointer-events-none">
           <Icon size={16} />
         </div>
       )}
@@ -36,7 +36,7 @@ function InputField({ icon: Icon, type = 'text', placeholder, value, onChange, r
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className={`w-full bg-[#1A1A1A] border border-white/[0.03] rounded-lg py-3 text-white placeholder-[#666666] text-sm focus:outline-none focus:border-[#3B82F6]/40 transition-colors ${Icon ? 'pl-10' : 'px-4'} ${rightElement ? 'pr-12' : 'pr-4'}`}
+        className={`w-full bg-[#1A1A1A] border border-white/[0.03] rounded-lg py-3.5 text-white placeholder-[#666666] text-sm focus:outline-none focus:border-[#3B82F6]/40 transition-colors ${Icon ? 'pl-12' : 'px-4'} ${rightElement ? 'pr-12' : 'pr-4'}`}
       />
       {rightElement && (
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -340,7 +340,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-12 safe-top safe-bottom">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 pb-20 safe-top safe-bottom">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

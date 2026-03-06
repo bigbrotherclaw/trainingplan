@@ -1,5 +1,8 @@
 {
   "appId": "com.bigbrother.trainingplan",
   "appName": "Training Plan",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "allowNavigation": ["ywuqqzaosauxwgajjpgg.supabase.co", "accounts.google.com", "*.google.com"]
+  }
 }
