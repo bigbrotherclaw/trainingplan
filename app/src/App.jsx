@@ -47,7 +47,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showMigrationModal, setShowMigrationModal] = useState(false);
 
-  const { settings, workoutHistory, needsMigration, migrateData } = useApp();
+  const { settings, workoutHistory, needsMigration, migrateData, acceptedSuggestion, setAcceptedSuggestion } = useApp();
   const { user, profile, loading } = useAuth();
 
   // Show migration modal when needsMigration becomes true (only auto-open, never auto-close)
@@ -69,7 +69,7 @@ export default function App() {
     if (showProfile) return <ProfilePage />;
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNavigate={setActiveTab} showToast={showToast} />;
+        return <Dashboard onNavigate={setActiveTab} showToast={showToast} acceptedSuggestion={acceptedSuggestion} onAcceptSuggestion={(s) => setAcceptedSuggestion(s)} onDismissSuggestion={() => setAcceptedSuggestion(null)} />;
       case 'workout':
         return <Workout showToast={showToast} />;
       case 'calendar':
@@ -79,7 +79,7 @@ export default function App() {
       case 'settings':
         return <SettingsPage showToast={showToast} />;
       default:
-        return <Dashboard onNavigate={setActiveTab} showToast={showToast} />;
+        return <Dashboard onNavigate={setActiveTab} showToast={showToast} acceptedSuggestion={acceptedSuggestion} onAcceptSuggestion={(s) => setAcceptedSuggestion(s)} onDismissSuggestion={() => setAcceptedSuggestion(null)} />;
     }
   };
 

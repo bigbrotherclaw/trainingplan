@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, ChevronDown, ChevronUp, Heart, Activity, Moon, Zap, Battery } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useWhoop } from '../hooks/useWhoop';
+import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
 
@@ -19,8 +21,189 @@ const TYPE_BADGE_BG = {
   long: 'bg-emerald-500/20 text-emerald-400',
 };
 
-export default function Dashboard({ onNavigate }) {
-  const { workoutHistory, weekSwaps } = useApp();
+function scoreToZone(score) {
+  if (score >= 67) return 'green';
+  if (score >= 34) return 'yellow';
+  return 'red';
+}
+
+/* ── Recovery Score Arc (270-degree SVG ring) ── */
+function RecoveryArc({ score, color, size = 80 }) {
+  const strokeWidth = 6;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const arcFraction = 0.75; // 270 degrees
+  const arcLength = circumference * arcFraction;
+  const filled = arcLength * (score / 100);
+  const rotation = 135; // start at bottom-left
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="block">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="white"
+          strokeOpacity={0.08}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${arcLength} ${circumference}`}
+          strokeLinecap="round"
+          transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${filled} ${circumference}`}
+          strokeLinecap="round"
+          transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
+          style={{ transition: 'stroke-dasharray 0.6s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[28px] font-bold text-white leading-none">{score}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Recovery Banner ── */
+function RecoveryBanner({ latestRecovery, latestSleep, latestCycle }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const score = latestRecovery?.score ?? 0;
+  const hrv = latestRecovery?.hrv ?? '--';
+  const rhr = latestRecovery?.resting_heart_rate ?? latestRecovery?.restingHeartRate ?? '--';
+  const sleepScore = latestSleep?.score ?? latestSleep?.qualityDuration ?? '--';
+  const sleepDuration = latestSleep?.duration ?? latestSleep?.qualityDuration;
+  const strain = latestCycle?.strain ?? latestCycle?.day_strain ?? '--';
+  const zoneColor = getZoneColor(scoreToZone(score));
+
+  const sleepHours = sleepDuration
+    ? `${Math.floor(sleepDuration / 3600000)}h ${Math.round((sleepDuration % 3600000) / 60000)}m`
+    : null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden cursor-pointer"
+      style={{
+        background: `linear-gradient(135deg, ${zoneColor}0D 0%, #141414 60%)`,
+      }}
+      onClick={() => setExpanded(!expanded)}
+    >
+      <div className="p-5 flex items-center gap-5">
+        <RecoveryArc score={score} color={zoneColor} size={80} />
+
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-2">Recovery</h2>
+          <div className="flex gap-4">
+            <div className="flex items-center gap-1.5">
+              <Activity size={14} className="text-[#666666]" />
+              <span className="text-[13px] text-[#A0A0A0]">HRV</span>
+              <span className="text-[13px] text-white font-semibold">{hrv}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Moon size={14} className="text-[#666666]" />
+              <span className="text-[13px] text-[#A0A0A0]">Sleep</span>
+              <span className="text-[13px] text-white font-semibold">{sleepScore}</span>
+            </div>
+          </div>
+        </div>
+
+        {expanded ? (
+          <ChevronUp size={18} className="text-[#555555] shrink-0" />
+        ) : (
+          <ChevronDown size={18} className="text-[#555555] shrink-0" />
+        )}
+      </div>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-4 flex gap-4 border-t border-white/[0.06] pt-3">
+              {sleepHours && (
+                <div className="flex items-center gap-1.5">
+                  <Moon size={14} className="text-[#666666]" />
+                  <span className="text-[13px] text-[#A0A0A0]">Duration</span>
+                  <span className="text-[13px] text-white font-semibold">{sleepHours}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <Heart size={14} className="text-[#666666]" />
+                <span className="text-[13px] text-[#A0A0A0]">RHR</span>
+                <span className="text-[13px] text-white font-semibold">{rhr}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Zap size={14} className="text-[#666666]" />
+                <span className="text-[13px] text-[#A0A0A0]">Strain</span>
+                <span className="text-[13px] text-white font-semibold">{typeof strain === 'number' ? strain.toFixed(1) : strain}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ── Recovery Suggestion Card ── */
+function RecoverySuggestionCard({ suggestion, onAccept, onDismiss }) {
+  const zoneColor = getZoneColor(suggestion.zone);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+      className="relative bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden"
+    >
+      {/* Zone-colored left border */}
+      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: zoneColor }} />
+      <div className="p-5 pl-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Battery size={16} style={{ color: zoneColor }} />
+          <span className="text-[15px] font-bold text-white">{suggestion.headline}</span>
+        </div>
+        <p className="text-[14px] text-[#A0A0A0] mb-4 leading-relaxed">{suggestion.suggestion}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onAccept}
+            className="flex-1 text-[14px] font-semibold py-2.5 rounded-xl transition-colors active:scale-[0.98]"
+            style={{ backgroundColor: zoneColor + '20', color: zoneColor }}
+          >
+            Accept Adjustment
+          </button>
+          <button
+            onClick={onDismiss}
+            className="flex-1 text-[14px] font-semibold py-2.5 rounded-xl bg-white/[0.06] text-[#A0A0A0] transition-colors active:scale-[0.98]"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function Dashboard({ onNavigate, acceptedSuggestion, onAcceptSuggestion, onDismissSuggestion }) {
+  const { workoutHistory, weekSwaps, settings } = useApp();
+  const { connected, latestRecovery, latestSleep, latestCycle } = useWhoop();
+
+  const [dismissed, setDismissed] = useState(false);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayWorkout = useMemo(() => getSwappedWorkoutForDate(today, weekSwaps), [today, weekSwaps]);
@@ -30,6 +213,21 @@ export default function Dashboard({ onNavigate }) {
     [workoutHistory]
   );
   const todayLogged = loggedDates.has(today.toDateString());
+
+  // Recovery suggestion
+  const suggestion = useMemo(() => {
+    if (!connected || !latestRecovery) return null;
+    return getRecoverySuggestion({
+      latestRecovery,
+      latestSleep,
+      latestCycle,
+      todayWorkout,
+      workoutHistory,
+      settings,
+    });
+  }, [connected, latestRecovery, latestSleep, latestCycle, todayWorkout, workoutHistory, settings]);
+
+  const showSuggestionCard = suggestion && suggestion.modifications?.type !== 'none' && !acceptedSuggestion && !dismissed;
 
   // Week data: Sun-Sat
   const weekData = useMemo(() => {
@@ -116,8 +314,37 @@ export default function Dashboard({ onNavigate }) {
   const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
+  // Accepted suggestion display
+  const intensityLabel = acceptedSuggestion?.modifications?.intensityMultiplier
+    ? `${Math.round(acceptedSuggestion.modifications.intensityMultiplier * 100)}% intensity`
+    : null;
+  const suggestionZoneColor = acceptedSuggestion ? getZoneColor(acceptedSuggestion.zone) : null;
+
   return (
     <div className="px-4 pt-4 pb-28 space-y-4">
+
+      {/* RECOVERY BANNER — Whoop connected only */}
+      {connected && latestRecovery && (
+        <RecoveryBanner
+          latestRecovery={latestRecovery}
+          latestSleep={latestSleep}
+          latestCycle={latestCycle}
+        />
+      )}
+
+      {/* RECOVERY SUGGESTION CARD */}
+      <AnimatePresence>
+        {showSuggestionCard && (
+          <RecoverySuggestionCard
+            suggestion={suggestion}
+            onAccept={() => onAcceptSuggestion?.(suggestion)}
+            onDismiss={() => {
+              setDismissed(true);
+              onDismissSuggestion?.();
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* YOUR WEEK */}
       <motion.div
@@ -156,7 +383,7 @@ export default function Dashboard({ onNavigate }) {
         <p className="text-[15px] text-[#A0A0A0] mt-3">
           <span className="text-white font-semibold">{weekWorkouts}</span> of {plannedWorkouts} complete
           {weekTonnage > 0 && (
-            <span className="text-[13px] text-[#555555] ml-2">· {weekTonnage.toLocaleString()} lbs lifted</span>
+            <span className="text-[13px] text-[#555555] ml-2">&middot; {weekTonnage.toLocaleString()} lbs lifted</span>
           )}
         </p>
       </motion.div>
@@ -173,13 +400,28 @@ export default function Dashboard({ onNavigate }) {
         <div className="p-6 pl-7">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Today</h2>
-            <span className={`text-[12px] font-medium px-3 py-1 rounded-full shrink-0 ${TYPE_BADGE_BG[todayWorkout.type] || 'bg-gray-500/20 text-gray-400'}`}>
-              {todayWorkout.label || todayWorkout.type}
-            </span>
+            <div className="flex items-center gap-2">
+              {acceptedSuggestion && (
+                <span
+                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                  style={{ backgroundColor: suggestionZoneColor + '20', color: suggestionZoneColor }}
+                >
+                  Recovery adjusted
+                </span>
+              )}
+              <span className={`text-[12px] font-medium px-3 py-1 rounded-full shrink-0 ${TYPE_BADGE_BG[todayWorkout.type] || 'bg-gray-500/20 text-gray-400'}`}>
+                {todayWorkout.label || todayWorkout.type}
+              </span>
+            </div>
           </div>
           <h3 className="text-[22px] font-bold text-white mb-1">{todayWorkout.name}</h3>
           <p className="text-[15px] text-[#A0A0A0]">
             {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            {intensityLabel && (
+              <span className="ml-2 text-[13px] font-medium" style={{ color: suggestionZoneColor }}>
+                &middot; {intensityLabel}
+              </span>
+            )}
           </p>
 
           {todayLogged ? (

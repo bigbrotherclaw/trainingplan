@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
+import { useWhoop } from '../hooks/useWhoop';
+import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
 import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '../data/training';
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
 import { HIC_PRESETS, HIC_INPUT_FIELDS, DEFAULT_HIC_FIELDS, getRecommendedHics } from '../data/hic';
@@ -58,7 +60,7 @@ const ENERGY_LEVELS = [
   { key: 'recovery', emoji: '\uD83E\uDD15', label: 'Recovery', desc: 'Active recovery', color: '#EF4444' },
 ];
 
-function EnergyModal({ onSelect, onClose }) {
+function EnergyModal({ onSelect, onClose, whoopRecovery }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -76,6 +78,12 @@ function EnergyModal({ onSelect, onClose }) {
         className="w-full max-w-lg bg-dark-800 rounded-t-3xl p-6 pb-10 border-t border-white/[0.05]"
       >
         <div className="w-10 h-1 bg-[#333333] rounded-full mx-auto mb-6" />
+        {whoopRecovery && (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getZoneColor(whoopRecovery.zone) }} />
+            <span className="text-xs text-[#999]">Whoop: {whoopRecovery.score}% recovered</span>
+          </div>
+        )}
         <h2 className="text-2xl font-semibold text-white mb-1">How are you feeling?</h2>
         <p className="text-sm text-[#666666] mb-6">This adjusts your workout intensity</p>
         <div className="space-y-3">
@@ -206,7 +214,8 @@ const typeBadgeStyles = {
 };
 
 export default function Workout({ showToast }) {
-  const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps } = useApp();
+  const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion } = useApp();
+  const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle } = useWhoop();
   const [loggingMode, setLoggingMode] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(null);
@@ -235,6 +244,20 @@ export default function Workout({ showToast }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayWorkout = useMemo(() => getSwappedWorkoutForDate(today, weekSwaps), [today, weekSwaps]);
   const loadingInfo = OPERATOR_LOADING.find((l) => l.week === settings.week) || OPERATOR_LOADING[0];
+
+  // Whoop recovery context for informational display in EnergyModal
+  const whoopRecoveryInfo = useMemo(() => {
+    if (!whoopConnected || !latestRecovery) return null;
+    const suggestion = getRecoverySuggestion({ latestRecovery, latestSleep, latestCycle, todayWorkout, workoutHistory, settings });
+    return suggestion;
+  }, [whoopConnected, latestRecovery, latestSleep, latestCycle, todayWorkout, workoutHistory, settings]);
+
+  // Pre-set energy level from accepted Whoop suggestion
+  useEffect(() => {
+    if (acceptedSuggestion?.modifications?.suggestedEnergyLevel && !energyLevel) {
+      setEnergyLevel(acceptedSuggestion.modifications.suggestedEnergyLevel);
+    }
+  }, [acceptedSuggestion]);
 
   const todayLogged = useMemo(
     () => workoutHistory.some((e) => new Date(e.date).toDateString() === today.toDateString()),
@@ -326,8 +349,15 @@ export default function Workout({ showToast }) {
     const lift = OPERATOR_LIFTS.find((l) => l.name === liftName);
     if (!lift) return 0;
     const base = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
-    if (energyLevel === 'ready' || !energyLevel) return base;
-    return Math.round(base * getWeightMultiplier());
+    let weight = base;
+    if (energyLevel && energyLevel !== 'ready') {
+      weight = Math.round(base * getWeightMultiplier());
+    }
+    // Apply Whoop intensity multiplier on top if accepted
+    if (acceptedSuggestion?.modifications?.intensityMultiplier && acceptedSuggestion.modifications.intensityMultiplier < 1) {
+      weight = Math.round(weight * acceptedSuggestion.modifications.intensityMultiplier);
+    }
+    return weight;
   };
 
   // For low energy: use only first 2 lifts
@@ -420,7 +450,12 @@ export default function Workout({ showToast }) {
   };
 
   const handleLogWorkout = () => {
-    setShowEnergyModal(true);
+    if (acceptedSuggestion?.modifications?.suggestedEnergyLevel) {
+      setEnergyLevel(acceptedSuggestion.modifications.suggestedEnergyLevel);
+      setLoggingMode(true);
+    } else {
+      setShowEnergyModal(true);
+    }
   };
 
   const handleEnergySelect = (level) => {
@@ -558,7 +593,7 @@ export default function Workout({ showToast }) {
 
         <AnimatePresence>
           {showEnergyModal && (
-            <EnergyModal onSelect={handleEnergySelect} onClose={() => setShowEnergyModal(false)} />
+            <EnergyModal onSelect={handleEnergySelect} onClose={() => setShowEnergyModal(false)} whoopRecovery={!acceptedSuggestion ? whoopRecoveryInfo : null} />
           )}
         </AnimatePresence>
 
@@ -798,6 +833,15 @@ export default function Workout({ showToast }) {
           </p>
         )}
       </div>
+
+      {acceptedSuggestion && whoopConnected && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border" style={{ backgroundColor: getZoneColor(acceptedSuggestion.zone) + '15', borderColor: getZoneColor(acceptedSuggestion.zone) + '30' }}>
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getZoneColor(acceptedSuggestion.zone) }} />
+          <span className="text-xs" style={{ color: getZoneColor(acceptedSuggestion.zone) }}>
+            Adjusted for Whoop recovery ({acceptedSuggestion.score}%)
+          </span>
+        </div>
+      )}
 
       {todayLogged && (
         <div className="bg-emerald-950/30 border border-emerald-800/20 rounded-xl px-4 py-3 text-emerald-400 text-sm font-medium flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useCallback } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DEFAULT_SETTINGS } from '../data/training';
 import { SEED_HISTORY } from '../data/seedHistory';
@@ -13,6 +13,7 @@ export function AppProvider({ children }) {
   const [localWorkoutHistory, setLocalWorkoutHistory] = useLocalStorage('trainingAppHistory', SEED_HISTORY);
   const [workoutOverrides, setWorkoutOverrides] = useLocalStorage('trainingAppOverrides', {});
   const [localWeekSwaps, setLocalWeekSwaps] = useLocalStorage('trainingAppWeekSwaps', {});
+  const [acceptedSuggestion, setAcceptedSuggestion] = useState(null);
 
   const {
     workoutHistory: syncHistory,
@@ -49,6 +50,7 @@ export function AppProvider({ children }) {
         saveWorkout(entry);
       }
     }
+    setAcceptedSuggestion(null);
   }, [user, syncHistory, saveWorkout, deleteWorkout, setLocalWorkoutHistory]);
 
   // Provides setWeekSwaps-compatible API that syncs to Supabase when logged in.
@@ -80,10 +82,12 @@ export function AppProvider({ children }) {
     setWorkoutOverrides,
     weekSwaps,
     setWeekSwaps,
+    acceptedSuggestion,
+    setAcceptedSuggestion,
     needsMigration,
     migrateData,
     isSyncing,
-  }), [settings, workoutHistory, workoutOverrides, weekSwaps, setWorkoutHistory, setWeekSwaps, needsMigration, migrateData, isSyncing]);
+  }), [settings, workoutHistory, workoutOverrides, weekSwaps, setWorkoutHistory, setWeekSwaps, acceptedSuggestion, needsMigration, migrateData, isSyncing]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
