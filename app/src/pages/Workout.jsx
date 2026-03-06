@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap } from 'lucide-react';
 import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
@@ -224,7 +224,7 @@ const typeBadgeStyles = {
 };
 
 export default function Workout({ showToast }) {
-  const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion } = useApp();
+  const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion, setAcceptedSuggestion } = useApp();
   const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle } = useWhoop();
   const [loggingMode, setLoggingMode] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
@@ -249,6 +249,7 @@ export default function Workout({ showToast }) {
   const [recoveryChecked, setRecoveryChecked] = useState({});
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [overrideSuggestion, setOverrideSuggestion] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const timerRef = useRef(null);
   const loggingStartRef = useRef(null);
 
@@ -357,6 +358,7 @@ export default function Workout({ showToast }) {
   };
 
   const activeSuggestion = (!overrideSuggestion && acceptedSuggestion) ? acceptedSuggestion : null;
+  const showSuggestionCard = whoopRecoveryInfo && whoopRecoveryInfo.modifications?.type !== 'none' && !acceptedSuggestion && !dismissed;
 
   const getTodayLiftWeight = (liftName) => {
     const lift = OPERATOR_LIFTS.find((l) => l.name === liftName);
@@ -614,6 +616,119 @@ export default function Workout({ showToast }) {
             <EnergyModal onSelect={handleEnergySelect} onClose={() => setShowEnergyModal(false)} whoopRecovery={!acceptedSuggestion ? whoopRecoveryInfo : null} />
           )}
         </AnimatePresence>
+
+        {/* RECOVERY SECTION */}
+        {whoopConnected && whoopRecoveryInfo && (
+          <div className="space-y-3">
+            {/* Recovery metrics card */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4"
+              style={{ background: `linear-gradient(135deg, ${getZoneColor(whoopRecoveryInfo.zone)}0D 0%, #141414 60%)` }}
+            >
+              <div className="flex items-center gap-4">
+                {/* Compact recovery arc */}
+                <div className="relative" style={{ width: 56, height: 56 }}>
+                  <svg width={56} height={56} className="block">
+                    {(() => {
+                      const strokeWidth = 5;
+                      const radius = (56 - strokeWidth) / 2;
+                      const circumference = 2 * Math.PI * radius;
+                      const arcFraction = 0.75;
+                      const arcLength = circumference * arcFraction;
+                      const filled = arcLength * (whoopRecoveryInfo.score / 100);
+                      const rotation = 135;
+                      return (
+                        <>
+                          <circle cx={28} cy={28} r={radius} fill="none" stroke="white" strokeOpacity={0.08} strokeWidth={strokeWidth} strokeDasharray={`${arcLength} ${circumference}`} strokeLinecap="round" transform={`rotate(${rotation} 28 28)`} />
+                          <circle cx={28} cy={28} r={radius} fill="none" stroke={getZoneColor(whoopRecoveryInfo.zone)} strokeWidth={strokeWidth} strokeDasharray={`${filled} ${circumference}`} strokeLinecap="round" transform={`rotate(${rotation} 28 28)`} style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[17px] font-bold text-white leading-none">{whoopRecoveryInfo.score}</span>
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-2">Recovery</h2>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <Activity size={13} className="text-[#666666]" />
+                      <span className="text-[12px] text-[#A0A0A0]">HRV</span>
+                      <span className="text-[12px] text-white font-semibold">{whoopRecoveryInfo.hrv != null ? (Math.round(whoopRecoveryInfo.hrv * 10) / 10).toFixed(1) : '--'} <span className="text-[#666666] font-normal">ms</span></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Moon size={13} className="text-[#666666]" />
+                      <span className="text-[12px] text-[#A0A0A0]">Sleep</span>
+                      <span className="text-[12px] text-white font-semibold">{whoopRecoveryInfo.sleepScore ?? '--'}<span className="text-[#666666] font-normal">%</span></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Zap size={13} className="text-[#666666]" />
+                      <span className="text-[12px] text-[#A0A0A0]">Strain</span>
+                      <span className="text-[12px] text-white font-semibold">{typeof whoopRecoveryInfo.strain === 'number' ? whoopRecoveryInfo.strain.toFixed(1) : '--'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Suggestion card */}
+            <AnimatePresence>
+              {showSuggestionCard && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                  className="relative bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: getZoneColor(whoopRecoveryInfo.zone) }} />
+                  <div className="p-4 pl-5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Battery size={15} style={{ color: getZoneColor(whoopRecoveryInfo.zone) }} />
+                      <span className="text-[14px] font-bold text-white">{whoopRecoveryInfo.headline}</span>
+                    </div>
+                    <p className="text-[13px] text-[#A0A0A0] mb-3 leading-relaxed">{whoopRecoveryInfo.suggestion}</p>
+                    {whoopRecoveryInfo.modifications?.type === 'swap_to_recovery' && (
+                      <p className="text-[12px] font-medium mb-3" style={{ color: getZoneColor(whoopRecoveryInfo.zone) }}>Swap to recovery session</p>
+                    )}
+                    {(whoopRecoveryInfo.modifications?.type === 'reduce_intensity' || whoopRecoveryInfo.modifications?.type === 'reduce_volume') && whoopRecoveryInfo.modifications?.intensityMultiplier && (
+                      <p className="text-[12px] font-medium mb-3" style={{ color: getZoneColor(whoopRecoveryInfo.zone) }}>Reduce to {Math.round(whoopRecoveryInfo.modifications.intensityMultiplier * 100)}% intensity</p>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setAcceptedSuggestion(whoopRecoveryInfo)}
+                        className="flex-1 text-[13px] font-semibold rounded-xl transition-colors active:scale-[0.98] min-h-[40px] text-white"
+                        style={{ backgroundColor: getZoneColor(whoopRecoveryInfo.zone) }}
+                      >
+                        Accept Adjustment
+                      </button>
+                      <button
+                        onClick={() => setDismissed(true)}
+                        className="flex-1 text-[13px] font-semibold rounded-xl transition-colors active:scale-[0.98] min-h-[40px] text-[#A0A0A0] border border-white/[0.15] bg-transparent"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Accepted adjustment banner */}
+            {acceptedSuggestion && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: getZoneColor(acceptedSuggestion.zone) + '15', borderColor: getZoneColor(acceptedSuggestion.zone) + '30', border: `1px solid ${getZoneColor(acceptedSuggestion.zone)}30` }}>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getZoneColor(acceptedSuggestion.zone) }} />
+                <span className="text-[12px] text-[#B3B3B3]">
+                  Adjusted for recovery ({acceptedSuggestion.score}%)
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         <AnimatePresence>
           {showSwapSheet && (
@@ -1118,39 +1233,43 @@ export default function Workout({ showToast }) {
                   {skippedHic ? 'HIC Skipped' : 'Skip HIC'}
                 </button>
               </div>
-              {!skippedHic && (
-                <div className="space-y-2">
-                  {recommendedHics.map((hic, idx) => (
-                    <button key={idx}
-                      onClick={() => { setSelectedHic(hic.name); setSkippedHic(false); setHicMetrics({}); }}
-                      className={`w-full text-left p-3 min-h-[44px] rounded-lg border transition-colors ${
-                        selectedHic === hic.name ? 'bg-accent-blue/10 border-accent-blue/30' : 'bg-dark-600 border-white/[0.03]'
-                      }`}>
-                      <div className="text-[10px] text-[#666666] uppercase">{hic.category}</div>
-                      <div className="font-medium text-sm text-white">{hic.name}</div>
-                      <div className="text-[11px] text-[#666666]">{hic.time}</div>
-                      <div className="text-xs text-[#B3B3B3] mt-1">{hic.description}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
               {skippedHic && <p className="text-center text-sm text-[#666666] italic py-4">HIC skipped for today</p>}
               {!skippedHic && (
-                <button onClick={() => setShowAllHics(!showAllHics)}
-                  className="w-full mt-2 py-2 text-xs text-[#666666] hover:text-accent-blue transition-colors">
-                  {showAllHics ? 'Hide All HICs' : 'Show All HICs'}
-                </button>
-              )}
-              {!skippedHic && showAllHics && (
-                <div className="mt-2 space-y-1">
-                  {HIC_PRESETS.map((hic, idx) => (
-                    <button key={idx}
-                      onClick={() => { setSelectedHic(hic.name); setSkippedHic(false); setHicMetrics({}); setShowAllHics(false); }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
-                        selectedHic === hic.name ? 'bg-accent-blue/10 border border-accent-blue/30 text-white' : 'bg-dark-600 text-[#B3B3B3] border border-white/[0.03]'
+                <div className="space-y-1.5">
+                  {/* Recommended section */}
+                  {recommendedHics.length > 0 && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-[#666666] mb-1">Recommended for you</p>
+                      {recommendedHics.map((hic, idx) => (
+                        <button key={`rec-${idx}`}
+                          onClick={() => { setSelectedHic(hic.name); setSkippedHic(false); setHicMetrics({}); }}
+                          className={`w-full text-left p-3 min-h-[44px] rounded-lg border transition-colors ${
+                            selectedHic === hic.name ? 'bg-accent-blue/10 border-accent-blue/30' : 'bg-dark-600 border-white/[0.03]'
+                          }`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-blue/20 text-accent-blue uppercase">★</span>
+                            <span className="font-medium text-sm text-white">{hic.name}</span>
+                            <span className="text-[11px] text-[#666666] ml-auto">{hic.time}</span>
+                          </div>
+                          <div className="text-xs text-[#B3B3B3] mt-1">{hic.description}</div>
+                        </button>
+                      ))}
+                      <div className="border-t border-white/[0.06] my-2" />
+                      <p className="text-[10px] uppercase tracking-wider text-[#666666] mb-1">All HICs</p>
+                    </>
+                  )}
+                  {/* Full HIC list — always visible */}
+                  {HIC_PRESETS.filter(h => !recommendedHics.find(r => r.name === h.name)).map((hic, idx) => (
+                    <button key={`all-${idx}`}
+                      onClick={() => { setSelectedHic(hic.name); setSkippedHic(false); setHicMetrics({}); }}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg border text-xs transition-colors ${
+                        selectedHic === hic.name ? 'bg-accent-blue/10 border-accent-blue/30 text-white' : 'bg-dark-600 text-[#B3B3B3] border border-white/[0.03]'
                       }`}>
-                      <span className="font-medium">{hic.name}</span>
-                      <span className="text-[#666666] ml-2">{hic.time}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{hic.name}</span>
+                        <span className="text-[11px] text-[#666666]">{hic.time}</span>
+                      </div>
+                      <div className="text-[11px] text-[#555] mt-0.5">{hic.description}</div>
                     </button>
                   ))}
                 </div>
