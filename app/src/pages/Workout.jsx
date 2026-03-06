@@ -112,8 +112,8 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
 
   if (workout.type === 'rest') {
     return (
-      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4 mb-3">
-        <div className="flex justify-between items-center mb-2">
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
+        <div className="flex justify-between items-center mb-3">
           <div className="text-[15px] font-semibold text-white">
             {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
@@ -132,8 +132,8 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
   };
 
   return (
-    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4 mb-3">
-      <div className="flex justify-between items-center mb-2">
+    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 mb-4">
+      <div className="flex justify-between items-center mb-3">
         <div className="text-[15px] font-semibold text-white">
           {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
@@ -141,53 +141,57 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
           {workout.type}
         </span>
       </div>
-      <div className="text-[15px] text-[#A0A0A0] mb-2">{workout.name}</div>
+      <div className="text-[15px] text-[#A0A0A0] mb-3">{workout.name}</div>
 
       {workout.type === 'strength' && (
-        <div className="space-y-1.5">
-          <div className="text-[10px] text-[#666666]">
+        <div className="space-y-2.5">
+          <div className="text-[10px] text-[#666666] mb-1">
             Wk {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}%
           </div>
           {OPERATOR_LIFTS.map((lift) => {
             const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
             return (
-              <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-1.5">
+              <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2.5">
                 <span className="text-xs text-[#B3B3B3]">{lift.name}</span>
                 <span className="text-xs text-[#666666]">{weight} lbs</span>
               </div>
             );
           })}
           {workout.accessories && (
-            <div className="mt-1.5 pt-1.5 border-t border-white/[0.03]">
-              <div className="text-[10px] text-[#666666] mb-1">Accessories {workout.accessories}</div>
-              {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
-                <div key={idx} className="flex items-center justify-between py-0.5">
-                  <span className="text-[11px] text-[#B3B3B3]">{acc.name}</span>
-                  <span className="text-[11px] text-[#666666]">{acc.sets}x{acc.reps}</span>
-                </div>
-              ))}
+            <div className="mt-3 pt-3 border-t border-white/[0.05]">
+              <div className="text-[10px] text-[#666666] mb-2">Accessories {workout.accessories}</div>
+              <div className="space-y-1.5 pl-1">
+                {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-1">
+                    <span className="text-[11px] text-[#B3B3B3]">{acc.name}</span>
+                    <span className="text-[11px] text-[#666666]">{acc.sets}x{acc.reps}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
 
       {cardioInfo && (
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           <div className="text-[10px] uppercase text-[#666666]">{cardioInfo.modality}</div>
           {cardioInfo.presets.map((preset, idx) => (
-            <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2">
+            <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2.5">
               <div className="text-xs font-medium text-[#B3B3B3]">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
-              <div className="text-[10px] text-[#666666] mt-0.5">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
+              <div className="text-[10px] text-[#666666] mt-1">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
             </div>
           ))}
           {workout.type === 'tri' && (
-            <div className="mt-1.5 pt-1.5 border-t border-white/[0.03]">
-              <div className="text-[10px] uppercase text-[#666666] mb-1">HIC Options</div>
-              {HIC_PRESETS.slice(0, 3).map((hic, idx) => (
-                <div key={idx} className="py-1">
-                  <div className="text-[11px] text-[#B3B3B3] font-medium">{hic.name} <span className="text-[#666666]">{hic.time}</span></div>
-                </div>
-              ))}
+            <div className="mt-3 pt-3 border-t border-white/[0.05]">
+              <div className="text-[10px] uppercase text-[#666666] mb-2">HIC Options</div>
+              <div className="space-y-1.5">
+                {HIC_PRESETS.slice(0, 3).map((hic, idx) => (
+                  <div key={idx} className="py-1.5">
+                    <div className="text-[11px] text-[#B3B3B3] font-medium">{hic.name} <span className="text-[#666666]">{hic.time}</span></div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -675,7 +679,7 @@ export default function Workout({ showToast }) {
             todayWorkout.type === 'long' ? 'border-l-emerald-500' : 'border-l-gray-500'
           } active:scale-[0.98] transition-transform`}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3">
             <p className="text-[15px] text-[#A0A0A0]">
               {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
@@ -683,7 +687,7 @@ export default function Workout({ showToast }) {
               {todayWorkout.type}
             </span>
           </div>
-          <h2 className="text-[22px] font-bold text-white mb-3">{todayWorkout.name}</h2>
+          <h2 className="text-[22px] font-bold text-white mb-4">{todayWorkout.name}</h2>
 
           {todayLogged && (
             <div className="bg-emerald-950/30 border border-emerald-800/20 rounded-xl px-4 py-2 text-emerald-400 text-sm font-medium flex items-center gap-2 mb-3">
@@ -693,15 +697,15 @@ export default function Workout({ showToast }) {
 
           {/* Strength preview */}
           {todayWorkout.type === 'strength' && (
-            <div className="space-y-2 mb-4">
-              <div className="text-xs text-[#666666]">
+            <div className="space-y-3 mb-5">
+              <div className="text-xs text-[#666666] mb-2">
                 Week {settings.week}: {loadingInfo.sets}x{loadingInfo.reps} @ {loadingInfo.percentage}% | Rest {loadingInfo.restMin}-{loadingInfo.restMax}
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 {OPERATOR_LIFTS.map((lift) => {
                   const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
                   return (
-                    <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                    <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2.5">
                       <div className="flex items-center">
                         <span className="text-sm font-medium text-white">{lift.name}</span>
                         <Sparkline data={liftSparklines[lift.name]} />
@@ -712,13 +716,15 @@ export default function Workout({ showToast }) {
                 })}
               </div>
               {todayWorkout.accessories && (
-                <div className="mt-2">
-                  <div className="text-[10px] uppercase text-[#666666] mb-1">Accessories ({todayWorkout.accessories})</div>
-                  {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => (
-                    <div key={idx} className="text-xs text-[#B3B3B3] py-0.5">
-                      {acc.name} - {acc.sets}x{acc.reps}
-                    </div>
-                  ))}
+                <div className="mt-4 pt-3 border-t border-white/[0.05]">
+                  <div className="text-[10px] uppercase text-[#666666] mb-2">Accessories ({todayWorkout.accessories})</div>
+                  <div className="space-y-2 pl-1">
+                    {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => (
+                      <div key={idx} className="text-xs text-[#B3B3B3] py-1">
+                        {acc.name} - {acc.sets}x{acc.reps}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -726,14 +732,14 @@ export default function Workout({ showToast }) {
 
           {/* Tri preview */}
           {todayWorkout.type === 'tri' && (
-            <div className="space-y-1 mb-4">
+            <div className="space-y-2 mb-5">
               <div className="text-sm text-[#B3B3B3]">
                 {todayWorkout.name.includes('Run') ? 'Run session' : 'Swim or Bike session'} + HIC conditioning
               </div>
               {(() => {
                 const recommended = recommendedHics.slice(0, 2);
                 return recommended.length > 0 && (
-                  <div className="text-xs text-[#666666] mt-1">
+                  <div className="text-xs text-[#666666] mt-1.5">
                     Recommended HICs: {recommended.map(h => h.name).join(', ')}
                   </div>
                 );
@@ -743,12 +749,12 @@ export default function Workout({ showToast }) {
 
           {/* Long preview */}
           {todayWorkout.type === 'long' && (
-            <div className="mb-4">
+            <div className="mb-5">
               <div className="text-sm text-[#B3B3B3]">Endurance session - Bike or Run</div>
             </div>
           )}
 
-          <div className="flex flex-col gap-3 mt-4">
+          <div className="flex flex-col gap-3 mt-5">
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleLogWorkout}
@@ -772,8 +778,8 @@ export default function Workout({ showToast }) {
 
         {/* Upcoming Workouts */}
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-3 mt-6">Upcoming</h3>
-          <div className="space-y-3">
+          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4 mt-10">Upcoming</h3>
+          <div className="space-y-4">
             {upcomingWorkouts.map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
             ))}
