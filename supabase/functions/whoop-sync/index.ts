@@ -126,9 +126,9 @@ serve(async (req: Request) => {
 
     // Sync recovery data
     if (syncType === 'all' || syncType === 'recovery') {
-      const data = await fetchWhoopData(accessToken, '/v1/recovery', {
+      const data = await fetchWhoopData(accessToken, '/v2/recovery', {
         start: startParam,
-        limit: String(days),
+        limit: String(Math.min(days, 25)),
       })
       results.recovery = data
       
@@ -151,9 +151,9 @@ serve(async (req: Request) => {
 
     // Sync sleep data
     if (syncType === 'all' || syncType === 'sleep') {
-      const data = await fetchWhoopData(accessToken, '/v1/activity/sleep', {
+      const data = await fetchWhoopData(accessToken, '/v2/activity/sleep', {
         start: startParam,
-        limit: String(days),
+        limit: String(Math.min(days, 25)),
       })
       results.sleep = data
 
@@ -175,9 +175,9 @@ serve(async (req: Request) => {
 
     // Sync cycle (strain) data
     if (syncType === 'all' || syncType === 'cycle') {
-      const data = await fetchWhoopData(accessToken, '/v1/cycle', {
+      const data = await fetchWhoopData(accessToken, '/v2/cycle', {
         start: startParam,
-        limit: String(days),
+        limit: String(Math.min(days, 25)),
       })
       results.cycle = data
 
@@ -199,9 +199,9 @@ serve(async (req: Request) => {
 
     // Sync workout data
     if (syncType === 'all' || syncType === 'workout') {
-      const data = await fetchWhoopData(accessToken, '/v1/activity/workout', {
+      const data = await fetchWhoopData(accessToken, '/v2/activity/workout', {
         start: startParam,
-        limit: String(days * 2), // might have multiple workouts per day
+        limit: String(Math.min(days * 2, 25)),
       })
       results.workout = data
 

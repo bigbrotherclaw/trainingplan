@@ -76,16 +76,18 @@ function RecoveryArc({ score, color, size = 80 }) {
 function RecoveryBanner({ latestRecovery, latestSleep, latestCycle }) {
   const [expanded, setExpanded] = useState(false);
 
-  const score = latestRecovery?.score ?? 0;
-  const hrv = latestRecovery?.hrv ?? '--';
-  const rhr = latestRecovery?.resting_heart_rate ?? latestRecovery?.restingHeartRate ?? '--';
-  const sleepScore = latestSleep?.score ?? latestSleep?.qualityDuration ?? '--';
-  const sleepDuration = latestSleep?.duration ?? latestSleep?.qualityDuration;
-  const strain = latestCycle?.strain ?? latestCycle?.day_strain ?? '--';
+  // Extract from Whoop v2 API response shape (nested under .score)
+  const score = latestRecovery?.score?.recovery_score ?? latestRecovery?.recovery_score ?? 0;
+  const hrv = latestRecovery?.score?.hrv_rmssd_milli ?? latestRecovery?.hrv_rmssd_milli ?? '--';
+  const rhr = latestRecovery?.score?.resting_heart_rate ?? latestRecovery?.resting_heart_rate ?? '--';
+  const sleepScore = latestSleep?.score?.sleep_performance_percentage ?? latestSleep?.sleep_performance_percentage ?? '--';
+  const stages = latestSleep?.score?.stage_summary ?? latestSleep?.stage_summary;
+  const sleepDurationMs = stages ? (stages.total_in_bed_time_milli - (stages.total_awake_time_milli || 0)) : null;
+  const strain = latestCycle?.score?.strain ?? latestCycle?.strain ?? '--';
   const zoneColor = getZoneColor(scoreToZone(score));
 
-  const sleepHours = sleepDuration
-    ? `${Math.floor(sleepDuration / 3600000)}h ${Math.round((sleepDuration % 3600000) / 60000)}m`
+  const sleepHours = sleepDurationMs
+    ? `${Math.floor(sleepDurationMs / 3600000)}h ${Math.round((sleepDurationMs % 3600000) / 60000)}m`
     : null;
 
   return (

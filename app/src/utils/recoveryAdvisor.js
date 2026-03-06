@@ -1,3 +1,21 @@
+/**
+ * Recovery Advisor Engine
+ * 
+ * Takes Whoop API v2 data and today's workout to produce intelligent suggestions.
+ * 
+ * Whoop v2 API response shapes (cached in Supabase as-is):
+ * 
+ * Recovery record:
+ *   { score_state, score: { recovery_score, resting_heart_rate, hrv_rmssd_milli, spo2_percentage, skin_temp_celsius } }
+ * 
+ * Sleep record:
+ *   { score_state, score: { stage_summary: { total_in_bed_time_milli, total_awake_time_milli, ... }, 
+ *     sleep_performance_percentage, sleep_consistency_percentage, sleep_efficiency_percentage, respiratory_rate } }
+ * 
+ * Cycle record:
+ *   { score_state, score: { strain, kilojoule, average_heart_rate, max_heart_rate } }
+ */
+
 const ZONE_COLORS = {
   green: '#10B981',
   yellow: '#F59E0B',
@@ -14,18 +32,76 @@ function getZone(score) {
   return 'red';
 }
 
-function sleepHours(latestSleep) {
-  if (!latestSleep) return null;
-  // duration can be in milliseconds or seconds depending on Whoop API version
-  const dur = latestSleep.qualityDuration || latestSleep.duration || 0;
-  // Whoop API returns milliseconds
-  return dur / (1000 * 60 * 60);
+/**
+ * Extract recovery score (0-100) from a Whoop recovery record.
+ * Handles both the raw API shape and a pre-flattened shape.
+ */
+function extractRecoveryScore(rec) {
+  if (!rec) return null;
+  // v2 API: rec.score.recovery_score
+  if (rec.score && typeof rec.score.recovery_score === 'number') return rec.score.recovery_score;
+  // Fallback: maybe already flattened
+  if (typeof rec.recovery_score === 'number') return rec.recovery_score;
+  return null;
+}
+
+function extractHrv(rec) {
+  if (!rec) return 0;
+  if (rec.score && typeof rec.score.hrv_rmssd_milli === 'number') return rec.score.hrv_rmssd_milli;
+  if (typeof rec.hrv_rmssd_milli === 'number') return rec.hrv_rmssd_milli;
+  return 0;
+}
+
+function extractRestingHr(rec) {
+  if (!rec) return null;
+  if (rec.score && typeof rec.score.resting_heart_rate === 'number') return rec.score.resting_heart_rate;
+  if (typeof rec.resting_heart_rate === 'number') return rec.resting_heart_rate;
+  return null;
+}
+
+/**
+ * Extract sleep performance percentage (0-100) from a Whoop sleep record.
+ */
+function extractSleepScore(rec) {
+  if (!rec) return null;
+  if (rec.score && typeof rec.score.sleep_performance_percentage === 'number') return rec.score.sleep_performance_percentage;
+  if (typeof rec.sleep_performance_percentage === 'number') return rec.sleep_performance_percentage;
+  return null;
+}
+
+/**
+ * Extract total sleep hours from a Whoop sleep record.
+ * Sleep time = total_in_bed_time - total_awake_time (both in milliseconds)
+ */
+function extractSleepHours(rec) {
+  if (!rec) return null;
+  const stages = rec.score?.stage_summary || rec.stage_summary;
+  if (stages && typeof stages.total_in_bed_time_milli === 'number') {
+    const sleepMs = stages.total_in_bed_time_milli - (stages.total_awake_time_milli || 0);
+    return sleepMs / (1000 * 60 * 60);
+  }
+  // Fallback: try start/end timestamps
+  if (rec.start && rec.end) {
+    const ms = new Date(rec.end).getTime() - new Date(rec.start).getTime();
+    if (ms > 0) return ms / (1000 * 60 * 60);
+  }
+  return null;
+}
+
+/**
+ * Extract day strain from a Whoop cycle record.
+ */
+function extractStrain(rec) {
+  if (!rec) return null;
+  if (rec.score && typeof rec.score.strain === 'number') return rec.score.strain;
+  if (typeof rec.strain === 'number') return rec.strain;
+  return null;
 }
 
 function countConsecutiveWorkoutDays(workoutHistory) {
   if (!workoutHistory || workoutHistory.length === 0) return 0;
-  // workoutHistory assumed sorted most-recent-first
   let count = 0;
+  // workoutHistory assumed sorted most-recent-first
   for (const entry of workoutHistory) {
     if (entry.completed || entry.logged) {
       count++;
@@ -36,10 +112,22 @@ function countConsecutiveWorkoutDays(workoutHistory) {
   return count;
 }
 
+function countConsecutiveRestDays(workoutHistory) {
+  if (!workoutHistory || workoutHistory.length === 0) return 0;
+  let count = 0;
+  for (const entry of workoutHistory) {
+    if (!entry.completed && !entry.logged) {
+      count++;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
 function bumpZoneConservative(zone) {
   if (zone === 'green') return 'yellow';
-  if (zone === 'yellow') return 'red';
-  return 'red';
+  return 'red'; // yellow or red both go to red
 }
 
 function buildStrengthSuggestion(zone, score) {
@@ -55,7 +143,6 @@ function buildStrengthSuggestion(zone, score) {
       },
     };
   }
-
   if (zone === 'yellow' && score >= 50) {
     return {
       headline: 'Recovery is moderate — ease off a bit',
@@ -68,7 +155,6 @@ function buildStrengthSuggestion(zone, score) {
       },
     };
   }
-
   if (zone === 'yellow') {
     return {
       headline: 'Recovery is below average — scale it back',
@@ -81,7 +167,6 @@ function buildStrengthSuggestion(zone, score) {
       },
     };
   }
-
   // red
   return {
     headline: 'Recovery is poor — protect yourself today',
@@ -108,7 +193,6 @@ function buildCardioSuggestion(zone, score) {
       },
     };
   }
-
   if (zone === 'yellow') {
     return {
       headline: 'Keep it steady — Zone 2 effort today',
@@ -121,7 +205,6 @@ function buildCardioSuggestion(zone, score) {
       },
     };
   }
-
   // red
   return {
     headline: 'Your body needs a break',
@@ -148,7 +231,6 @@ function buildRestSuggestion(zone, score, consecutiveRestish) {
       },
     };
   }
-
   return {
     headline: `Rest day — recovery at ${score}%`,
     suggestion: "Good call resting. Let your body do its thing.",
@@ -161,29 +243,30 @@ function buildRestSuggestion(zone, score, consecutiveRestish) {
   };
 }
 
-function countConsecutiveRestDays(workoutHistory) {
-  if (!workoutHistory || workoutHistory.length === 0) return 0;
-  let count = 0;
-  for (const entry of workoutHistory) {
-    if (!entry.completed && !entry.logged) {
-      count++;
-    } else {
-      break;
-    }
-  }
-  return count;
-}
-
+/**
+ * Main entry point. Takes Whoop data + today's workout and returns a suggestion.
+ * Returns null if no Whoop data available.
+ * 
+ * @param {Object} params
+ * @param {Object|null} params.latestRecovery - Most recent Whoop recovery record (v2 API shape)
+ * @param {Object|null} params.latestSleep - Most recent Whoop sleep record (v2 API shape)
+ * @param {Object|null} params.latestCycle - Most recent Whoop cycle record (v2 API shape)
+ * @param {Object} params.todayWorkout - Today's scheduled workout from WEEKLY_TEMPLATE
+ * @param {Array} params.workoutHistory - Recent workout history
+ * @param {Object} params.settings - User settings
+ */
 export function getRecoverySuggestion({ latestRecovery, latestSleep, latestCycle, todayWorkout, workoutHistory, settings }) {
   // No Whoop data = no suggestion
-  if (!latestRecovery || latestRecovery.score == null) return null;
+  const recoveryScore = extractRecoveryScore(latestRecovery);
+  if (recoveryScore == null) return null;
 
-  const score = latestRecovery.score;
-  const hrv = latestRecovery.hrv || 0;
-  const sleepScore = latestSleep?.score ?? null;
-  const hours = sleepHours(latestSleep);
+  const hrv = extractHrv(latestRecovery);
+  const restingHr = extractRestingHr(latestRecovery);
+  const sleepScore = extractSleepScore(latestSleep);
+  const sleepHrs = extractSleepHours(latestSleep);
+  const strain = extractStrain(latestCycle);
 
-  let zone = getZone(score);
+  let zone = getZone(recoveryScore);
 
   // Sleep score < 50 bumps one tier more conservative
   if (sleepScore != null && sleepScore < 50) {
@@ -192,14 +275,17 @@ export function getRecoverySuggestion({ latestRecovery, latestSleep, latestCycle
 
   // Consecutive strain check: 3+ workout days with recovery < 60 = prioritize rest
   const consecutiveWorkoutDays = countConsecutiveWorkoutDays(workoutHistory);
-  const shouldPrioritizeRest = consecutiveWorkoutDays >= 3 && score < 60;
+  const shouldPrioritizeRest = consecutiveWorkoutDays >= 3 && recoveryScore < 60;
 
   if (shouldPrioritizeRest && todayWorkout?.type !== 'rest') {
     const result = {
       zone,
-      score,
+      score: recoveryScore,
       hrv,
+      restingHr,
       sleepScore,
+      sleepHours: sleepHrs,
+      strain,
       headline: "You've been grinding — time to recover",
       suggestion: `${consecutiveWorkoutDays} straight days of training with sub-60 recovery. Your body is asking for a break. Consider rest or very light movement today.`,
       modifications: {
@@ -210,12 +296,6 @@ export function getRecoverySuggestion({ latestRecovery, latestSleep, latestCycle
       },
       dismissed: false,
     };
-
-    // Sleep < 6h floor
-    if (hours != null && hours < 6 && result.modifications.suggestedEnergyLevel === 'ready') {
-      result.modifications.suggestedEnergyLevel = 'good';
-    }
-
     return result;
   }
 
@@ -224,17 +304,16 @@ export function getRecoverySuggestion({ latestRecovery, latestSleep, latestCycle
   let suggestion;
 
   if (workoutType === 'strength') {
-    suggestion = buildStrengthSuggestion(zone, score);
+    suggestion = buildStrengthSuggestion(zone, recoveryScore);
   } else if (workoutType === 'tri' || workoutType === 'long') {
-    suggestion = buildCardioSuggestion(zone, score);
+    suggestion = buildCardioSuggestion(zone, recoveryScore);
   } else {
-    // rest day
     const consecutiveRestDays = countConsecutiveRestDays(workoutHistory);
-    suggestion = buildRestSuggestion(zone, score, consecutiveRestDays);
+    suggestion = buildRestSuggestion(zone, recoveryScore, consecutiveRestDays);
   }
 
-  // Sleep < 6 hours: always suggest at minimum 'good' energy level
-  if (hours != null && hours < 6) {
+  // Sleep < 6 hours: cap energy level at 'good' (never suggest 'ready')
+  if (sleepHrs != null && sleepHrs < 6) {
     const levels = ['recovery', 'low', 'good', 'ready'];
     const current = levels.indexOf(suggestion.modifications.suggestedEnergyLevel);
     const goodIdx = levels.indexOf('good');
@@ -245,9 +324,12 @@ export function getRecoverySuggestion({ latestRecovery, latestSleep, latestCycle
 
   return {
     zone,
-    score,
+    score: recoveryScore,
     hrv,
+    restingHr,
     sleepScore,
+    sleepHours: sleepHrs,
+    strain,
     ...suggestion,
     dismissed: false,
   };
