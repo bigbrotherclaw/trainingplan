@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle, Dumbbell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 function GoogleIcon() {
@@ -341,21 +341,23 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 pb-20 safe-top safe-bottom">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-5 safe-top safe-bottom">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="w-full max-w-[400px]"
+        className="w-full max-w-[380px]"
       >
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold tracking-widest text-white">TB OPERATOR</h1>
-          <p className="text-[#666666] text-sm mt-1.5">6-Week Periodization Training</p>
-        </div>
-
         {/* Card */}
-        <div className="bg-[#111111] rounded-2xl border border-white/[0.03] p-6">
+        <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-6 pt-8">
+          {/* Logo inside card */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="w-14 h-14 mb-3 rounded-xl bg-[#3B82F6]/10 flex items-center justify-center">
+              <Dumbbell size={24} className="text-[#3B82F6]" />
+            </div>
+            <h1 className="text-xl font-bold tracking-widest text-white">TB OPERATOR</h1>
+            <p className="text-[#555555] text-xs mt-1.5 tracking-wide">6-Week Periodization Training</p>
+          </div>
           <AnimatePresence mode="wait">
             {showForgotPassword ? (
               <motion.div
@@ -377,7 +379,7 @@ export default function AuthPage() {
                 transition={{ duration: 0.2 }}
               >
                 {/* Tabs */}
-                <div className="flex bg-black/40 rounded-xl p-1 mb-5 gap-1">
+                <div className="flex bg-black/50 rounded-xl p-1 mb-6">
                   {[
                     { id: 'signin', label: 'Sign In' },
                     { id: 'signup', label: 'Sign Up' },
@@ -385,10 +387,10 @@ export default function AuthPage() {
                     <button
                       key={tab.id}
                       onClick={() => handleSwitchTab(tab.id)}
-                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                      className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
                         activeTab === tab.id
-                          ? 'bg-[#1A1A1A] text-white shadow-sm'
-                          : 'text-[#666666] hover:text-[#B3B3B3]'
+                          ? 'bg-[#222222] text-white'
+                          : 'text-[#555555]'
                       }`}
                     >
                       {tab.label}
