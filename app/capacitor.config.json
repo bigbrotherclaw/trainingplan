@@ -4,5 +4,10 @@
   "webDir": "dist",
   "server": {
     "allowNavigation": ["ywuqqzaosauxwgajjpgg.supabase.co", "accounts.google.com", "*.google.com"]
-  }
+  },
+  "ios": {
+    "backgroundColor": "#000000",
+    "contentInset": "always"
+  },
+  "backgroundColor": "#000000"
 }

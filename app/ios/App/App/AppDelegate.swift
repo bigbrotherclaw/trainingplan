@@ -7,7 +7,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Set window and WebView backgrounds to black
+        window?.backgroundColor = .black
+        if let vc = window?.rootViewController as? CAPBridgeViewController {
+            vc.view.backgroundColor = .black
+            vc.webView?.isOpaque = true
+            vc.webView?.backgroundColor = .black
+            vc.webView?.scrollView.backgroundColor = .black
+        }
         return true
     }
 

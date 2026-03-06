@@ -27,8 +27,8 @@ function InputField({ icon: Icon, type = 'text', placeholder, value, onChange, r
   return (
     <div className="relative">
       {Icon && (
-        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666666] pointer-events-none">
-          <Icon size={16} />
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666666] pointer-events-none">
+          <Icon size={15} />
         </div>
       )}
       <input
@@ -36,7 +36,8 @@ function InputField({ icon: Icon, type = 'text', placeholder, value, onChange, r
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className={`w-full bg-[#1A1A1A] border border-white/[0.03] rounded-lg py-3.5 text-white placeholder-[#666666] text-sm focus:outline-none focus:border-[#3B82F6]/40 transition-colors ${Icon ? 'pl-12' : 'px-4'} ${rightElement ? 'pr-12' : 'pr-4'}`}
+        style={Icon ? { paddingLeft: '3rem' } : undefined}
+        className={`w-full bg-[#1A1A1A] border border-white/[0.03] rounded-lg py-3.5 text-white placeholder-[#666666] text-sm focus:outline-none focus:border-[#3B82F6]/40 transition-colors ${Icon ? '' : 'px-4'} ${rightElement ? 'pr-12' : 'pr-4'}`}
       />
       {rightElement && (
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
