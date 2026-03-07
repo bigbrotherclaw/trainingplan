@@ -329,7 +329,7 @@ export default function Stats() {
   const currentPBs = endurancePBs[selectedSport] || {};
 
   return (
-    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-7">
+    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-9">
       <h1 className="text-[28px] font-bold text-white mb-2">Stats</h1>
 
       {/* VIEW TOGGLE */}
@@ -810,7 +810,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
   }
 
   return (
-    <>
+    <div className="space-y-6">
       {/* TODAY'S ACTIVITY */}
       <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
         <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Today's Activity</h2>
@@ -1038,6 +1038,6 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
