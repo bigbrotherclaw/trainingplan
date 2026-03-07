@@ -191,12 +191,43 @@ export function getSportName(sportId, record) {
   return 'Workout';
 }
 
+// Name-based icon fallback for when sport_id doesn't match but sport_name does
+const SPORT_NAME_ICON_MAP = {
+  'running': Footprints,
+  'cycling': Bike,
+  'swimming': Waves,
+  'weightlifting': WeightliftingIcon,
+  'weight training': WeightliftingIcon,
+  'functional fitness': Zap,
+  'pickleball': PickleballIcon,
+  'tennis': RacquetIcon,
+  'basketball': BasketballIcon,
+  'hiit': Zap,
+  'crossfit': Zap,
+  'yoga': PersonStanding,
+  'pilates': PersonStanding,
+  'hiking': Mountain,
+  'walking': Footprints,
+  'spinning': Bike,
+  'rowing': Waves,
+  'boxing': Target,
+};
+
 /**
- * Returns the Lucide icon COMPONENT for a sport.
- * Usage: const Icon = getSportIcon(sportId); <Icon size={18} />
+ * Returns the icon COMPONENT for a sport.
+ * Usage: const Icon = getSportIcon(sportId, record); <Icon size={18} />
  */
-export function getSportIcon(sportId) {
-  return SPORT_ICON_MAP[sportId] ?? HeartPulse;
+export function getSportIcon(sportId, record) {
+  // Try sport_id first
+  if (SPORT_ICON_MAP[sportId]) return SPORT_ICON_MAP[sportId];
+  // Try sport_name fallback
+  if (record?.sport_name) {
+    const name = record.sport_name.toLowerCase();
+    for (const [key, icon] of Object.entries(SPORT_NAME_ICON_MAP)) {
+      if (name.includes(key)) return icon;
+    }
+  }
+  return HeartPulse;
 }
 
 export function getSportColor(sportId) {

@@ -831,7 +831,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
                 <div key={i}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      {(() => { const Icon = getSportIcon(w.sport_id); const c = getSportColor(w.sport_id); return (
+                      {(() => { const Icon = getSportIcon(w.sport_id, w); const c = getSportColor(w.sport_id); return (
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: c + '15' }}>
                           <Icon size={16} color={c} strokeWidth={2} />
                         </div>
@@ -932,7 +932,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
                 <div key={s.sport_id}>
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      {(() => { const Icon = getSportIcon(s.sport_id); const c = getSportColor(s.sport_id); return <Icon size={14} color={c} strokeWidth={2} />; })()}
+                      {(() => { const Icon = getSportIcon(s.sport_id, s); const c = getSportColor(s.sport_id); return <Icon size={14} color={c} strokeWidth={2} />; })()}
                       <span className="text-[13px] text-[#A0A0A0]">{getSportName(s.sport_id, s)}</span>
                     </div>
                     <span className="text-[11px] text-[#555555]">avg {s.avgStrain} · {s.count} sessions</span>
@@ -980,7 +980,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
                           className="flex items-center w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
                         >
                           <span className="text-[12px] text-[#555] w-10 shrink-0">{dateLabel}</span>
-                          {(() => { const Icon = getSportIcon(w.sport_id); return <Icon size={14} color={getSportColor(w.sport_id)} strokeWidth={2} className="mr-1.5 shrink-0" />; })()}
+                          {(() => { const Icon = getSportIcon(w.sport_id, w); return <Icon size={14} color={getSportColor(w.sport_id)} strokeWidth={2} className="mr-1.5 shrink-0" />; })()}
                           <span className="text-[13px] text-white font-medium flex-1 text-left">{getSportName(w.sport_id, w)}</span>
                           <span className="text-[13px] font-semibold mr-3" style={{ color: strainColor(strain) }}>{strain.toFixed(1)}</span>
                           <span className="text-[12px] text-[#555] mr-2">{formatDuration(durationMs)}</span>

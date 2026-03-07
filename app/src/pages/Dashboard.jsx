@@ -245,7 +245,7 @@ export default function Dashboard({ onNavigate }) {
               const avgHR = w.score?.average_heart_rate;
               const duration = formatDuration(w.start, w.end);
               const color = getSportColor(w.sport_id);
-              const SportIcon = getSportIcon(w.sport_id);
+              const SportIcon = getSportIcon(w.sport_id, w);
               return (
                 <div key={i} className="flex items-center gap-3 py-3 first:pt-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color + '15' }}>

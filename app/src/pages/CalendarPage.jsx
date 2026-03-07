@@ -421,7 +421,7 @@ export default function CalendarPage() {
                           {/* Header: sport + duration */}
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              {(() => { const Icon = getSportIcon(w.sport_id); const c = getSportColor(w.sport_id); return (
+                              {(() => { const Icon = getSportIcon(w.sport_id, w); const c = getSportColor(w.sport_id); return (
                                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: c + '15' }}>
                                   <Icon size={16} color={c} strokeWidth={2} />
                                 </div>
