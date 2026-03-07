@@ -82,31 +82,74 @@ export const SPORT_ID_MAP = {
 const SPORT_ICON_MAP = {
   0: Footprints,       // Running
   1: Bike,             // Cycling
+  3: Activity,         // Basketball
+  6: Activity,         // Football
+  7: Activity,         // Golf
+  11: Activity,        // Soccer
+  13: Target,          // Tennis
+  14: Activity,        // Volleyball
+  17: Waves,           // Surfing
+  19: Mountain,        // Skiing
+  21: Mountain,        // Rock Climbing
+  22: Zap,             // Martial Arts
+  24: PersonStanding,  // Dance
+  29: Waves,           // Kayaking
   33: Waves,           // Swimming
-  44: Zap,             // Functional Fitness / CrossFit
+  38: PersonStanding,  // Pilates
+  39: Zap,             // CrossFit
+  40: Activity,        // Elliptical
+  42: PersonStanding,  // Meditation
+  43: HeartPulse,      // Other
+  44: Zap,             // Functional Fitness
+  47: Waves,           // Rowing
   48: Zap,             // HIIT
+  50: Waves,           // Paddleboarding
+  52: Zap,             // Jump Rope
   63: Dumbbell,        // Weightlifting
+  64: Target,          // Pickleball
   71: Bike,            // Spinning
   82: PersonStanding,  // Yoga
   84: Waves,           // Rowing (water-based)
   85: Footprints,      // Walking
+  87: PersonStanding,  // Barre
   96: Mountain,        // Hiking
   126: Target,         // Boxing
 };
 
 // Single cohesive color palette — muted tones that work on dark bg
-// All colors from the same family for consistency
 const SPORT_COLORS = {
   0: '#34D399',   // running - emerald
   1: '#60A5FA',   // cycling - blue
+  3: '#F59E0B',   // basketball - amber
+  6: '#F59E0B',   // football - amber
+  7: '#34D399',   // golf - emerald
+  11: '#34D399',  // soccer - emerald
+  13: '#60A5FA',  // tennis - blue
+  14: '#F59E0B',  // volleyball - amber
+  17: '#22D3EE',  // surfing - cyan
+  19: '#60A5FA',  // skiing - blue
+  21: '#F59E0B',  // rock climbing - amber
+  22: '#F87171',  // martial arts - red
+  24: '#A78BFA',  // dance - violet
+  29: '#22D3EE',  // kayaking - cyan
   33: '#22D3EE',  // swimming - cyan
+  38: '#A78BFA',  // pilates - violet
+  39: '#F87171',  // crossfit - red
+  40: '#60A5FA',  // elliptical - blue
+  42: '#A78BFA',  // meditation - violet
+  43: '#9CA3AF',  // other - gray
   44: '#FBBF24',  // functional fitness - amber
+  47: '#2DD4BF',  // rowing - teal
   48: '#F87171',  // HIIT - red
+  50: '#22D3EE',  // paddleboarding - cyan
+  52: '#F87171',  // jump rope - red
   63: '#FBBF24',  // weightlifting - amber
+  64: '#60A5FA',  // pickleball - blue
   71: '#60A5FA',  // spinning - blue
   82: '#A78BFA',  // yoga - violet
   84: '#2DD4BF',  // rowing - teal
   85: '#34D399',  // walking - emerald
+  87: '#A78BFA',  // barre - violet
   96: '#34D399',  // hiking - emerald
   126: '#F87171', // boxing - red
 };
@@ -133,14 +176,19 @@ const TRAINING_CATEGORY_MAP = {
  */
 export function getSportName(sportId, record) {
   // If the raw Whoop record has sport_name, use it (this is what the user labeled it)
-  if (record?.sport_name) {
+  if (record?.sport_name && record.sport_name.toLowerCase() !== 'activity') {
     // Capitalize first letter of each word
     return record.sport_name
       .split(/[\s_]+/)
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
   }
-  return SPORT_ID_MAP[sportId] ?? `Activity`;
+  // Check our mapping
+  const mapped = SPORT_ID_MAP[sportId];
+  if (mapped && mapped !== 'Activity') return mapped;
+  // Fallback: try to infer from metrics
+  if (record?.score?.distance_meter > 500) return 'Cardio';
+  return 'Workout';
 }
 
 /**
@@ -148,11 +196,11 @@ export function getSportName(sportId, record) {
  * Usage: const Icon = getSportIcon(sportId); <Icon size={18} />
  */
 export function getSportIcon(sportId) {
-  return SPORT_ICON_MAP[sportId] ?? Activity;
+  return SPORT_ICON_MAP[sportId] ?? HeartPulse;
 }
 
 export function getSportColor(sportId) {
-  return SPORT_COLORS[sportId] ?? '#9CA3AF';
+  return SPORT_COLORS[sportId] ?? '#60A5FA';
 }
 
 export function categorizeForTrainingPlan(sportId) {
