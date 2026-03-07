@@ -130,7 +130,7 @@ export default function Dashboard({ onNavigate }) {
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
   return (
-    <div className="px-4 pt-3 pb-28 space-y-5">
+    <div className="px-4 pt-4 pb-28 space-y-6">
 
       {/* YOUR WEEK */}
       <motion.div
@@ -239,7 +239,7 @@ export default function Dashboard({ onNavigate }) {
             <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Recent Activities</h2>
             <button onClick={() => onNavigate('stats')} className="text-[11px] text-accent-blue font-medium">View All</button>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-1 divide-y divide-white/[0.04]">
             {whoopWorkouts.slice(-5).reverse().map((w, i) => {
               const strain = w.score?.strain;
               const avgHR = w.score?.average_heart_rate;
@@ -247,7 +247,7 @@ export default function Dashboard({ onNavigate }) {
               const color = getSportColor(w.sport_id);
               const SportIcon = getSportIcon(w.sport_id);
               return (
-                <div key={i} className="flex items-center gap-3 py-1.5">
+                <div key={i} className="flex items-center gap-3 py-3 first:pt-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color + '15' }}>
                     <SportIcon size={16} color={color} strokeWidth={2} />
                   </div>
