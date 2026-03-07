@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle, Dumbbell } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle } from 'lucide-react';
+import dunedainLogo from '../assets/dunedain-logo.jpg';
 import { useAuth } from '../context/AuthContext';
 
 function GoogleIcon() {
@@ -352,11 +353,13 @@ export default function AuthPage() {
         <div className="bg-[#111111] rounded-2xl border border-white/[0.06] p-6 pt-8">
           {/* Logo inside card */}
           <div className="flex flex-col items-center mb-6">
-            <div className="w-14 h-14 mb-3 rounded-xl bg-[#3B82F6]/10 flex items-center justify-center">
-              <Dumbbell size={24} className="text-[#3B82F6]" />
-            </div>
-            <h1 className="text-xl font-bold tracking-widest text-white">TB OPERATOR</h1>
-            <p className="text-[#555555] text-xs mt-1.5 tracking-wide">6-Week Periodization Training</p>
+            <img
+              src={dunedainLogo}
+              alt="Dúnedain"
+              className="w-24 h-24 mb-4 rounded-2xl object-cover"
+            />
+            <h1 className="text-xl font-bold tracking-[0.25em] text-white">DÚNEDAIN</h1>
+            <p className="text-[#555555] text-xs mt-1.5 tracking-wide">Tactical Barbell Training</p>
           </div>
           <AnimatePresence mode="wait">
             {showForgotPassword ? (
