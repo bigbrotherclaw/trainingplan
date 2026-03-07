@@ -359,7 +359,7 @@ export default function AuthPage() {
               className="w-24 h-24 mb-4 rounded-2xl object-cover"
             />
             <h1 className="text-xl font-bold tracking-[0.25em] text-white">DÚNEDAIN</h1>
-            <p className="text-[#555555] text-xs mt-1.5 tracking-wide">Tactical Barbell Training</p>
+            <p className="text-[#555555] text-xs mt-1.5 tracking-wide">Workouts from the West</p>
           </div>
           <AnimatePresence mode="wait">
             {showForgotPassword ? (
