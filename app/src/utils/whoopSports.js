@@ -2,15 +2,15 @@ import {
   Footprints,
   Bike,
   Waves,
-  Dumbbell,
   Zap,
   PersonStanding,
   Activity,
   HeartPulse,
   Mountain,
-  Target,
   CircleDot,
+  Target,
 } from 'lucide-react';
+import { PickleballIcon, WeightliftingIcon, RacquetIcon, BasketballIcon } from '../components/SportIcons';
 
 export const SPORT_ID_MAP = {
   '-1': 'Activity',
@@ -82,11 +82,11 @@ export const SPORT_ID_MAP = {
 const SPORT_ICON_MAP = {
   0: Footprints,       // Running
   1: Bike,             // Cycling
-  3: Activity,         // Basketball
+  3: BasketballIcon,   // Basketball
   6: Activity,         // Football
   7: Activity,         // Golf
   11: Activity,        // Soccer
-  13: Target,          // Tennis
+  13: RacquetIcon,     // Tennis
   14: Activity,        // Volleyball
   17: Waves,           // Surfing
   19: Mountain,        // Skiing
@@ -105,8 +105,8 @@ const SPORT_ICON_MAP = {
   48: Zap,             // HIIT
   50: Waves,           // Paddleboarding
   52: Zap,             // Jump Rope
-  63: Dumbbell,        // Weightlifting
-  64: Target,          // Pickleball
+  63: WeightliftingIcon, // Weightlifting
+  64: PickleballIcon,  // Pickleball
   71: Bike,            // Spinning
   82: PersonStanding,  // Yoga
   84: Waves,           // Rowing (water-based)
