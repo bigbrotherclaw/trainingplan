@@ -114,7 +114,7 @@ export default function App() {
           <header className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 pt-[env(safe-area-inset-top,20px)] pb-3 flex items-center justify-between">
             <div>
               <h1 className="text-[22px] font-bold text-white tracking-tight">
-                {showProfile ? 'Profile' : activeTab === 'dashboard' ? 'Training Plan' : tabs.find(t => t.id === activeTab)?.label}
+                {showProfile ? 'Profile' : activeTab === 'dashboard' ? 'Dúnedain' : tabs.find(t => t.id === activeTab)?.label}
               </h1>
               {!showProfile && activeTab === 'dashboard' && (
                 <p className="text-[13px] text-[#666666] mt-0.5">Block {settings.block} / Week {settings.week}</p>

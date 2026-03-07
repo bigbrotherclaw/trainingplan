@@ -1,6 +1,6 @@
 {
   "appId": "com.bigbrother.trainingplan",
-  "appName": "Training Plan",
+  "appName": "Dúnedain",
   "webDir": "dist",
   "server": {
     "allowNavigation": ["ywuqqzaosauxwgajjpgg.supabase.co", "accounts.google.com", "*.google.com"]
