@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
 import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
+import { getSportName, getSportIcon, getSportColor } from '../utils/whoopSports';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
 
@@ -23,7 +24,7 @@ const TYPE_BADGE_BG = {
 
 export default function Dashboard({ onNavigate }) {
   const { workoutHistory, weekSwaps } = useApp();
-  const { connected, latestRecovery, latestSleep, latestCycle } = useWhoop();
+  const { connected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
 
   // Recovery data
   const recoverySuggestion = useMemo(() => {
@@ -223,6 +224,57 @@ export default function Dashboard({ onNavigate }) {
 
           {/* Suggestion headline */}
           <p className="text-[13px] text-[#A0A0A0] mt-3 leading-snug">{recoverySuggestion.headline}</p>
+        </motion.div>
+      )}
+
+      {/* RECENT WHOOP ACTIVITIES */}
+      {connected && whoopWorkouts?.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Recent Activities</h2>
+            <button onClick={() => onNavigate('stats')} className="text-[11px] text-accent-blue font-medium">View All</button>
+          </div>
+          <div className="space-y-2.5">
+            {whoopWorkouts.slice(-5).reverse().map((w, i) => {
+              const strain = w.score?.strain;
+              const avgHR = w.score?.average_heart_rate;
+              const startTime = new Date(w.start || w.date);
+              const endTime = w.end ? new Date(w.end) : null;
+              const durationMin = endTime ? Math.round((endTime - startTime) / 60000) : null;
+              const color = getSportColor(w.sport_id);
+              return (
+                <div key={i} className="flex items-center gap-3 py-1.5">
+                  <span className="text-[16px] w-6 text-center shrink-0">{getSportIcon(w.sport_id)}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium text-white truncate">{getSportName(w.sport_id)}</div>
+                    <div className="text-[11px] text-[#666666]">
+                      {startTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {durationMin != null && <span> &middot; {durationMin}m</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {strain != null && (
+                      <div className="text-center">
+                        <div className="text-[13px] font-semibold" style={{ color }}>{strain.toFixed(1)}</div>
+                        <div className="text-[9px] text-[#555555] uppercase">Strain</div>
+                      </div>
+                    )}
+                    {avgHR != null && (
+                      <div className="text-center">
+                        <div className="text-[13px] font-semibold text-white">{avgHR}</div>
+                        <div className="text-[9px] text-[#555555] uppercase">HR</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </motion.div>
       )}
 

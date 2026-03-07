@@ -8,6 +8,7 @@ import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
 import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '../data/training';
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
 import { HIC_PRESETS, HIC_INPUT_FIELDS, DEFAULT_HIC_FIELDS, getRecommendedHics } from '../data/hic';
+import { getStrainCorrelation, getExpectedStrain } from '../utils/strainCorrelation';
 
 function roundToFive(n) {
   return Math.round(n / 5) * 5;
@@ -225,7 +226,7 @@ const typeBadgeStyles = {
 
 export default function Workout({ showToast }) {
   const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion, setAcceptedSuggestion } = useApp();
-  const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle } = useWhoop();
+  const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
   const [loggingMode, setLoggingMode] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(null);
@@ -263,6 +264,17 @@ export default function Workout({ showToast }) {
     const suggestion = getRecoverySuggestion({ latestRecovery, latestSleep, latestCycle, todayWorkout, workoutHistory, settings });
     return suggestion;
   }, [whoopConnected, latestRecovery, latestSleep, latestCycle, todayWorkout, workoutHistory, settings]);
+
+  // Strain correlation
+  const strainCorrelation = useMemo(() => {
+    if (!whoopConnected || !whoopWorkouts?.length) return null;
+    return getStrainCorrelation(workoutHistory, whoopWorkouts);
+  }, [whoopConnected, whoopWorkouts, workoutHistory]);
+
+  const expectedStrain = useMemo(() => {
+    if (!strainCorrelation || !todayWorkout?.type) return null;
+    return getExpectedStrain(todayWorkout.type, strainCorrelation);
+  }, [strainCorrelation, todayWorkout?.type]);
 
   // Pre-set energy level from accepted Whoop suggestion
   useEffect(() => {
@@ -727,6 +739,16 @@ export default function Workout({ showToast }) {
                 </span>
               </div>
             )}
+
+            {/* Strain insight */}
+            {expectedStrain && todayWorkout.type !== 'rest' && (
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Zap size={13} className="text-[#555555]" />
+                <span className="text-[12px] text-[#888888]">
+                  {todayWorkout.type === 'strength' ? 'Strength' : todayWorkout.type === 'tri' ? 'Cardio' : todayWorkout.type === 'long' ? 'Endurance' : todayWorkout.type.charAt(0).toUpperCase() + todayWorkout.type.slice(1)} days average <span className="text-white font-medium">{expectedStrain.toFixed(1)}</span> strain for you
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -812,9 +834,16 @@ export default function Workout({ showToast }) {
             <p className="text-[15px] text-[#A0A0A0]">
               {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
-            <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
-              {todayWorkout.type}
-            </span>
+            <div className="flex items-center gap-2">
+              {expectedStrain && todayWorkout.type !== 'rest' && (
+                <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-white/[0.06] text-[#888888]">
+                  ~{expectedStrain.toFixed(1)} strain
+                </span>
+              )}
+              <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${typeBadgeStyles[todayWorkout.type]}`}>
+                {todayWorkout.type}
+              </span>
+            </div>
           </div>
           <h2 className="text-[22px] font-bold text-white mb-4">{todayWorkout.name}</h2>
 

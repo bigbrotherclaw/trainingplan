@@ -71,7 +71,7 @@ export function useWhoop() {
               pendingOAuth.current = false;
               // Trigger initial data sync
               setTimeout(async () => {
-                await syncDataDirect(7);
+                await syncDataDirect(30);
                 await loadCachedData(30);
               }, 500);
             } else if (status === 'error') {
@@ -134,7 +134,7 @@ export function useWhoop() {
     if (whoopStatus === 'connected') {
       setConnected(true);
       window.history.replaceState({}, '', window.location.pathname);
-      syncDataDirect(7);
+      syncDataDirect(30);
     } else if (whoopStatus === 'error') {
       console.error('[Whoop] OAuth failed (web):', params.get('reason'));
       window.history.replaceState({}, '', window.location.pathname);
@@ -266,12 +266,14 @@ export function useWhoop() {
   const latestRecovery = data.recovery.length > 0 ? data.recovery[data.recovery.length - 1] : null;
   const latestSleep = data.sleep.length > 0 ? data.sleep[data.sleep.length - 1] : null;
   const latestCycle = data.cycle.length > 0 ? data.cycle[data.cycle.length - 1] : null;
+  const workouts = data.workout;
 
   return {
     connected,
     loading,
     syncing,
     data,
+    workouts,
     latestRecovery,
     latestSleep,
     latestCycle,
