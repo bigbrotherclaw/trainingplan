@@ -197,21 +197,22 @@ serve(async (req: Request) => {
       }
     }
 
-    // Sync workout data
+    // Sync workout data — use unique data_type per workout so multiple per day are preserved
     if (syncType === 'all' || syncType === 'workout') {
       const data = await fetchWhoopData(accessToken, '/v2/activity/workout', {
         start: startParam,
-        limit: String(Math.min(days * 2, 25)),
+        limit: String(Math.min(days * 3, 50)),
       })
       results.workout = data
 
       if (data.records) {
         for (const record of data.records) {
           const date = record.start?.split('T')[0] || record.created_at?.split('T')[0]
+          const whoopId = record.id || record.v1_id || date
           if (date) {
             await supabase.from('whoop_data').upsert({
               user_id: user.id,
-              data_type: 'workout',
+              data_type: `workout:${whoopId}`,
               date,
               data: record,
               synced_at: new Date().toISOString(),

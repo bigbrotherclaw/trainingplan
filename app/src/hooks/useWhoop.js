@@ -239,8 +239,10 @@ export function useWhoop() {
 
       const grouped = { recovery: [], sleep: [], cycle: [], workout: [] };
       for (const r of records || []) {
-        if (grouped[r.data_type]) {
-          grouped[r.data_type].push({ date: r.date, ...r.data });
+        // Handle workout:uuid format (multiple workouts per day)
+        const baseType = r.data_type.startsWith('workout:') ? 'workout' : r.data_type;
+        if (grouped[baseType]) {
+          grouped[baseType].push({ date: r.date, ...r.data });
         }
       }
       console.log('[Whoop] Loaded cached data:', {
