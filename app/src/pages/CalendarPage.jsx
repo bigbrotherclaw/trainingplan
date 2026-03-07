@@ -283,6 +283,11 @@ export default function CalendarPage() {
               if (isValidTarget && !isToday) borderStyle = '2px dashed #f59e0b';
               else if (isValidTarget) borderStyle = '2px solid #f59e0b';
 
+              // Determine actual activity from Whoop
+              const primaryWhoop = whoopActivities.length > 0 ? whoopActivities.reduce((best, w) => 
+                (w.score?.strain || 0) > (best.score?.strain || 0) ? w : best, whoopActivities[0]) : null;
+              const whoopLabel = primaryWhoop ? getSportName(primaryWhoop.sport_id, primaryWhoop) : null;
+
               return (
                 <CalendarCell
                   key={idx}
@@ -299,6 +304,8 @@ export default function CalendarPage() {
                   todayRef={isToday ? todayRef : null}
                   swapped={swapped}
                   whoopStrain={maxStrain}
+                  whoopLabel={whoopLabel}
+                  whoopSportId={primaryWhoop?.sport_id}
                   onTap={handleDayTap}
                 />
               );
@@ -586,7 +593,7 @@ function abbrevLabel(label) {
   return label.toUpperCase().slice(0, 8);
 }
 
-function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, onTap }) {
+function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, whoopLabel, whoopSportId, onTap }) {
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id,
     disabled: !dayInfo.isCurrentMonth,
@@ -632,11 +639,26 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
       <span className={`text-[13px] font-medium mb-0.5 ${isToday ? 'text-white font-bold' : dayInfo.isCurrentMonth ? 'text-white' : 'text-[#555555]'}`}>
         {dayInfo.date.getDate()}
       </span>
-      {dayInfo.isCurrentMonth && summary && summary.label !== 'Rest' && (
-        <span className="text-[9px] leading-tight text-center font-semibold px-0.5" style={{ color: summary.accent }}>
-          {abbrevLabel(summary.label)}
-        </span>
-      )}
+      {dayInfo.isCurrentMonth && (() => {
+        // If Whoop detected an activity, show that instead of the plan
+        if (whoopLabel) {
+          const color = getSportColor(whoopSportId);
+          return (
+            <span className="text-[8px] leading-tight text-center font-bold px-0.5 uppercase truncate max-w-full" style={{ color }}>
+              {whoopLabel.length > 6 ? whoopLabel.slice(0, 6) : whoopLabel}
+            </span>
+          );
+        }
+        // Otherwise show planned workout
+        if (summary && summary.label !== 'Rest') {
+          return (
+            <span className="text-[9px] leading-tight text-center font-semibold px-0.5" style={{ color: summary.accent }}>
+              {abbrevLabel(summary.label)}
+            </span>
+          );
+        }
+        return null;
+      })()}
       {isLogged && (
         <span className={`text-[8px] font-bold mt-0.5 ${hasSkippedHic ? 'text-amber-400' : 'text-emerald-400'}`}>
           {hasSkippedHic ? '~' : '\u2713'}
