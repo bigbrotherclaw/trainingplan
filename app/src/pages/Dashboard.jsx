@@ -131,7 +131,7 @@ export default function Dashboard({ onNavigate }) {
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
   return (
-    <div className="px-5 pt-4 pb-32 space-y-8">
+    <div className="px-5 pt-4 pb-32 space-y-14">
 
       {/* YOUR WEEK */}
       <motion.div
@@ -251,7 +251,7 @@ export default function Dashboard({ onNavigate }) {
               const color = getSportColor(w.sport_id);
               const SportIcon = getSportIcon(w.sport_id, w);
               return (
-                <div key={i} className="flex items-center gap-3.5 py-4 first:pt-0 last:pb-0">
+                <div key={i} className="flex items-center gap-3.5 py-5 first:pt-0 last:pb-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color + '15' }}>
                     <SportIcon size={16} color={color} strokeWidth={2} />
                   </div>

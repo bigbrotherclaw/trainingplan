@@ -608,7 +608,7 @@ export default function Workout({ showToast }) {
   // REST DAY
   if (todayWorkout.type === 'rest') {
     return (
-      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-7">
+      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
         <div className="text-center py-8">
           <Moon size={48} className="text-[#333333] mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
@@ -646,7 +646,7 @@ export default function Workout({ showToast }) {
   // OVERVIEW MODE
   if (!loggingMode) {
     return (
-      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-9">
+      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
         <AnimatePresence>
           {showCelebration && (
             <motion.div
@@ -1024,7 +1024,7 @@ export default function Workout({ showToast }) {
 
   // LOGGING MODE
   return (
-    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-7">
+    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
       <AnimatePresence>
         {showCelebration && (
           <motion.div
