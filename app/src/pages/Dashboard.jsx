@@ -7,6 +7,7 @@ import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
 import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
+import WhoopAutoLog from '../components/WhoopAutoLog';
 
 const TYPE_COLORS = {
   rest: '#6B7280',
@@ -173,6 +174,9 @@ export default function Dashboard({ onNavigate }) {
           )}
         </p>
       </motion.div>
+
+      {/* WHOOP AUTO-LOG PROMPTS */}
+      <WhoopAutoLog />
 
       {/* RECOVERY SUMMARY (Whoop) */}
       {recoverySuggestion && (
