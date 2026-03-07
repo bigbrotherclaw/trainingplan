@@ -283,10 +283,11 @@ export default function CalendarPage() {
               if (isValidTarget && !isToday) borderStyle = '2px dashed #f59e0b';
               else if (isValidTarget) borderStyle = '2px solid #f59e0b';
 
-              // Determine actual activity from Whoop
-              const primaryWhoop = whoopActivities.length > 0 ? whoopActivities.reduce((best, w) => 
-                (w.score?.strain || 0) > (best.score?.strain || 0) ? w : best, whoopActivities[0]) : null;
-              const whoopLabel = primaryWhoop ? getSportName(primaryWhoop.sport_id, primaryWhoop) : null;
+              // Get extra Whoop activities (fun/bonus beyond the planned workout)
+              // Show all unique sport names as extra labels
+              const whoopExtras = whoopActivities
+                .map(w => ({ label: getSportName(w.sport_id, w), sportId: w.sport_id }))
+                .filter((v, i, a) => a.findIndex(x => x.label === v.label) === i); // dedupe
 
               return (
                 <CalendarCell
@@ -304,8 +305,7 @@ export default function CalendarPage() {
                   todayRef={isToday ? todayRef : null}
                   swapped={swapped}
                   whoopStrain={maxStrain}
-                  whoopLabel={whoopLabel}
-                  whoopSportId={primaryWhoop?.sport_id}
+                  whoopExtras={whoopExtras}
                   onTap={handleDayTap}
                 />
               );
@@ -593,7 +593,7 @@ function abbrevLabel(label) {
   return label.toUpperCase().slice(0, 8);
 }
 
-function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, whoopLabel, whoopSportId, onTap }) {
+function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, whoopExtras, onTap }) {
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id,
     disabled: !dayInfo.isCurrentMonth,
@@ -639,26 +639,20 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
       <span className={`text-[13px] font-medium mb-0.5 ${isToday ? 'text-white font-bold' : dayInfo.isCurrentMonth ? 'text-white' : 'text-[#555555]'}`}>
         {dayInfo.date.getDate()}
       </span>
-      {dayInfo.isCurrentMonth && (() => {
-        // If Whoop detected an activity, show that instead of the plan
-        if (whoopLabel) {
-          const color = getSportColor(whoopSportId);
-          return (
-            <span className="text-[8px] leading-tight text-center font-bold px-0.5 uppercase truncate max-w-full" style={{ color }}>
-              {whoopLabel.length > 6 ? whoopLabel.slice(0, 6) : whoopLabel}
-            </span>
-          );
-        }
-        // Otherwise show planned workout
-        if (summary && summary.label !== 'Rest') {
-          return (
-            <span className="text-[9px] leading-tight text-center font-semibold px-0.5" style={{ color: summary.accent }}>
-              {abbrevLabel(summary.label)}
-            </span>
-          );
-        }
-        return null;
-      })()}
+      {/* Always show planned workout first */}
+      {dayInfo.isCurrentMonth && summary && summary.label !== 'Rest' && (
+        <span className="text-[9px] leading-tight text-center font-semibold px-0.5" style={{ color: summary.accent }}>
+          {abbrevLabel(summary.label)}
+        </span>
+      )}
+      {/* Show Whoop extras below the plan */}
+      {dayInfo.isCurrentMonth && whoopExtras && whoopExtras.length > 0 && (
+        <span className="text-[7px] leading-tight text-center font-medium px-0.5 truncate max-w-full" style={{ color: getSportColor(whoopExtras[0].sportId) }}>
+          {whoopExtras.length === 1
+            ? (whoopExtras[0].label.length > 7 ? whoopExtras[0].label.slice(0, 6) + '…' : whoopExtras[0].label)
+            : `${whoopExtras.length} acts`}
+        </span>
+      )}
       {isLogged && (
         <span className={`text-[8px] font-bold mt-0.5 ${hasSkippedHic ? 'text-amber-400' : 'text-emerald-400'}`}>
           {hasSkippedHic ? '~' : '\u2713'}
