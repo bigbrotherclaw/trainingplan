@@ -44,8 +44,8 @@ export default function CalendarPage() {
   const monthData = useMemo(() => getMonthData(currentMonth.getFullYear(), currentMonth.getMonth()), [currentMonth]);
 
   const sensors = useSensors(
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
   );
 
   const getDayInfoById = useCallback((id) => {
@@ -230,7 +230,7 @@ export default function CalendarPage() {
         <div className="flex items-center gap-2">
           <ArrowLeftRight size={13} className="text-[#555555]" />
           <span className="text-[11px] text-[#555555]">
-            {activeId ? 'Drop on a day in the same week to swap' : 'Hold & drag to swap days'}
+            {activeId ? 'Drop on a day in the same week to swap' : 'Long-press & drag to swap workouts'}
           </span>
         </div>
         <button onClick={resetSwaps} className="flex items-center gap-1 text-[10px] text-[#555555] hover:text-accent-blue transition-colors">
