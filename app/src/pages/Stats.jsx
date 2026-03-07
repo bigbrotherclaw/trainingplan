@@ -70,7 +70,7 @@ export default function Stats() {
   const { connected: whoopConnected, data: whoopData } = useWhoop();
   const [selectedLift, setSelectedLift] = useState('Bench Press');
   const [timeRange, setTimeRange] = useState('All');
-  const [statsView, setStatsView] = useState(null);
+  const [statsView, setStatsView] = useState('activity');
   const [selectedSport, setSelectedSport] = useState('run');
   const [expandedActivity, setExpandedActivity] = useState(null);
 
