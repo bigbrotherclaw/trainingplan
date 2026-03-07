@@ -111,7 +111,7 @@ export default function App() {
           transition={{ duration: 0.25 }}
           className="flex flex-col h-dvh bg-black"
         >
-          <header className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 pt-[env(safe-area-inset-top,20px)] pb-3 flex items-center justify-between">
+          <header className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 pt-[calc(env(safe-area-inset-top,20px)+8px)] pb-4 flex items-center justify-between">
             <div>
               <h1 className="text-[22px] font-bold text-white tracking-tight">
                 {showProfile ? 'Profile' : activeTab === 'dashboard' ? 'Dúnedain' : tabs.find(t => t.id === activeTab)?.label}
