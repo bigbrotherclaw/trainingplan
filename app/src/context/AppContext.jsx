@@ -38,14 +38,18 @@ export function AppProvider({ children }) {
     }
     const current = syncHistory;
     const next = typeof updaterOrValue === 'function' ? updaterOrValue(current) : updaterOrValue;
-    const currentMap = Object.fromEntries(current.map((e) => [e.id, e]));
-    const nextIds = new Set(next.map((e) => e.id));
+    // Ensure every entry has an id before diffing (legacy entries may lack one)
+    const ensureId = (e, i) => e.id ? e : { ...e, id: `legacy-${e.date || i}-${i}` };
+    const currentWithIds = current.map(ensureId);
+    const nextWithIds = next.map(ensureId);
+    const currentMap = Object.fromEntries(currentWithIds.map((e) => [e.id, e]));
+    const nextIds = new Set(nextWithIds.map((e) => e.id));
     // Delete removed entries
-    for (const entry of current) {
+    for (const entry of currentWithIds) {
       if (!nextIds.has(entry.id)) deleteWorkout(entry.id);
     }
     // Save new or changed entries
-    for (const entry of next) {
+    for (const entry of nextWithIds) {
       if (!currentMap[entry.id] || JSON.stringify(currentMap[entry.id]) !== JSON.stringify(entry)) {
         saveWorkout(entry);
       }

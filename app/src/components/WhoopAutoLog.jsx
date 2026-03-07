@@ -230,6 +230,8 @@ export default function WhoopAutoLog() {
   const handleConfirm = useCallback((dayMatch) => {
     const { dateKey, date, planned, mapped, totalStrain, totalDuration } = dayMatch;
     
+    // Immediately dismiss so it can't reappear even if persistence hiccups
+    setDismissed(prev => new Set([...prev, dateKey]));
     setLogging(prev => new Set([...prev, dateKey]));
 
     // Build whoop activity data from all mapped components

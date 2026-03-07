@@ -3,6 +3,7 @@
 export const SEED_HISTORY = [
   // Monday March 2 - STR A
   {
+    id: 'seed-2026-03-02-strength-a',
     date: '2026-03-02T16:30:00.000Z',
     workoutName: 'TB Operator + Accessories A',
     type: 'strength',
@@ -25,6 +26,7 @@ export const SEED_HISTORY = [
 
   // Tuesday March 3 - Bike + HIC
   {
+    id: 'seed-2026-03-03-tri',
     date: '2026-03-03T17:00:00.000Z',
     workoutName: 'Swim or Bike + HIC',
     type: 'tri',
@@ -55,6 +57,7 @@ export const SEED_HISTORY = [
 
   // Wednesday March 4 - STR B
   {
+    id: 'seed-2026-03-04-strength-b',
     date: '2026-03-04T16:15:00.000Z',
     workoutName: 'TB Operator + Accessories B',
     type: 'strength',
@@ -77,6 +80,7 @@ export const SEED_HISTORY = [
 
   // Thursday March 5 - Run + HIC
   {
+    id: 'seed-2026-03-05-tri',
     date: '2026-03-05T16:00:00.000Z',
     workoutName: 'Run + HIC',
     type: 'tri',
