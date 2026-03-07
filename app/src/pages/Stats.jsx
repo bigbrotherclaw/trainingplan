@@ -318,7 +318,7 @@ export default function Stats() {
 
   if (workoutHistory.length === 0) {
     return (
-      <div className="px-5 pt-4 pb-28 bg-black min-h-screen flex flex-col items-center justify-center text-center">
+      <div className="px-5 pt-2 pb-32 bg-black min-h-screen flex flex-col items-center justify-center text-center">
         <BarChart3 size={48} className="text-[#333333] mx-auto mb-4" />
         <p className="text-[17px] text-[#555555] mb-2">Log workouts to see your stats</p>
         <p className="text-[13px] text-[#444444]">Complete your first workout to unlock charts and trends</p>
@@ -329,7 +329,7 @@ export default function Stats() {
   const currentPBs = endurancePBs[selectedSport] || {};
 
   return (
-    <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-5">
+    <div className="px-5 pt-2 pb-32 min-h-screen bg-black space-y-5">
       <h1 className="text-[28px] font-bold text-white mb-2">Stats</h1>
 
       {/* VIEW TOGGLE */}

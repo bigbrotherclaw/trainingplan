@@ -159,7 +159,7 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
   const syncedAgo = formatSyncedAgo(latestRecovery);
 
   return (
-    <div className="px-5 pt-4 pb-36 bg-black space-y-5">
+    <div className="px-5 pt-2 pb-36 bg-black space-y-6">
       <h2 className="text-[28px] font-bold text-white mb-2">Settings</h2>
 
       {/* Card 1: PROFILE */}

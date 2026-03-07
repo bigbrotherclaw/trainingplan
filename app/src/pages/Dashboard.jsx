@@ -130,7 +130,7 @@ export default function Dashboard({ onNavigate }) {
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
   return (
-    <div className="px-5 pt-5 pb-32 space-y-5">
+    <div className="px-5 pt-2 pb-32 space-y-5">
 
       {/* YOUR WEEK */}
       <motion.div

@@ -208,7 +208,7 @@ export default function CalendarPage() {
   }, [selectedDay, weekSwaps]);
 
   return (
-    <div className="px-5 pt-4 pb-28 min-h-screen bg-black">
+    <div className="px-5 pt-2 pb-32 min-h-screen bg-black">
       {/* Month Header */}
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-[22px] font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h2>

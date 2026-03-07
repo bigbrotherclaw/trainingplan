@@ -167,7 +167,7 @@ function UpcomingWorkoutCard({ date, workout, settings }) {
           {workout.accessories && (
             <div className="mt-3 pt-3 border-t border-white/[0.05]">
               <div className="text-[10px] text-[#666666] mb-2">Accessories {workout.accessories}</div>
-              <div className="space-y-1.5 pl-1">
+              <div className="space-y-0.5 pl-1">
                 {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
                   <div key={idx} className="flex items-center justify-between py-1">
                     <span className="text-[11px] text-[#B3B3B3]">{acc.name}</span>
@@ -584,7 +584,7 @@ export default function Workout({ showToast }) {
   // REST DAY
   if (todayWorkout.type === 'rest') {
     return (
-      <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-4">
+      <div className="px-5 pt-2 pb-32 min-h-screen bg-black space-y-5">
         <div className="text-center py-8">
           <Moon size={48} className="text-[#333333] mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
@@ -615,7 +615,7 @@ export default function Workout({ showToast }) {
   // OVERVIEW MODE
   if (!loggingMode) {
     return (
-      <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-4">
+      <div className="px-5 pt-2 pb-32 min-h-screen bg-black space-y-5">
         <AnimatePresence>
           {showCelebration && (
             <motion.div
@@ -646,7 +646,7 @@ export default function Workout({ showToast }) {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4"
+              className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
               style={{ background: `linear-gradient(135deg, ${getZoneColor(whoopRecoveryInfo.zone)}0D 0%, #141414 60%)` }}
             >
               <div className="flex items-center gap-4">
@@ -952,7 +952,7 @@ export default function Workout({ showToast }) {
 
         {/* Upcoming Workouts */}
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4 mt-6">Upcoming</h3>
+          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-5 mt-8">Upcoming</h3>
           <div className="space-y-3">
             {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 2).map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
@@ -974,7 +974,7 @@ export default function Workout({ showToast }) {
 
   // LOGGING MODE
   return (
-    <div className="px-5 pt-4 pb-28 min-h-screen bg-black space-y-4">
+    <div className="px-5 pt-2 pb-32 min-h-screen bg-black space-y-5">
       <AnimatePresence>
         {showCelebration && (
           <motion.div
