@@ -340,7 +340,8 @@ export default function CalendarPage() {
               onClick={() => { setSelectedDay(null); setShowSwapPicker(false); }}
             />
             <motion.div
-              className="fixed bottom-0 left-0 right-0 z-50 bg-[#141414] rounded-t-3xl border-t border-white/[0.10] px-5 pb-8 pt-3"
+              className="fixed bottom-0 left-0 right-0 z-50 bg-[#141414] rounded-t-3xl border-t border-white/[0.10] px-5 pt-3 max-h-[70vh] overflow-y-auto overscroll-contain"
+              style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 5rem))' }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
