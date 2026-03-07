@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route } from 'lucide-react';
 import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
@@ -114,96 +114,119 @@ function EnergyModal({ onSelect, onClose, whoopRecovery }) {
   );
 }
 
-function UpcomingWorkoutCard({ date, workout, settings }) {
+const WORKOUT_TYPE_CONFIG = {
+  strength: { icon: Dumbbell, color: '#F59E0B', label: 'Strength', bg: 'rgba(245, 158, 11, 0.10)' },
+  tri: { icon: Activity, color: '#14B8A6', label: 'Cardio + HIC', bg: 'rgba(20, 184, 166, 0.10)' },
+  long: { icon: Route, color: '#10B981', label: 'Endurance', bg: 'rgba(16, 185, 129, 0.10)' },
+  rest: { icon: Moon, color: '#6B7280', label: 'Rest', bg: 'rgba(107, 114, 128, 0.10)' },
+};
+
+function UpcomingWorkoutCard({ date, workout, settings, isExpanded, onToggle }) {
   const loadingInfo = OPERATOR_LOADING.find((l) => l.week === settings.week) || OPERATOR_LOADING[0];
-
-  if (workout.type === 'rest') {
-    return (
-      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
-        <div className="flex justify-between items-center mb-3">
-          <div className="text-[15px] font-semibold text-white">
-            {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-          </div>
-          <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-gray-500/15 text-gray-400">Rest</span>
-        </div>
-        <div className="text-[15px] text-[#A0A0A0]">Rest Day</div>
-      </div>
-    );
-  }
-
-  const cardioInfo = getCardioPresetsForWorkout(workout, settings.week);
-  const typeBadge = {
-    strength: 'bg-amber-500/15 text-amber-400',
-    tri: 'bg-teal-500/15 text-teal-400',
-    long: 'bg-emerald-500/15 text-emerald-400',
-  };
+  const config = WORKOUT_TYPE_CONFIG[workout.type] || WORKOUT_TYPE_CONFIG.rest;
+  const TypeIcon = config.icon;
+  const dateLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const cardioInfo = workout.type !== 'strength' && workout.type !== 'rest' ? getCardioPresetsForWorkout(workout, settings.week) : null;
 
   return (
-    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
-      <div className="flex justify-between items-center mb-3">
-        <div className="text-[15px] font-semibold text-white">
-          {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+    <motion.div
+      layout
+      className="bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden"
+    >
+      {/* Compact header — always visible, tappable */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-3.5 p-4 active:bg-white/[0.03] transition-colors"
+      >
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: config.bg }}>
+          <TypeIcon size={20} color={config.color} strokeWidth={2} />
         </div>
-        <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${typeBadge[workout.type] || 'bg-gray-500/15 text-gray-400'}`}>
-          {workout.type}
-        </span>
-      </div>
-      <div className="text-[15px] text-[#A0A0A0] mb-3">{workout.name}</div>
+        <div className="flex-1 min-w-0 text-left">
+          <div className="text-[14px] font-semibold text-white">{dateLabel}</div>
+          <div className="text-[12px] text-[#888888]">{config.label}</div>
+        </div>
+        <ChevronDown
+          size={16}
+          className={`text-[#555555] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+        />
+      </button>
 
-      {workout.type === 'strength' && (
-        <div className="space-y-2.5">
-          <div className="text-[10px] text-[#666666] mb-1">
-            Wk {settings.week}: {loadingInfo.sets}×{loadingInfo.reps} @ {loadingInfo.percentage}%
-          </div>
-          {OPERATOR_LIFTS.map((lift) => {
-            const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
-            return (
-              <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2.5">
-                <span className="text-xs text-[#B3B3B3]">{lift.name}</span>
-                <span className="text-xs text-[#666666]">{weight} lbs</span>
-              </div>
-            );
-          })}
-          {workout.accessories && (
-            <div className="mt-3 pt-3 border-t border-white/[0.05]">
-              <div className="text-[10px] text-[#666666] mb-2">Accessories {workout.accessories}</div>
-              <div className="space-y-0.5 pl-1">
-                {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
-                  <div key={idx} className="flex items-center justify-between py-1">
-                    <span className="text-[11px] text-[#B3B3B3]">{acc.name}</span>
-                    <span className="text-[11px] text-[#666666]">{acc.sets}×{acc.reps}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Expanded details */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-0">
+              <div className="border-t border-white/[0.06] pt-3.5">
+                <div className="text-[13px] text-[#A0A0A0] font-medium mb-3">{workout.name}</div>
 
-      {cardioInfo && (
-        <div className="space-y-2.5">
-          <div className="text-[10px] uppercase text-[#666666]">{cardioInfo.modality}</div>
-          {cardioInfo.presets.map((preset, idx) => (
-            <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2.5">
-              <div className="text-xs font-medium text-[#B3B3B3]">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
-              <div className="text-[11px] text-[#888888] mt-1">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
-            </div>
-          ))}
-          {workout.type === 'tri' && (
-            <div className="mt-3 pt-3 border-t border-white/[0.05]">
-              <div className="text-[10px] uppercase text-[#666666] mb-2">HIC Options</div>
-              <div className="space-y-1.5">
-                {HIC_PRESETS.slice(0, 3).map((hic, idx) => (
-                  <div key={idx} className="py-1.5">
-                    <div className="text-[11px] text-[#B3B3B3] font-medium">{hic.name} <span className="text-[#666666]">{hic.time}</span></div>
+                {/* Strength details */}
+                {workout.type === 'strength' && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] text-[#666666] mb-1.5">
+                      Wk {settings.week}: {loadingInfo.sets}×{loadingInfo.reps} @ {loadingInfo.percentage}%
+                    </div>
+                    {OPERATOR_LIFTS.map((lift) => {
+                      const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
+                      return (
+                        <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                          <span className="text-[12px] text-[#B3B3B3]">{lift.name}</span>
+                          <span className="text-[12px] text-[#666666]">{weight} lbs</span>
+                        </div>
+                      );
+                    })}
+                    {workout.accessories && (
+                      <div className="mt-2.5 pt-2.5 border-t border-white/[0.05]">
+                        <div className="text-[10px] text-[#666666] mb-1.5">Accessories {workout.accessories}</div>
+                        {(ACCESSORIES[workout.accessories] || []).map((acc, idx) => (
+                          <div key={idx} className="flex items-center justify-between py-1">
+                            <span className="text-[11px] text-[#B3B3B3]">{acc.name}</span>
+                            <span className="text-[11px] text-[#666666]">{acc.sets}×{acc.reps}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
+                )}
+
+                {/* Cardio / Tri details */}
+                {cardioInfo && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] uppercase text-[#666666]">{cardioInfo.modality}</div>
+                    {cardioInfo.presets.map((preset, idx) => (
+                      <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2">
+                        <div className="text-[12px] font-medium text-[#B3B3B3]">{preset.name}{preset.week ? ` (Wk ${preset.week})` : ''}</div>
+                        <div className="text-[11px] text-[#888888] mt-0.5">{preset.time}{preset.distance ? ` / ${preset.distance}` : ''}</div>
+                      </div>
+                    ))}
+                    {workout.type === 'tri' && (
+                      <div className="mt-2.5 pt-2.5 border-t border-white/[0.05]">
+                        <div className="text-[10px] uppercase text-[#666666] mb-1.5">HIC Options</div>
+                        {HIC_PRESETS.slice(0, 3).map((hic, idx) => (
+                          <div key={idx} className="py-1">
+                            <div className="text-[11px] text-[#B3B3B3] font-medium">{hic.name} <span className="text-[#666666]">{hic.time}</span></div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Rest day */}
+                {workout.type === 'rest' && (
+                  <div className="text-[12px] text-[#666666]">Recovery day — rest, stretch, and prepare for tomorrow.</div>
+                )}
               </div>
             </div>
-          )}
-        </div>
-      )}
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -243,6 +266,7 @@ export default function Workout({ showToast }) {
   const [showAllHics, setShowAllHics] = useState(true);
   const [showAllCardio, setShowAllCardio] = useState(false);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [expandedUpcoming, setExpandedUpcoming] = useState(null);
   const [cardioModality, setCardioModality] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [expandedLifts, setExpandedLifts] = useState({});
@@ -592,18 +616,25 @@ export default function Workout({ showToast }) {
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold text-[#555555] uppercase tracking-widest mb-3">Upcoming</h3>
+          <h3 className="text-xs font-semibold text-[#555555] uppercase tracking-widest mb-4">Upcoming</h3>
           <div className="space-y-3">
-            {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 2).map(({ date, workout }, idx) => (
-              <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
+            {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 3).map(({ date, workout }, idx) => (
+              <UpcomingWorkoutCard
+                key={idx}
+                date={date}
+                workout={workout}
+                settings={settings}
+                isExpanded={expandedUpcoming === `rest-${idx}`}
+                onToggle={() => setExpandedUpcoming(expandedUpcoming === `rest-${idx}` ? null : `rest-${idx}`)}
+              />
             ))}
           </div>
-          {upcomingWorkouts.length > 2 && (
+          {upcomingWorkouts.length > 3 && (
             <button
               onClick={() => setShowAllUpcoming(!showAllUpcoming)}
               className="w-full mt-3 py-2.5 flex items-center justify-center gap-1.5 text-[12px] text-[#666666] hover:text-accent-blue transition-colors"
             >
-              {showAllUpcoming ? 'Show Less' : `Show ${upcomingWorkouts.length - 2} More`}
+              {showAllUpcoming ? 'Show Less' : `Show ${upcomingWorkouts.length - 3} More`}
               <ChevronDown size={14} className={`transition-transform ${showAllUpcoming ? 'rotate-180' : ''}`} />
             </button>
           )}
@@ -964,18 +995,25 @@ export default function Workout({ showToast }) {
 
         {/* Upcoming Workouts */}
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-5">Upcoming</h3>
+          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Upcoming</h3>
           <div className="space-y-3">
-            {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 2).map(({ date, workout }, idx) => (
-              <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
+            {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 3).map(({ date, workout }, idx) => (
+              <UpcomingWorkoutCard
+                key={idx}
+                date={date}
+                workout={workout}
+                settings={settings}
+                isExpanded={expandedUpcoming === `main-${idx}`}
+                onToggle={() => setExpandedUpcoming(expandedUpcoming === `main-${idx}` ? null : `main-${idx}`)}
+              />
             ))}
           </div>
-          {upcomingWorkouts.length > 2 && (
+          {upcomingWorkouts.length > 3 && (
             <button
               onClick={() => setShowAllUpcoming(!showAllUpcoming)}
               className="w-full mt-3 py-2.5 flex items-center justify-center gap-1.5 text-[12px] text-[#666666] hover:text-accent-blue transition-colors"
             >
-              {showAllUpcoming ? 'Show Less' : `Show ${upcomingWorkouts.length - 2} More`}
+              {showAllUpcoming ? 'Show Less' : `Show ${upcomingWorkouts.length - 3} More`}
               <ChevronDown size={14} className={`transition-transform ${showAllUpcoming ? 'rotate-180' : ''}`} />
             </button>
           )}
