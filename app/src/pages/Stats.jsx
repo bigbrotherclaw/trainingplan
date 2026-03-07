@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, BarChart3 } from 'lucide-react';
+import { Trophy, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { OPERATOR_LIFTS, EXERCISE_MUSCLE_MAP } from '../data/training';
 import { getSwappedWorkoutForDate } from '../utils/workout';
+import { useWhoop } from '../hooks/useWhoop';
+import { getSportName, getSportIcon, getSportColor, formatDuration as formatWhoopDuration, metersToMiles, kjToKcal } from '../utils/whoopSports';
+import { getStrainCorrelation, getWeeklyStrainTrend } from '../utils/strainCorrelation';
 
 const LIFT_COLORS = { 'Bench Press': '#3b82f6', 'Back Squat': '#ef4444', 'Weighted Pull-up': '#10b981' };
 const LIFT_TABS = [
@@ -49,12 +52,27 @@ function epley(weight, reps) {
   return Math.round(weight * (1 + reps / 30));
 }
 
+function formatDuration(ms) {
+  const min = Math.round(ms / 60000);
+  if (min >= 60) return `${Math.floor(min / 60)}h ${min % 60}m`;
+  return `${min} min`;
+}
+
+function strainColor(s) {
+  return s > 14 ? '#EF4444' : s >= 8 ? '#F59E0B' : '#10B981';
+}
+
+const ZONE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#DC2626'];
+const ZONE_KEYS = ['zone_one_milli', 'zone_two_milli', 'zone_three_milli', 'zone_four_milli', 'zone_five_milli'];
+
 export default function Stats() {
   const { workoutHistory, weekSwaps } = useApp();
+  const { connected: whoopConnected, data: whoopData } = useWhoop();
   const [selectedLift, setSelectedLift] = useState('Bench Press');
   const [timeRange, setTimeRange] = useState('All');
   const [statsView, setStatsView] = useState(null);
   const [selectedSport, setSelectedSport] = useState('run');
+  const [expandedActivity, setExpandedActivity] = useState(null);
 
   const now = useMemo(() => new Date(), []);
 
@@ -331,6 +349,14 @@ export default function Stats() {
           }`}
         >
           Endurance
+        </button>
+        <button
+          onClick={() => setStatsView('activity')}
+          className={`flex-1 py-2.5 min-h-[40px] rounded-lg text-[13px] font-semibold transition-colors ${
+            activeView === 'activity' ? 'bg-white/10 text-white' : 'text-[#555555]'
+          }`}
+        >
+          Activity
         </button>
       </div>
 
@@ -686,6 +712,332 @@ export default function Stats() {
           )}
         </>
       )}
+
+      {activeView === 'activity' && (
+        <ActivityTab
+          whoopConnected={whoopConnected}
+          whoopWorkouts={whoopData?.workout || []}
+          workoutHistory={workoutHistory}
+          expandedActivity={expandedActivity}
+          setExpandedActivity={setExpandedActivity}
+        />
+      )}
     </div>
+  );
+}
+
+function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedActivity, setExpandedActivity }) {
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const todayWorkouts = useMemo(() => {
+    return whoopWorkouts.filter(w => {
+      const key = w.date || (w.start ? w.start.split('T')[0] : null);
+      return key === todayStr;
+    });
+  }, [whoopWorkouts, todayStr]);
+
+  // Weekly strain - last 7 days, per-day
+  const weeklyStrain = useMemo(() => {
+    const days = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+      let totalStrain = 0;
+      for (const w of whoopWorkouts) {
+        const wk = w.date || (w.start ? w.start.split('T')[0] : null);
+        if (wk === key && w.score?.strain) totalStrain += w.score.strain;
+      }
+      days.push({ day: dayLabel, strain: Math.round(totalStrain * 10) / 10, isToday: i === 0 });
+    }
+    return days;
+  }, [whoopWorkouts]);
+
+  // Activity history - last 30 days grouped by week
+  const activityHistory = useMemo(() => {
+    const sorted = [...whoopWorkouts]
+      .filter(w => w.score)
+      .sort((a, b) => new Date(b.start || b.date) - new Date(a.start || a.date))
+      .slice(0, 60);
+
+    const weeks = [];
+    let currentWeekLabel = null;
+    let currentWeek = [];
+
+    for (const w of sorted) {
+      const d = new Date(w.start || w.date);
+      const weekStart = new Date(d);
+      weekStart.setDate(d.getDate() - d.getDay());
+      const label = `Week of ${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+      if (label !== currentWeekLabel) {
+        if (currentWeek.length > 0) weeks.push({ label: currentWeekLabel, items: currentWeek });
+        currentWeekLabel = label;
+        currentWeek = [];
+      }
+      currentWeek.push(w);
+    }
+    if (currentWeek.length > 0) weeks.push({ label: currentWeekLabel, items: currentWeek });
+
+    return weeks;
+  }, [whoopWorkouts]);
+
+  // Strain by sport
+  const strainBySport = useMemo(() => {
+    const map = {};
+    for (const w of whoopWorkouts) {
+      if (!w.score?.strain) continue;
+      const id = w.sport_id;
+      if (!map[id]) map[id] = { totalStrain: 0, count: 0, sport_id: id };
+      map[id].totalStrain += w.score.strain;
+      map[id].count++;
+    }
+    return Object.values(map)
+      .map(s => ({ ...s, avgStrain: Math.round((s.totalStrain / s.count) * 10) / 10 }))
+      .sort((a, b) => b.count - a.count);
+  }, [whoopWorkouts]);
+
+  if (!whoopConnected) {
+    return (
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 text-center">
+        <p className="text-[15px] text-[#555555]">Connect Whoop in Settings to see activity data</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* TODAY'S ACTIVITY */}
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Today's Activity</h2>
+        {todayWorkouts.length === 0 ? (
+          <p className="text-[13px] text-[#555555] text-center py-4">No Whoop activity detected today</p>
+        ) : (
+          <div className="space-y-3">
+            {todayWorkouts.map((w, i) => {
+              const strain = w.score?.strain || 0;
+              const avgHR = w.score?.average_heart_rate;
+              const distM = w.score?.distance_meter;
+              const kj = w.score?.kilojoule;
+              const durationMs = w.start && w.end ? new Date(w.end) - new Date(w.start) : 0;
+              const zd = w.score?.zone_duration || {};
+              const totalZone = ZONE_KEYS.reduce((s, k) => s + (zd[k] || 0), 0);
+
+              return (
+                <div key={i}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {(() => { const Icon = getSportIcon(w.sport_id); const c = getSportColor(w.sport_id); return (
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: c + '15' }}>
+                          <Icon size={16} color={c} strokeWidth={2} />
+                        </div>
+                      ); })()}
+                      <span className="text-[15px] font-medium text-white">{getSportName(w.sport_id)}</span>
+                    </div>
+                    <span className="text-[13px] text-[#777]">{formatDuration(durationMs)}</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3 mb-3">
+                    <div>
+                      <div className="text-[10px] uppercase text-[#555] mb-0.5">Strain</div>
+                      <div className="text-[17px] font-bold" style={{ color: strainColor(strain) }}>{strain.toFixed(1)}</div>
+                    </div>
+                    {avgHR && (
+                      <div>
+                        <div className="text-[10px] uppercase text-[#555] mb-0.5">Avg HR</div>
+                        <div className="text-[15px] font-semibold text-white">{avgHR}</div>
+                      </div>
+                    )}
+                    {distM && (
+                      <div>
+                        <div className="text-[10px] uppercase text-[#555] mb-0.5">Distance</div>
+                        <div className="text-[15px] font-semibold text-white">{(distM * 0.000621371).toFixed(1)} mi</div>
+                      </div>
+                    )}
+                    {kj && (
+                      <div>
+                        <div className="text-[10px] uppercase text-[#555] mb-0.5">Calories</div>
+                        <div className="text-[15px] font-semibold text-white">{Math.round(kj * 0.239)}</div>
+                      </div>
+                    )}
+                  </div>
+                  {/* HR Zone bar */}
+                  {totalZone > 0 && (
+                    <div>
+                      <div className="flex h-3 rounded-full overflow-hidden">
+                        {ZONE_KEYS.map((k, zi) => {
+                          const pct = ((zd[k] || 0) / totalZone) * 100;
+                          if (pct === 0) return null;
+                          return (
+                            <div key={zi} style={{ width: `${pct}%`, backgroundColor: ZONE_COLORS[zi] }} className="relative">
+                              {pct > 10 && (
+                                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] text-white/70 font-medium">
+                                  {Math.round(pct)}%
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-between mt-1.5">
+                        {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((label, zi) => (
+                          <span key={label} className="text-[8px] font-medium" style={{ color: ZONE_COLORS[zi] }}>{label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* WEEKLY STRAIN CHART */}
+      <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Weekly Strain</h2>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={weeklyStrain} barCategoryGap="20%">
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={30} />
+            <Tooltip
+              contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
+              formatter={(value) => [`${value}`, 'Strain']}
+            />
+            <Bar dataKey="strain" radius={[4, 4, 0, 0]}>
+              {weeklyStrain.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={entry.isToday ? '#3B82F6' : strainColor(entry.strain)}
+                  opacity={entry.strain === 0 ? 0.15 : 1}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* STRAIN BY SPORT */}
+      {strainBySport.length > 0 && (
+        <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+          <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Strain by Sport</h2>
+          <div className="space-y-3">
+            {strainBySport.map(s => {
+              const maxStrain = Math.max(...strainBySport.map(x => x.avgStrain), 1);
+              const pct = Math.round((s.avgStrain / maxStrain) * 100);
+              return (
+                <div key={s.sport_id}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      {(() => { const Icon = getSportIcon(s.sport_id); const c = getSportColor(s.sport_id); return <Icon size={14} color={c} strokeWidth={2} />; })()}
+                      <span className="text-[13px] text-[#A0A0A0]">{getSportName(s.sport_id)}</span>
+                    </div>
+                    <span className="text-[11px] text-[#555555]">avg {s.avgStrain} · {s.count} sessions</span>
+                  </div>
+                  <div className="bg-[#1A1A1A] h-3 rounded-full overflow-hidden">
+                    <div
+                      className="h-3 rounded-full"
+                      style={{ width: `${pct}%`, backgroundColor: getSportColor(s.sport_id) }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ACTIVITY HISTORY */}
+      {activityHistory.length > 0 && (
+        <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+          <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Activity History</h2>
+          <div className="space-y-4">
+            {activityHistory.map((week, wi) => (
+              <div key={wi}>
+                <div className="text-[11px] text-[#555555] font-medium mb-2">{week.label}</div>
+                <div className="space-y-1.5">
+                  {week.items.map((w, i) => {
+                    const strain = w.score?.strain || 0;
+                    const avgHR = w.score?.average_heart_rate;
+                    const durationMs = w.start && w.end ? new Date(w.end) - new Date(w.start) : 0;
+                    const d = new Date(w.start || w.date);
+                    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+                    const itemKey = `${wi}-${i}`;
+                    const isExpanded = expandedActivity === itemKey;
+                    const zd = w.score?.zone_duration || {};
+                    const totalZone = ZONE_KEYS.reduce((s, k) => s + (zd[k] || 0), 0);
+                    const maxHR = w.score?.max_heart_rate;
+                    const distM = w.score?.distance_meter;
+                    const kj = w.score?.kilojoule;
+
+                    return (
+                      <div key={i}>
+                        <button
+                          onClick={() => setExpandedActivity(isExpanded ? null : itemKey)}
+                          className="flex items-center w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+                        >
+                          <span className="text-[12px] text-[#555] w-10 shrink-0">{dateLabel}</span>
+                          {(() => { const Icon = getSportIcon(w.sport_id); return <Icon size={14} color={getSportColor(w.sport_id)} strokeWidth={2} className="mr-1.5 shrink-0" />; })()}
+                          <span className="text-[13px] text-white font-medium flex-1 text-left">{getSportName(w.sport_id)}</span>
+                          <span className="text-[13px] font-semibold mr-3" style={{ color: strainColor(strain) }}>{strain.toFixed(1)}</span>
+                          <span className="text-[12px] text-[#555] mr-2">{formatDuration(durationMs)}</span>
+                          {isExpanded ? <ChevronUp size={14} className="text-[#555]" /> : <ChevronDown size={14} className="text-[#555]" />}
+                        </button>
+
+                        {isExpanded && (
+                          <div className="ml-10 mt-1.5 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                            <div className="grid grid-cols-3 gap-3 mb-3">
+                              {avgHR && (
+                                <div>
+                                  <div className="text-[10px] uppercase text-[#555] mb-0.5">Avg HR</div>
+                                  <div className="text-[14px] font-semibold text-white">{avgHR} bpm</div>
+                                </div>
+                              )}
+                              {maxHR && (
+                                <div>
+                                  <div className="text-[10px] uppercase text-[#555] mb-0.5">Max HR</div>
+                                  <div className="text-[14px] font-semibold text-white">{maxHR} bpm</div>
+                                </div>
+                              )}
+                              {distM && (
+                                <div>
+                                  <div className="text-[10px] uppercase text-[#555] mb-0.5">Distance</div>
+                                  <div className="text-[14px] font-semibold text-white">{(distM * 0.000621371).toFixed(1)} mi</div>
+                                </div>
+                              )}
+                              {kj && (
+                                <div>
+                                  <div className="text-[10px] uppercase text-[#555] mb-0.5">Calories</div>
+                                  <div className="text-[14px] font-semibold text-white">{Math.round(kj * 0.239)} kcal</div>
+                                </div>
+                              )}
+                            </div>
+                            {totalZone > 0 && (
+                              <div>
+                                <div className="text-[10px] uppercase text-[#555] mb-1">HR Zones</div>
+                                <div className="flex h-2.5 rounded-full overflow-hidden">
+                                  {ZONE_KEYS.map((k, zi) => {
+                                    const pct = ((zd[k] || 0) / totalZone) * 100;
+                                    if (pct === 0) return null;
+                                    return <div key={zi} style={{ width: `${pct}%`, backgroundColor: ZONE_COLORS[zi] }} />;
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

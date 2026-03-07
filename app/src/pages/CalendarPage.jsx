@@ -6,11 +6,14 @@ import { DndContext, DragOverlay, useSensor, useSensors, TouchSensor, MouseSenso
 import { useApp } from '../context/AppContext';
 import { getSwappedWorkoutSummaryForDate, getSwappedWorkoutForDate, getWorkoutSummary, getMonthData, formatDateKey } from '../utils/workout';
 import { WEEKLY_TEMPLATE } from '../data/training';
+import { useWhoop } from '../hooks/useWhoop';
+import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export default function CalendarPage() {
   const { workoutHistory, weekSwaps, setWeekSwaps } = useApp();
+  const { connected: whoopConnected, data: whoopData } = useWhoop();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeId, setActiveId] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
@@ -19,6 +22,24 @@ export default function CalendarPage() {
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const loggedDates = useMemo(() => new Set(workoutHistory.map((e) => new Date(e.date).toDateString())), [workoutHistory]);
+
+  // Index Whoop workouts by date string for fast lookup
+  const whoopByDate = useMemo(() => {
+    const map = {};
+    if (!whoopData?.workout) return map;
+    for (const w of whoopData.workout) {
+      const key = w.date || (w.start ? w.start.split('T')[0] : null);
+      if (!key) continue;
+      if (!map[key]) map[key] = [];
+      map[key].push(w);
+    }
+    return map;
+  }, [whoopData]);
+
+  const getWhoopForDate = useCallback((date) => {
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return whoopByDate[key] || [];
+  }, [whoopByDate]);
 
   const monthData = useMemo(() => getMonthData(currentMonth.getFullYear(), currentMonth.getMonth()), [currentMonth]);
 
@@ -244,6 +265,8 @@ export default function CalendarPage() {
               const hasSkippedHic = log?.details?.hic?.skipped;
               const isDragging = activeId === `day-${idx}`;
               const swapped = dayInfo.isCurrentMonth && isDaySwapped(dayInfo.date);
+              const whoopActivities = dayInfo.isCurrentMonth ? getWhoopForDate(dayInfo.date) : [];
+              const maxStrain = whoopActivities.reduce((max, w) => Math.max(max, w.score?.strain || 0), 0);
 
               const cellWeekStart = dayInfo.isCurrentMonth ? startOfWeek(dayInfo.date, { weekStartsOn: 0 }).getTime() : null;
               const isValidTarget = activeId && !isDragging && dayInfo.isCurrentMonth && cellWeekStart === activeWeekStart;
@@ -275,6 +298,7 @@ export default function CalendarPage() {
                   isValidTarget={isValidTarget}
                   todayRef={isToday ? todayRef : null}
                   swapped={swapped}
+                  whoopStrain={maxStrain}
                   onTap={handleDayTap}
                 />
               );
@@ -352,6 +376,117 @@ export default function CalendarPage() {
                   <X size={16} className="text-white/60" />
                 </button>
               </div>
+
+              {/* Whoop Activity Section */}
+              {selectedDay && (() => {
+                const dayWhoop = getWhoopForDate(selectedDay.date);
+                if (dayWhoop.length === 0) return null;
+                return (
+                  <div className="mb-4 space-y-3">
+                    <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold">Whoop Activity</h4>
+                    {dayWhoop.map((w, i) => {
+                      const strain = w.score?.strain || 0;
+                      const avgHR = w.score?.average_heart_rate;
+                      const maxHR = w.score?.max_heart_rate;
+                      const distM = w.score?.distance_meter;
+                      const kj = w.score?.kilojoule;
+                      const zd = w.score?.zone_duration || {};
+                      const durationMs = w.start && w.end ? new Date(w.end) - new Date(w.start) : 0;
+                      const durationMin = Math.round(durationMs / 60000);
+                      const durationStr = durationMin >= 60 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m` : `${durationMin} min`;
+                      const strainColor = strain > 14 ? '#EF4444' : strain >= 8 ? '#F59E0B' : '#10B981';
+                      const distMi = distM ? (distM * 0.000621371).toFixed(1) : null;
+                      const kcal = kj ? Math.round(kj * 0.239) : null;
+
+                      // HR Zone bar
+                      const zones = [
+                        { key: 'zone_one_milli', color: '#3B82F6' },
+                        { key: 'zone_two_milli', color: '#10B981' },
+                        { key: 'zone_three_milli', color: '#F59E0B' },
+                        { key: 'zone_four_milli', color: '#EF4444' },
+                        { key: 'zone_five_milli', color: '#DC2626' },
+                      ];
+                      const totalZone = zones.reduce((s, z) => s + (zd[z.key] || 0), 0);
+
+                      return (
+                        <div key={i} className="bg-white/[0.05] rounded-xl p-3.5 border border-white/[0.08]">
+                          {/* Header: sport + duration */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              {(() => { const Icon = getSportIcon(w.sport_id); const c = getSportColor(w.sport_id); return (
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: c + '15' }}>
+                                  <Icon size={16} color={c} strokeWidth={2} />
+                                </div>
+                              ); })()}
+                              <span className="text-[14px] font-medium text-white">{getSportName(w.sport_id)}</span>
+                            </div>
+                            <span className="text-[13px] text-[#777]">{durationStr}</span>
+                          </div>
+
+                          {/* Metrics grid */}
+                          <div className="grid grid-cols-3 gap-3 mb-3">
+                            <div>
+                              <div className="text-[10px] uppercase text-[#555] mb-0.5">Strain</div>
+                              <div className="text-[17px] font-bold" style={{ color: strainColor }}>{strain.toFixed(1)}</div>
+                            </div>
+                            {avgHR && (
+                              <div>
+                                <div className="text-[10px] uppercase text-[#555] mb-0.5">Avg HR</div>
+                                <div className="text-[15px] font-semibold text-white">{avgHR} <span className="text-[11px] text-[#666]">bpm</span></div>
+                              </div>
+                            )}
+                            {maxHR && (
+                              <div>
+                                <div className="text-[10px] uppercase text-[#555] mb-0.5">Max HR</div>
+                                <div className="text-[15px] font-semibold text-white">{maxHR} <span className="text-[11px] text-[#666]">bpm</span></div>
+                              </div>
+                            )}
+                            {distMi && (
+                              <div>
+                                <div className="text-[10px] uppercase text-[#555] mb-0.5">Distance</div>
+                                <div className="text-[15px] font-semibold text-white">{distMi} <span className="text-[11px] text-[#666]">mi</span></div>
+                              </div>
+                            )}
+                            {kcal && (
+                              <div>
+                                <div className="text-[10px] uppercase text-[#555] mb-0.5">Calories</div>
+                                <div className="text-[15px] font-semibold text-white">{kcal} <span className="text-[11px] text-[#666]">kcal</span></div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* HR Zone bar */}
+                          {totalZone > 0 && (
+                            <div>
+                              <div className="text-[10px] uppercase text-[#555] mb-1.5">HR Zones</div>
+                              <div className="flex h-3 rounded-full overflow-hidden">
+                                {zones.map((z, zi) => {
+                                  const pct = ((zd[z.key] || 0) / totalZone) * 100;
+                                  if (pct === 0) return null;
+                                  return (
+                                    <div key={zi} style={{ width: `${pct}%`, backgroundColor: z.color }} className="relative">
+                                      {pct > 10 && (
+                                        <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] text-white/70 font-medium">
+                                          {Math.round(pct)}%
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex justify-between mt-1.5">
+                                {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((label, zi) => (
+                                  <span key={label} className="text-[8px] font-medium" style={{ color: zones[zi].color }}>{label}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {!showSwapPicker ? (
                 <div className="flex flex-col gap-2.5">
@@ -450,7 +585,7 @@ function abbrevLabel(label) {
   return label.toUpperCase().slice(0, 8);
 }
 
-function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, onTap }) {
+function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, onTap }) {
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id,
     disabled: !dayInfo.isCurrentMonth,
@@ -509,6 +644,13 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
       {/* Swap indicator */}
       {swapped && !isDragging && (
         <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+      )}
+      {/* Whoop strain dot */}
+      {whoopStrain > 0 && !isDragging && (
+        <div
+          className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: whoopStrain > 14 ? '#EF4444' : whoopStrain >= 8 ? '#F59E0B' : '#10B981' }}
+        />
       )}
     </div>
   );

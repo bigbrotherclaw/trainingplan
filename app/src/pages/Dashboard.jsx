@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
 import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
-import { getSportName, getSportIcon, getSportColor } from '../utils/whoopSports';
+import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
 
@@ -243,18 +243,19 @@ export default function Dashboard({ onNavigate }) {
             {whoopWorkouts.slice(-5).reverse().map((w, i) => {
               const strain = w.score?.strain;
               const avgHR = w.score?.average_heart_rate;
-              const startTime = new Date(w.start || w.date);
-              const endTime = w.end ? new Date(w.end) : null;
-              const durationMin = endTime ? Math.round((endTime - startTime) / 60000) : null;
+              const duration = formatDuration(w.start, w.end);
               const color = getSportColor(w.sport_id);
+              const SportIcon = getSportIcon(w.sport_id);
               return (
                 <div key={i} className="flex items-center gap-3 py-1.5">
-                  <span className="text-[16px] w-6 text-center shrink-0">{getSportIcon(w.sport_id)}</span>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color + '15' }}>
+                    <SportIcon size={16} color={color} strokeWidth={2} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium text-white truncate">{getSportName(w.sport_id)}</div>
                     <div className="text-[11px] text-[#666666]">
-                      {startTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      {durationMin != null && <span> &middot; {durationMin}m</span>}
+                      {new Date(w.start || w.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {duration !== '—' && <span> &middot; {duration}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">

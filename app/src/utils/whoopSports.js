@@ -1,3 +1,17 @@
+import {
+  Footprints,
+  Bike,
+  Waves,
+  Dumbbell,
+  Zap,
+  PersonStanding,
+  Activity,
+  HeartPulse,
+  Mountain,
+  Target,
+  CircleDot,
+} from 'lucide-react';
+
 export const SPORT_ID_MAP = {
   0: 'Running',
   1: 'Cycling',
@@ -8,30 +22,42 @@ export const SPORT_ID_MAP = {
   71: 'Spinning',
   82: 'Yoga',
   84: 'Rowing',
+  85: 'Walking',
+  96: 'Hiking',
+  126: 'Boxing',
 };
 
-const SPORT_ICONS = {
-  0: '\u{1F3C3}',   // running
-  1: '\u{1F6B4}',   // cycling
-  33: '\u{1F3CA}',  // swimming
-  44: '\u{1F4AA}',  // functional fitness
-  48: '\u26A1',     // HIIT
-  63: '\u{1F3CB}\uFE0F', // weightlifting
-  71: '\u{1F6B4}',  // spinning
-  82: '\u{1F9D8}',  // yoga
-  84: '\u{1F6A3}',  // rowing
+// Lucide icon components per sport
+const SPORT_ICON_MAP = {
+  0: Footprints,       // Running
+  1: Bike,             // Cycling
+  33: Waves,           // Swimming
+  44: Zap,             // Functional Fitness / CrossFit
+  48: Zap,             // HIIT
+  63: Dumbbell,        // Weightlifting
+  71: Bike,            // Spinning
+  82: PersonStanding,  // Yoga
+  84: Waves,           // Rowing (water-based)
+  85: Footprints,      // Walking
+  96: Mountain,        // Hiking
+  126: Target,         // Boxing
 };
 
+// Single cohesive color palette — muted tones that work on dark bg
+// All colors from the same family for consistency
 const SPORT_COLORS = {
-  0: '#10B981',   // running - green
-  1: '#3B82F6',   // cycling - blue
-  33: '#06B6D4',  // swimming - cyan
-  44: '#F59E0B',  // functional fitness - amber
-  48: '#EF4444',  // HIIT - red
-  63: '#F59E0B',  // weightlifting - amber
-  71: '#3B82F6',  // spinning - blue
-  82: '#8B5CF6',  // yoga - purple
-  84: '#14B8A6',  // rowing - teal
+  0: '#34D399',   // running - emerald
+  1: '#60A5FA',   // cycling - blue
+  33: '#22D3EE',  // swimming - cyan
+  44: '#FBBF24',  // functional fitness - amber
+  48: '#F87171',  // HIIT - red
+  63: '#FBBF24',  // weightlifting - amber
+  71: '#60A5FA',  // spinning - blue
+  82: '#A78BFA',  // yoga - violet
+  84: '#2DD4BF',  // rowing - teal
+  85: '#34D399',  // walking - emerald
+  96: '#34D399',  // hiking - emerald
+  126: '#F87171', // boxing - red
 };
 
 const TRAINING_CATEGORY_MAP = {
@@ -44,20 +70,56 @@ const TRAINING_CATEGORY_MAP = {
   71: 'tri',       // spinning
   82: 'recovery',  // yoga
   84: 'tri',       // rowing
+  85: 'tri',       // walking
+  96: 'tri',       // hiking
+  126: 'strength', // boxing
 };
 
 export function getSportName(sportId) {
-  return SPORT_ID_MAP[sportId] ?? `Activity (${sportId})`;
+  return SPORT_ID_MAP[sportId] ?? `Activity`;
 }
 
+/**
+ * Returns the Lucide icon COMPONENT for a sport.
+ * Usage: const Icon = getSportIcon(sportId); <Icon size={18} />
+ */
 export function getSportIcon(sportId) {
-  return SPORT_ICONS[sportId] ?? '\u{1F4AA}';
+  return SPORT_ICON_MAP[sportId] ?? Activity;
 }
 
 export function getSportColor(sportId) {
-  return SPORT_COLORS[sportId] ?? '#6B7280';
+  return SPORT_COLORS[sportId] ?? '#9CA3AF';
 }
 
 export function categorizeForTrainingPlan(sportId) {
   return TRAINING_CATEGORY_MAP[sportId] ?? 'other';
+}
+
+/**
+ * Format duration in milliseconds or minutes to human readable
+ */
+export function formatDuration(startISO, endISO) {
+  if (!startISO || !endISO) return '—';
+  const ms = new Date(endISO) - new Date(startISO);
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+/**
+ * Convert meters to miles, 1 decimal
+ */
+export function metersToMiles(meters) {
+  if (!meters) return null;
+  return (meters * 0.000621371).toFixed(1);
+}
+
+/**
+ * Convert kilojoules to kcal
+ */
+export function kjToKcal(kj) {
+  if (!kj) return null;
+  return Math.round(kj * 0.239006);
 }
