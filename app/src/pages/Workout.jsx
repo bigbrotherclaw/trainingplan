@@ -242,6 +242,7 @@ export default function Workout({ showToast }) {
   const [longNotes, setLongNotes] = useState('');
   const [showAllHics, setShowAllHics] = useState(true);
   const [showAllCardio, setShowAllCardio] = useState(false);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [cardioModality, setCardioModality] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [expandedLifts, setExpandedLifts] = useState({});
@@ -593,10 +594,19 @@ export default function Workout({ showToast }) {
         <div>
           <h3 className="text-xs font-semibold text-[#555555] uppercase tracking-widest mb-3">Upcoming</h3>
           <div className="space-y-3">
-            {upcomingWorkouts.map(({ date, workout }, idx) => (
+            {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 2).map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
             ))}
           </div>
+          {upcomingWorkouts.length > 2 && (
+            <button
+              onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+              className="w-full mt-3 py-2.5 flex items-center justify-center gap-1.5 text-[12px] text-[#666666] hover:text-accent-blue transition-colors"
+            >
+              {showAllUpcoming ? 'Show Less' : `Show ${upcomingWorkouts.length - 2} More`}
+              <ChevronDown size={14} className={`transition-transform ${showAllUpcoming ? 'rotate-180' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -944,10 +954,19 @@ export default function Workout({ showToast }) {
         <div>
           <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4 mt-6">Upcoming</h3>
           <div className="space-y-3">
-            {upcomingWorkouts.map(({ date, workout }, idx) => (
+            {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 2).map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />
             ))}
           </div>
+          {upcomingWorkouts.length > 2 && (
+            <button
+              onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+              className="w-full mt-3 py-2.5 flex items-center justify-center gap-1.5 text-[12px] text-[#666666] hover:text-accent-blue transition-colors"
+            >
+              {showAllUpcoming ? 'Show Less' : `Show ${upcomingWorkouts.length - 2} More`}
+              <ChevronDown size={14} className={`transition-transform ${showAllUpcoming ? 'rotate-180' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
     );
