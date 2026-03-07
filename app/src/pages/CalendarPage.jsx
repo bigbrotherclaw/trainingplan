@@ -419,7 +419,7 @@ export default function CalendarPage() {
                                   <Icon size={16} color={c} strokeWidth={2} />
                                 </div>
                               ); })()}
-                              <span className="text-[14px] font-medium text-white">{getSportName(w.sport_id)}</span>
+                              <span className="text-[14px] font-medium text-white">{getSportName(w.sport_id, w)}</span>
                             </div>
                             <span className="text-[13px] text-[#777]">{durationStr}</span>
                           </div>

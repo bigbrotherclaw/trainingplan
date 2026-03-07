@@ -836,7 +836,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
                           <Icon size={16} color={c} strokeWidth={2} />
                         </div>
                       ); })()}
-                      <span className="text-[15px] font-medium text-white">{getSportName(w.sport_id)}</span>
+                      <span className="text-[15px] font-medium text-white">{getSportName(w.sport_id, w)}</span>
                     </div>
                     <span className="text-[13px] text-[#777]">{formatDuration(durationMs)}</span>
                   </div>
@@ -933,7 +933,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       {(() => { const Icon = getSportIcon(s.sport_id); const c = getSportColor(s.sport_id); return <Icon size={14} color={c} strokeWidth={2} />; })()}
-                      <span className="text-[13px] text-[#A0A0A0]">{getSportName(s.sport_id)}</span>
+                      <span className="text-[13px] text-[#A0A0A0]">{getSportName(s.sport_id, s)}</span>
                     </div>
                     <span className="text-[11px] text-[#555555]">avg {s.avgStrain} · {s.count} sessions</span>
                   </div>
@@ -981,7 +981,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
                         >
                           <span className="text-[12px] text-[#555] w-10 shrink-0">{dateLabel}</span>
                           {(() => { const Icon = getSportIcon(w.sport_id); return <Icon size={14} color={getSportColor(w.sport_id)} strokeWidth={2} className="mr-1.5 shrink-0" />; })()}
-                          <span className="text-[13px] text-white font-medium flex-1 text-left">{getSportName(w.sport_id)}</span>
+                          <span className="text-[13px] text-white font-medium flex-1 text-left">{getSportName(w.sport_id, w)}</span>
                           <span className="text-[13px] font-semibold mr-3" style={{ color: strainColor(strain) }}>{strain.toFixed(1)}</span>
                           <span className="text-[12px] text-[#555] mr-2">{formatDuration(durationMs)}</span>
                           {isExpanded ? <ChevronUp size={14} className="text-[#555]" /> : <ChevronDown size={14} className="text-[#555]" />}

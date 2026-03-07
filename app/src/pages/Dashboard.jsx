@@ -252,7 +252,7 @@ export default function Dashboard({ onNavigate }) {
                     <SportIcon size={16} color={color} strokeWidth={2} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium text-white truncate">{getSportName(w.sport_id)}</div>
+                    <div className="text-[13px] font-medium text-white truncate">{getSportName(w.sport_id, w)}</div>
                     <div className="text-[11px] text-[#666666]">
                       {new Date(w.start || w.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       {duration !== '—' && <span> &middot; {duration}</span>}

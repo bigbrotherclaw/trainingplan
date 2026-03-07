@@ -75,7 +75,20 @@ const TRAINING_CATEGORY_MAP = {
   126: 'strength', // boxing
 };
 
-export function getSportName(sportId) {
+/**
+ * Get sport name. Prefers the Whoop-provided sport_name (user label),
+ * falls back to our sport_id mapping.
+ * Can be called as getSportName(sportId) or getSportName(sportId, record)
+ */
+export function getSportName(sportId, record) {
+  // If the raw Whoop record has sport_name, use it (this is what the user labeled it)
+  if (record?.sport_name) {
+    // Capitalize first letter of each word
+    return record.sport_name
+      .split(/[\s_]+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
   return SPORT_ID_MAP[sportId] ?? `Activity`;
 }
 
