@@ -2,7 +2,7 @@ import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, GripVertical, RotateCcw, ArrowLeftRight, Moon, Repeat2, X } from 'lucide-react';
 import { format, isSameDay, startOfWeek, addMonths, subMonths } from 'date-fns';
-import { DndContext, DragOverlay, useSensor, useSensors, TouchSensor, MouseSensor, useDraggable, useDroppable, pointerWithin, rectIntersection } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useSensor, useSensors, TouchSensor, MouseSensor, PointerSensor, useDraggable, useDroppable, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { useApp } from '../context/AppContext';
 import { getSwappedWorkoutSummaryForDate, getSwappedWorkoutForDate, getWorkoutSummary, getMonthData, formatDateKey } from '../utils/workout';
 import { WEEKLY_TEMPLATE } from '../data/training';
@@ -44,8 +44,9 @@ export default function CalendarPage() {
   const monthData = useMemo(() => getMonthData(currentMonth.getFullYear(), currentMonth.getMonth()), [currentMonth]);
 
   const sensors = useSensors(
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }),
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
   );
 
   const getDayInfoById = useCallback((id) => {
