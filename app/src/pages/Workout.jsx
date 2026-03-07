@@ -371,7 +371,7 @@ export default function Workout({ showToast }) {
   };
 
   const activeSuggestion = (!overrideSuggestion && acceptedSuggestion) ? acceptedSuggestion : null;
-  const showSuggestionCard = whoopRecoveryInfo && whoopRecoveryInfo.modifications?.type !== 'none' && !acceptedSuggestion && !dismissed;
+  const showSuggestionCard = whoopRecoveryInfo && whoopRecoveryInfo.modifications?.type !== 'none' && !acceptedSuggestion && !dismissed && !todayLogged;
 
   const getTodayLiftWeight = (liftName) => {
     const lift = OPERATOR_LIFTS.find((l) => l.name === liftName);
