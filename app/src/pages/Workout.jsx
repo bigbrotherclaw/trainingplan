@@ -615,7 +615,7 @@ export default function Workout({ showToast }) {
   // OVERVIEW MODE
   if (!loggingMode) {
     return (
-      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-7">
+      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-9">
         <AnimatePresence>
           {showCelebration && (
             <motion.div
@@ -834,11 +834,23 @@ export default function Workout({ showToast }) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`bg-[#141414] rounded-2xl border border-white/[0.12] p-5 pr-5 border-l-4 ${
-            todayWorkout.type === 'strength' ? 'border-l-amber-500' :
-            todayWorkout.type === 'tri' ? 'border-l-teal-500' :
-            todayWorkout.type === 'long' ? 'border-l-emerald-500' : 'border-l-gray-500'
-          } active:scale-[0.98] transition-transform`}
+          className={`relative bg-[#141414] rounded-2xl p-5 pr-5 active:scale-[0.98] transition-transform`}
+          style={{
+            border: `1.5px solid ${
+              todayWorkout.type === 'strength' ? 'rgba(245, 158, 11, 0.35)' :
+              todayWorkout.type === 'tri' ? 'rgba(20, 184, 166, 0.35)' :
+              todayWorkout.type === 'long' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(107, 114, 128, 0.35)'
+            }`,
+            boxShadow: `0 0 20px ${
+              todayWorkout.type === 'strength' ? 'rgba(245, 158, 11, 0.12)' :
+              todayWorkout.type === 'tri' ? 'rgba(20, 184, 166, 0.12)' :
+              todayWorkout.type === 'long' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(107, 114, 128, 0.12)'
+            }, 0 0 60px ${
+              todayWorkout.type === 'strength' ? 'rgba(245, 158, 11, 0.06)' :
+              todayWorkout.type === 'tri' ? 'rgba(20, 184, 166, 0.06)' :
+              todayWorkout.type === 'long' ? 'rgba(16, 185, 129, 0.06)' : 'rgba(107, 114, 128, 0.06)'
+            }`,
+          }}
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-[15px] text-[#A0A0A0]">
@@ -952,7 +964,7 @@ export default function Workout({ showToast }) {
 
         {/* Upcoming Workouts */}
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-5 mt-8">Upcoming</h3>
+          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-5">Upcoming</h3>
           <div className="space-y-3">
             {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 2).map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard key={idx} date={date} workout={workout} settings={settings} />

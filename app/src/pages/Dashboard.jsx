@@ -240,7 +240,7 @@ export default function Dashboard({ onNavigate }) {
           className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Recent Activities</h2>
+            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold pl-0.5">Recent Activities</h2>
             <button onClick={() => onNavigate('stats')} className="text-[11px] text-accent-blue font-medium">View All</button>
           </div>
           <div className="divide-y divide-white/[0.06]">
@@ -251,7 +251,7 @@ export default function Dashboard({ onNavigate }) {
               const color = getSportColor(w.sport_id);
               const SportIcon = getSportIcon(w.sport_id, w);
               return (
-                <div key={i} className="flex items-center gap-3.5 py-3.5 first:pt-0 last:pb-0">
+                <div key={i} className="flex items-center gap-3.5 py-4 first:pt-0 last:pb-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color + '15' }}>
                     <SportIcon size={16} color={color} strokeWidth={2} />
                   </div>
