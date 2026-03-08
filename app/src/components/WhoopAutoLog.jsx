@@ -155,10 +155,26 @@ function mapActivitiesToWorkout(activities, planned) {
   return [];
 }
 
+const LS_CONFIRMED = 'whoopAutoLog_confirmed';
+const LS_DISMISSED = 'whoopAutoLog_dismissed';
+
+function getPersistedSet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+
+function persistSet(key, set) {
+  localStorage.setItem(key, JSON.stringify([...set]));
+}
+
 export default function WhoopAutoLog() {
   const { workoutHistory, setWorkoutHistory, weekSwaps } = useApp();
   const { connected, workouts: whoopWorkouts } = useWhoop();
-  const [dismissed, setDismissed] = useState(new Set()); // dismissed date keys
+  // Persist to localStorage so these survive re-renders, unmounts, AND app restarts
+  const [confirmed, setConfirmed] = useState(() => getPersistedSet(LS_CONFIRMED));
+  const [dismissed, setDismissed] = useState(() => getPersistedSet(LS_DISMISSED));
   const [logging, setLogging] = useState(new Set());
 
   const loggedDates = useMemo(
@@ -192,8 +208,9 @@ export default function WhoopAutoLog() {
     const dayMatches = [];
     
     for (const [dateKey, { date, activities }] of Object.entries(byDate)) {
-      // Skip if already logged or dismissed
+      // Skip if already logged, confirmed, or dismissed
       if (loggedDates.has(dateKey)) continue;
+      if (confirmed.has(dateKey)) continue;
       if (dismissed.has(dateKey)) continue;
       
       // Get planned workout
@@ -225,13 +242,16 @@ export default function WhoopAutoLog() {
     return dayMatches
       .sort((a, b) => b.date - a.date)
       .slice(0, 3);
-  }, [connected, whoopWorkouts, loggedDates, weekSwaps, dismissed]);
+  }, [connected, whoopWorkouts, loggedDates, weekSwaps, confirmed, dismissed]);
 
   const handleConfirm = useCallback((dayMatch) => {
     const { dateKey, date, planned, mapped, totalStrain, totalDuration } = dayMatch;
     
-    // Immediately dismiss so it can't reappear even if persistence hiccups
-    setDismissed(prev => new Set([...prev, dateKey]));
+    // Persist confirmation to localStorage FIRST — this is the source of truth
+    // Even if React state hiccups, localStorage ensures the card never comes back
+    const updatedConfirmed = new Set([...confirmed, dateKey]);
+    persistSet(LS_CONFIRMED, updatedConfirmed);
+    setConfirmed(updatedConfirmed);
     setLogging(prev => new Set([...prev, dateKey]));
 
     // Build whoop activity data from all mapped components
@@ -281,11 +301,13 @@ export default function WhoopAutoLog() {
             note: `Auto-logged from Whoop: ${allSports}`,
           },
     }]);
-  }, [setWorkoutHistory]);
+  }, [confirmed, setWorkoutHistory]);
 
   const handleDismiss = useCallback((dateKey) => {
-    setDismissed(prev => new Set([...prev, dateKey]));
-  }, []);
+    const updatedDismissed = new Set([...dismissed, dateKey]);
+    persistSet(LS_DISMISSED, updatedDismissed);
+    setDismissed(updatedDismissed);
+  }, [dismissed]);
 
   if (!pendingDayMatches.length) return null;
 
