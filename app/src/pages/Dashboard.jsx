@@ -140,7 +140,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
         animate={{ opacity: 1, y: 0 }}
         className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
       >
-        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Your Week</h2>
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4 text-center">Your Week</h2>
         <div className="flex justify-between px-1">
           {weekData.map((day, i) => {
             const color = TYPE_COLORS[day.workout.type];
@@ -246,9 +246,9 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
           transition={{ delay: 0.04 }}
           className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold pl-2">Recent Activities</h2>
-            <button onClick={() => onNavigate('stats')} className="text-[11px] text-accent-blue font-medium">View All</button>
+          <div className="relative mb-4">
+            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold text-center">Recent Activities</h2>
+            <button onClick={() => onNavigate('stats')} className="text-[11px] text-accent-blue font-medium absolute right-0 top-0">View All</button>
           </div>
           <div className="divide-y divide-white/[0.06]">
             {whoopWorkouts.slice(-5).reverse().map((w, i) => {

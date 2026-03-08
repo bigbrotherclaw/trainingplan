@@ -120,7 +120,7 @@ export default function App() {
           className="flex flex-col h-dvh bg-black"
         >
           <header id="app-header" className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 pb-4 flex items-center justify-between" style={{ paddingTop: 'max(env(safe-area-inset-top, 60px), 60px)' }}>
-            <div>
+            <div className="flex-1 text-center">
               <h1 className="text-[22px] font-bold text-white tracking-tight">
                 {showProfile ? 'Profile' : activeTab === 'dashboard' ? 'Dúnedain' : tabs.find(t => t.id === activeTab)?.label}
               </h1>
