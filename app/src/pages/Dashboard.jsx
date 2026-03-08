@@ -24,7 +24,7 @@ const TYPE_BADGE_BG = {
   long: 'bg-emerald-500/20 text-emerald-400',
 };
 
-export default function Dashboard({ onNavigate }) {
+export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
   const { workoutHistory, weekSwaps } = useApp();
   const { connected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
 
@@ -146,13 +146,17 @@ export default function Dashboard({ onNavigate }) {
             const color = TYPE_COLORS[day.workout.type];
             const filled = day.isLogged;
             const isToday = day.isToday;
+            const isFuture = !day.isPast && !isToday;
+            const tappable = !isFuture;
             return (
               <div key={i} className="flex flex-col items-center flex-1 gap-1.5">
                 <span className="text-[10px] text-[#666666]">{dayLabels[i]}</span>
-                <div
+                <button
+                  disabled={!tappable}
+                  onClick={() => tappable && onNavigateToWorkout(day.date)}
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     isToday ? 'animate-pulse-ring' : ''
-                  }`}
+                  } ${tappable ? 'active:scale-95' : ''}`}
                   style={{
                     backgroundColor: filled ? color : 'transparent',
                     border: filled ? 'none' : `2px solid ${isToday ? color : color + '40'}`,
@@ -163,7 +167,7 @@ export default function Dashboard({ onNavigate }) {
                     ? <span className="text-black text-xs font-bold">{day.date.getDate()}</span>
                     : <span className="text-[11px] font-medium" style={{ color: color + (isToday ? '' : '80') }}>{day.date.getDate()}</span>
                   }
-                </div>
+                </button>
               </div>
             );
           })}
@@ -315,7 +319,7 @@ export default function Dashboard({ onNavigate }) {
             </div>
           ) : todayWorkout.type !== 'rest' ? (
             <button
-              onClick={() => onNavigate('workout')}
+              onClick={() => onNavigateToWorkout(today)}
               className="flex items-center justify-center gap-2 w-full bg-accent-blue hover:bg-accent-blue/90 text-white rounded-2xl text-[17px] font-semibold transition-colors active:scale-[0.98] mt-4 min-h-[52px]"
             >
               Start Workout

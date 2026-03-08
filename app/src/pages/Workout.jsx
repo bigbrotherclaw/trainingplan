@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route, Footprints, Waves } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronLeft, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route, Footprints, Waves } from 'lucide-react';
 import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
@@ -261,7 +261,113 @@ const typeBadgeStyles = {
   rest: 'bg-gray-500/15 text-gray-400',
 };
 
-export default function Workout({ showToast }) {
+const TYPE_COLORS_CAL = {
+  rest: '#E63946',
+  strength: '#F59E0B',
+  tri: '#14B8A6',
+  long: '#10B981',
+};
+
+function MiniCalendar({ selectedDate, onSelectDate, loggedDates, weekSwaps }) {
+  const realToday = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const d = selectedDate || new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
+  // Sync view month when selectedDate changes
+  useEffect(() => {
+    if (selectedDate) {
+      setViewMonth({ year: selectedDate.getFullYear(), month: selectedDate.getMonth() });
+    }
+  }, [selectedDate?.getTime()]);
+
+  const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const monthName = new Date(viewMonth.year, viewMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const days = useMemo(() => {
+    const first = new Date(viewMonth.year, viewMonth.month, 1);
+    const startDay = first.getDay();
+    const daysInMonth = new Date(viewMonth.year, viewMonth.month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < startDay; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(viewMonth.year, viewMonth.month, d);
+      date.setHours(0, 0, 0, 0);
+      const isToday = date.getTime() === realToday.getTime();
+      const isFuture = date.getTime() > realToday.getTime();
+      const isSelected = selectedDate && date.getTime() === selectedDate.getTime();
+      const isLogged = loggedDates.has(date.toDateString());
+      const workout = getSwappedWorkoutForDate(date, weekSwaps);
+      cells.push({ date, day: d, isToday, isFuture, isSelected, isLogged, workout });
+    }
+    return cells;
+  }, [viewMonth, realToday, selectedDate, loggedDates, weekSwaps]);
+
+  const prevMonth = () => {
+    setViewMonth(v => {
+      const m = v.month - 1;
+      return m < 0 ? { year: v.year - 1, month: 11 } : { year: v.year, month: m };
+    });
+  };
+  const nextMonth = () => {
+    const now = new Date();
+    const maxMonth = now.getMonth();
+    const maxYear = now.getFullYear();
+    setViewMonth(v => {
+      const m = v.month + 1;
+      const next = m > 11 ? { year: v.year + 1, month: 0 } : { year: v.year, month: m };
+      if (next.year > maxYear || (next.year === maxYear && next.month > maxMonth)) return v;
+      return next;
+    });
+  };
+
+  return (
+    <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4">
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={prevMonth} className="p-1.5 text-[#666666] active:text-white transition-colors">
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-[13px] font-semibold text-white">{monthName}</span>
+        <button onClick={nextMonth} className="p-1.5 text-[#666666] active:text-white transition-colors">
+          <ChevronRight size={18} />
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+        {dayLabels.map((l, i) => (
+          <div key={i} className="text-center text-[10px] text-[#555555] font-medium" style={{ paddingBottom: 4 }}>{l}</div>
+        ))}
+        {days.map((cell, i) => {
+          if (!cell) return <div key={`empty-${i}`} />;
+          const color = TYPE_COLORS_CAL[cell.workout.type] || '#666';
+          return (
+            <button
+              key={cell.day}
+              disabled={cell.isFuture}
+              onClick={() => !cell.isFuture && onSelectDate(cell.date)}
+              className="flex flex-col items-center justify-center transition-all active:scale-90"
+              style={{
+                width: '100%',
+                aspectRatio: '1',
+                borderRadius: '9999px',
+                backgroundColor: cell.isSelected ? (color + '30') : 'transparent',
+                border: cell.isSelected ? `2px solid ${color}` : cell.isToday ? '1.5px solid #444' : '1.5px solid transparent',
+                opacity: cell.isFuture ? 0.25 : 1,
+              }}
+            >
+              <span className="text-[12px] font-medium" style={{ color: cell.isSelected ? '#fff' : cell.isToday ? '#fff' : '#999', lineHeight: 1 }}>{cell.day}</span>
+              {cell.isLogged && (
+                <div style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: color, marginTop: 1 }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function Workout({ showToast, selectedDate: selectedDateProp, onSelectedDateChange }) {
   const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion, setAcceptedSuggestion } = useApp();
   const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
   const [loggingMode, setLoggingMode] = useState(false);
@@ -293,7 +399,15 @@ export default function Workout({ showToast }) {
   const timerRef = useRef(null);
   const loggingStartRef = useRef(null);
 
-  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const realToday = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const today = useMemo(() => {
+    if (!selectedDateProp) return realToday;
+    const d = new Date(selectedDateProp);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [selectedDateProp, realToday]);
+  const isViewingPast = today.getTime() < realToday.getTime();
+  const isViewingToday = today.getTime() === realToday.getTime();
   const todayWorkout = useMemo(() => getSwappedWorkoutForDate(today, weekSwaps), [today, weekSwaps]);
   const loadingInfo = OPERATOR_LOADING.find((l) => l.week === settings.week) || OPERATOR_LOADING[0];
 
@@ -322,10 +436,33 @@ export default function Workout({ showToast }) {
     }
   }, [acceptedSuggestion]);
 
-  const todayLogged = useMemo(
-    () => workoutHistory.some((e) => new Date(e.date).toDateString() === today.toDateString()),
-    [workoutHistory, today]
+  const loggedDates = useMemo(
+    () => new Set(workoutHistory.map((e) => new Date(e.date).toDateString())),
+    [workoutHistory]
   );
+
+  const todayLogged = useMemo(
+    () => loggedDates.has(today.toDateString()),
+    [loggedDates, today]
+  );
+
+  const handleCalendarDateSelect = (date) => {
+    if (onSelectedDateChange) onSelectedDateChange(date);
+    // Reset logging state when changing dates
+    setLoggingMode(false);
+    setEnergyLevel(null);
+    setSelectedCardio(null);
+    setSelectedHic(null);
+    setSkippedHic(false);
+    setLiftData({});
+    setCompletedSets({});
+    setCompletedAccessorySets({});
+    setAccessoryData({});
+    setHicMetrics({});
+    setCardioMetrics({});
+    setLongNotes('');
+    setDurationMin('');
+  };
 
   const upcomingWorkouts = useMemo(() => {
     const upcoming = [];
@@ -538,6 +675,14 @@ export default function Workout({ showToast }) {
     setLoggingMode(true);
   };
 
+  // Use selected date for logging (noon to avoid timezone issues), or real now for today
+  const getLogDate = () => {
+    if (isViewingToday) return new Date().toISOString();
+    const d = new Date(today);
+    d.setHours(12, 0, 0, 0);
+    return d.toISOString();
+  };
+
   const handleComplete = () => {
     if (todayWorkout.type === 'strength') {
       const activeLifts = getActiveLifts();
@@ -561,7 +706,7 @@ export default function Workout({ showToast }) {
       });
       const dur = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
       setWorkoutHistory((prev) => [...prev, {
-        date: new Date().toISOString(),
+        date: getLogDate(),
         workoutName: todayWorkout.name,
         type: 'strength',
         ...(dur ? { duration: dur } : {}),
@@ -573,7 +718,7 @@ export default function Workout({ showToast }) {
       if (!selectedHic && !skippedHic) { showToast('Please select an HIC or skip it', 'error'); return; }
       const durTri = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
       setWorkoutHistory((prev) => [...prev, {
-        date: new Date().toISOString(),
+        date: getLogDate(),
         workoutName: todayWorkout.name,
         type: 'tri',
         ...(durTri ? { duration: durTri } : {}),
@@ -587,7 +732,7 @@ export default function Workout({ showToast }) {
       if (!selectedCardio) { showToast('Please select a cardio workout', 'error'); return; }
       const durLong = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
       setWorkoutHistory((prev) => [...prev, {
-        date: new Date().toISOString(),
+        date: getLogDate(),
         workoutName: todayWorkout.name,
         type: 'long',
         ...(durLong ? { duration: durLong } : {}),
@@ -604,7 +749,7 @@ export default function Workout({ showToast }) {
   const handleCompleteRecovery = () => {
     const dur = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : 50);
     setWorkoutHistory((prev) => [...prev, {
-      date: new Date().toISOString(),
+      date: getLogDate(),
       workoutName: 'Recovery Session',
       type: 'recovery',
       duration: dur,
@@ -623,6 +768,19 @@ export default function Workout({ showToast }) {
   if (todayWorkout.type === 'rest') {
     return (
       <div className="px-5 pt-4 pb-32 min-h-screen bg-black">
+        <MiniCalendar selectedDate={today} onSelectDate={handleCalendarDateSelect} loggedDates={loggedDates} weekSwaps={weekSwaps} />
+        {isViewingPast && (
+          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5" style={{ marginTop: 12 }}>
+            <Clock size={14} className="text-amber-400" />
+            <span className="text-[13px] text-amber-400">
+              Viewing {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </span>
+            <button onClick={() => onSelectedDateChange(null)} className="ml-auto text-[12px] text-amber-400 font-medium active:opacity-70">
+              Back to Today
+            </button>
+          </div>
+        )}
+        <div style={{ marginTop: 12 }} />
         <GlowBorder color="#E63946" speed={5} radius={16}>
           <div className="bg-[#141414] rounded-2xl text-center py-8 px-10">
             <Moon size={48} className="text-[#333333] mx-auto mb-4" />
@@ -685,6 +843,22 @@ export default function Workout({ showToast }) {
             <EnergyModal onSelect={handleEnergySelect} onClose={() => setShowEnergyModal(false)} whoopRecovery={!acceptedSuggestion ? whoopRecoveryInfo : null} />
           )}
         </AnimatePresence>
+
+        {/* CALENDAR */}
+        <MiniCalendar selectedDate={today} onSelectDate={handleCalendarDateSelect} loggedDates={loggedDates} weekSwaps={weekSwaps} />
+
+        {/* Past date indicator */}
+        {isViewingPast && (
+          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5">
+            <Clock size={14} className="text-amber-400" />
+            <span className="text-[13px] text-amber-400">
+              Viewing {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </span>
+            <button onClick={() => onSelectedDateChange(null)} className="ml-auto text-[12px] text-amber-400 font-medium active:opacity-70">
+              Back to Today
+            </button>
+          </div>
+        )}
 
         {/* RECOVERY SECTION */}
         {whoopConnected && whoopRecoveryInfo && (

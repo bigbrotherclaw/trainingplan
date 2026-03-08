@@ -43,6 +43,7 @@ function UserAvatar({ user, profile, onClick }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedDate, setSelectedDate] = useState(null);
   const [toast, setToast] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showMigrationModal, setShowMigrationModal] = useState(false);
@@ -64,16 +65,23 @@ export default function App() {
 
   const handleTabClick = (tabId) => {
     setShowProfile(false);
+    if (tabId !== 'workout') setSelectedDate(null);
     setActiveTab(tabId);
+  };
+
+  const navigateToWorkout = (date) => {
+    setSelectedDate(date || null);
+    setShowProfile(false);
+    setActiveTab('workout');
   };
 
   const renderPage = () => {
     if (showProfile) return <ProfilePage />;
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNavigate={setActiveTab} />;
+        return <Dashboard onNavigate={setActiveTab} onNavigateToWorkout={navigateToWorkout} />;
       case 'workout':
-        return <Workout showToast={showToast} />;
+        return <Workout showToast={showToast} selectedDate={selectedDate} onSelectedDateChange={setSelectedDate} />;
       case 'calendar':
         return <CalendarPage onNavigate={setActiveTab} />;
       case 'stats':
@@ -81,7 +89,7 @@ export default function App() {
       case 'settings':
         return <SettingsPage showToast={showToast} />;
       default:
-        return <Dashboard onNavigate={setActiveTab} />;
+        return <Dashboard onNavigate={setActiveTab} onNavigateToWorkout={navigateToWorkout} />;
     }
   };
 
