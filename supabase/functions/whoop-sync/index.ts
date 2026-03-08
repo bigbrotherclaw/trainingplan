@@ -197,6 +197,73 @@ serve(async (req: Request) => {
       }
     }
 
+    // Sync CURRENT cycle + recovery (today's live data)
+    if (syncType === 'all' || syncType === 'recovery' || syncType === 'cycle') {
+      try {
+        // Get the latest (current) cycle
+        const cycleData = await fetchWhoopData(accessToken, '/v2/cycle', { limit: '1' })
+        if (cycleData.records?.length > 0) {
+          const currentCycle = cycleData.records[0]
+          const cycleId = currentCycle.id
+          
+          // Use local-date-aware key: if cycle started today in user's perspective, use today
+          // The cycle start is in UTC; convert to local-ish date
+          const cycleStart = new Date(currentCycle.start)
+          const now = new Date()
+          // Use today's date as the key for the current active cycle (no end = still active)
+          const isActive = !currentCycle.end
+          const todayStr = now.toISOString().split('T')[0]
+          const cycleDate = isActive ? todayStr : (currentCycle.start?.split('T')[0] || todayStr)
+          
+          // Cache current cycle
+          await supabase.from('whoop_data').upsert({
+            user_id: user.id,
+            data_type: 'cycle',
+            date: cycleDate,
+            data: currentCycle,
+            synced_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,data_type,date' })
+          
+          // Get recovery for this cycle
+          try {
+            const recoveryData = await fetchWhoopData(accessToken, `/v2/recovery/${cycleId}`)
+            if (recoveryData && recoveryData.score_state === 'SCORED') {
+              await supabase.from('whoop_data').upsert({
+                user_id: user.id,
+                data_type: 'recovery',
+                date: cycleDate,
+                data: recoveryData,
+                synced_at: new Date().toISOString(),
+              }, { onConflict: 'user_id,data_type,date' })
+            }
+          } catch (recErr) {
+            console.log('No recovery for current cycle:', recErr.message)
+          }
+        }
+        
+        // Also get latest sleep (may be today's)
+        const sleepData = await fetchWhoopData(accessToken, '/v2/activity/sleep', { limit: '1' })
+        if (sleepData.records?.length > 0) {
+          const latestSleep = sleepData.records[0]
+          const sleepDate = latestSleep.start?.split('T')[0] || new Date().toISOString().split('T')[0]
+          // If sleep ended today, key it to today
+          const sleepEnd = latestSleep.end ? new Date(latestSleep.end) : null
+          const todayStr2 = new Date().toISOString().split('T')[0]
+          const finalSleepDate = (sleepEnd && sleepEnd.toISOString().split('T')[0] === todayStr2) ? todayStr2 : sleepDate
+          
+          await supabase.from('whoop_data').upsert({
+            user_id: user.id,
+            data_type: 'sleep',
+            date: finalSleepDate,
+            data: latestSleep,
+            synced_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,data_type,date' })
+        }
+      } catch (currentErr) {
+        console.error('Error syncing current data:', currentErr.message)
+      }
+    }
+
     // Sync workout data — use unique data_type per workout so multiple per day are preserved
     if (syncType === 'all' || syncType === 'workout') {
       const data = await fetchWhoopData(accessToken, '/v2/activity/workout', {

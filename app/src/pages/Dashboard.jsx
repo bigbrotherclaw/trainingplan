@@ -57,12 +57,29 @@ function AnimatedNumber({ value, duration = 1.5, decimals = 0, suffix = '' }) {
 
 // ── Recovery Gauge (circular) ──
 // ── Donut Gauge (reusable for Sleep, Recovery, Strain) ──
-function DonutGauge({ value, max = 100, label, size = 90, getColor, decimals = 0, suffix = '%', strokeW = 6, delay = 0 }) {
+function DonutGauge({ value, max = 100, label, size = 90, getColor, decimals = 0, suffix = '%', strokeW = 6, delay = 0, target = null }) {
   const radius = (size - strokeW * 2) / 2;
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
   const pct = Math.min((value ?? 0) / max, 1);
   const color = getColor(value ?? 0);
+
+  // Target marker position (angle on the circle, SVG is rotated -90deg so 0 = top)
+  const targetPct = target != null ? Math.min(target / max, 1) : null;
+  const targetAngle = targetPct != null ? targetPct * 360 : null;
+  const markerLen = strokeW + 4;
+
+  // Calculate marker line endpoints (inner to outer of the stroke)
+  let markerX1, markerY1, markerX2, markerY2;
+  if (targetAngle != null) {
+    const rad = (targetAngle - 90) * (Math.PI / 180); // -90 because SVG is rotated
+    const innerR = radius - markerLen / 2;
+    const outerR = radius + markerLen / 2;
+    markerX1 = center + innerR * Math.cos(rad);
+    markerY1 = center + innerR * Math.sin(rad);
+    markerX2 = center + outerR * Math.cos(rad);
+    markerY2 = center + outerR * Math.sin(rad);
+  }
 
   return (
     <motion.div
@@ -72,16 +89,27 @@ function DonutGauge({ value, max = 100, label, size = 90, getColor, decimals = 0
       transition={{ delay, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
     >
       <div className="relative" style={{ width: size, height: size }}>
-        <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx={center} cy={center} r={radius} fill="none" stroke="#222" strokeWidth={strokeW} />
+        <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
+          {/* Background track */}
+          <circle cx={center} cy={center} r={radius} fill="none" stroke="#222" strokeWidth={strokeW}
+            style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }} />
+          {/* Animated fill */}
           <motion.circle
             cx={center} cy={center} r={radius} fill="none"
             stroke={color} strokeWidth={strokeW} strokeLinecap="round"
+            style={{ transform: 'rotate(-90deg)', transformOrigin: 'center', filter: `drop-shadow(0 0 6px ${color}60)` }}
             initial={{ strokeDasharray: `0 ${circumference}` }}
             animate={{ strokeDasharray: `${pct * circumference} ${circumference}` }}
             transition={{ delay: delay + 0.2, duration: 1.8, ease: [0.34, 1.56, 0.64, 1] }}
-            style={{ filter: `drop-shadow(0 0 6px ${color}60)` }}
           />
+          {/* Target marker */}
+          {targetAngle != null && (
+            <line
+              x1={markerX1} y1={markerY1} x2={markerX2} y2={markerY2}
+              stroke="#ffffff" strokeWidth={2} strokeLinecap="round"
+              opacity={0.9}
+            />
+          )}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className="font-bold" style={{ color, fontVariantNumeric: 'tabular-nums', fontSize: size * 0.24 }}>
@@ -144,7 +172,15 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
 
     if (recoveryScore == null && hrv == null && strain == null) return null;
 
-    return { recoveryScore, hrv, restingHR, sleepScore, strain, calories };
+    // Strain target based on recovery (Whoop-style ranges)
+    let strainTarget = null;
+    if (recoveryScore != null) {
+      if (recoveryScore >= 67) strainTarget = 16;       // Green: push hard
+      else if (recoveryScore >= 34) strainTarget = 11;   // Yellow: moderate
+      else strainTarget = 6;                              // Red: easy day
+    }
+
+    return { recoveryScore, hrv, restingHR, sleepScore, strain, calories, strainTarget };
   }, [connected, whoopData]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
@@ -343,13 +379,13 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
         >
           {/* Sleep / Recovery / Strain — 3 donut gauges side by side */}
           <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4">
-            <div className="flex items-center justify-around">
+            <div className="flex items-end justify-around">
               <DonutGauge
                 value={whoopMetrics.sleepScore ?? 0}
                 max={100}
                 label="Sleep"
-                size={95}
-                strokeW={6}
+                size={80}
+                strokeW={5}
                 decimals={0}
                 suffix="%"
                 delay={0}
@@ -359,8 +395,8 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
                 value={whoopMetrics.recoveryScore ?? 0}
                 max={100}
                 label="Recovery"
-                size={95}
-                strokeW={6}
+                size={115}
+                strokeW={7}
                 decimals={0}
                 suffix="%"
                 delay={0.1}
@@ -370,11 +406,12 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
                 value={whoopMetrics.strain ?? 0}
                 max={21}
                 label="Strain"
-                size={95}
-                strokeW={6}
+                size={80}
+                strokeW={5}
                 decimals={1}
                 suffix=""
                 delay={0.2}
+                target={whoopMetrics.strainTarget}
                 getColor={(s) => s <= 7 ? '#00D46A' : s <= 14 ? '#FFCC00' : '#EF4444'}
               />
             </div>
