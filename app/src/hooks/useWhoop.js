@@ -9,6 +9,8 @@ export function useWhoop() {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
+  const [tokenError, setTokenError] = useState(null);
   const [data, setData] = useState({
     recovery: [],
     sleep: [],
@@ -32,6 +34,8 @@ export function useWhoop() {
       const result = await resp.json();
       console.log('[Whoop] status check:', result);
       setConnected(result.connected);
+      setNeedsReauth(result.needs_reauth || false);
+      setTokenError(result.token_error || null);
       return result.connected;
     } catch (err) {
       console.error('[Whoop] status check failed:', err);
@@ -206,6 +210,14 @@ export function useWhoop() {
       });
       const result = await resp.json();
       console.log('[Whoop] Sync result:', result);
+      if (result.error && result.error.includes('Token refresh failed')) {
+        console.warn('[Whoop] Token refresh failed — needs re-authentication');
+        setNeedsReauth(true);
+        setTokenError(result.error);
+      } else {
+        setNeedsReauth(false);
+        setTokenError(null);
+      }
       await loadCachedData(days);
     } catch (err) {
       console.error('[Whoop] Sync failed:', err);
@@ -303,6 +315,8 @@ export function useWhoop() {
     connected,
     loading,
     syncing,
+    needsReauth,
+    tokenError,
     data,
     workouts,
     latestRecovery,

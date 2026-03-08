@@ -189,14 +189,18 @@ serve(async (req: Request) => {
 
       const { data: tokens } = await supabase
         .from('whoop_tokens')
-        .select('expires_at, scopes')
+        .select('expires_at, scopes, token_error, updated_at')
         .eq('user_id', user.id)
         .single()
 
+      const isExpired = tokens?.expires_at && new Date(tokens.expires_at) < new Date()
       return new Response(JSON.stringify({
         connected: !!tokens,
         expires_at: tokens?.expires_at,
         scopes: tokens?.scopes,
+        token_error: tokens?.token_error || null,
+        token_expired: isExpired || false,
+        needs_reauth: !!(tokens?.token_error) || false,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

@@ -7,7 +7,7 @@ import { getGarminActivityName, formatGarminDuration, garminMetersToMiles } from
 
 export default function SettingsPage({ showToast, onNavigateToSocial }) {
   const { settings, setSettings, workoutHistory, setWorkoutHistory, setWorkoutOverrides, setWeekSwaps } = useApp();
-  const { connected: whoopConnected, loading: whoopLoading, syncing, connect: whoopConnect, disconnect: whoopDisconnect, syncData: whoopSync, latestRecovery, latestSleep } = useWhoop();
+  const { connected: whoopConnected, loading: whoopLoading, syncing, needsReauth: whoopNeedsReauth, connect: whoopConnect, disconnect: whoopDisconnect, syncData: whoopSync, latestRecovery, latestSleep } = useWhoop();
   const { connected: garminConnected, loading: garminLoading, syncing: garminSyncing, activities: garminActivities, connect: garminConnect, verifyMfa: garminVerifyMfa, disconnect: garminDisconnect, syncData: garminSync } = useGarmin();
   const [garminEmail, setGarminEmail] = useState('');
   const [garminPassword, setGarminPassword] = useState('');
@@ -345,10 +345,21 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
             </button>
           ) : (
             <div className="space-y-3">
+              {whoopNeedsReauth && (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <span className="text-red-400 text-[13px] font-medium flex-1">⚠️ Whoop session expired — please reconnect</span>
+                  <button
+                    onClick={async () => { await whoopDisconnect(); whoopConnect(); }}
+                    className="px-3 py-1 rounded-lg bg-red-500/20 text-red-400 text-[12px] font-semibold active:bg-red-500/30"
+                  >
+                    Reconnect
+                  </button>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#44b700]" />
-                  <span className="text-[13px] text-[#888888]">Whoop connected</span>
+                  <span className={`w-2 h-2 rounded-full ${whoopNeedsReauth ? 'bg-red-500' : 'bg-[#44b700]'}`} />
+                  <span className="text-[13px] text-[#888888]">{whoopNeedsReauth ? 'Whoop needs reconnection' : 'Whoop connected'}</span>
                 </div>
                 {syncedAgo && (
                   <span className="text-[11px] text-[#555555]">Last synced: {syncedAgo}</span>

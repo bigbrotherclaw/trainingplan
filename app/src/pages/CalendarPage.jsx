@@ -17,7 +17,7 @@ function roundToFive(n) { return Math.round(n / 5) * 5; }
 
 export default function CalendarPage({ onEditLog }) {
   const { workoutHistory, weekSwaps, setWeekSwaps, addWorkout, settings } = useApp();
-  const { connected: whoopConnected, data: whoopData } = useWhoop();
+  const { connected: whoopConnected, data: whoopData, needsReauth: whoopNeedsReauth } = useWhoop();
   const { connected: garminConnected, activities: garminActivities } = useGarmin();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeId, setActiveId] = useState(null);
@@ -705,6 +705,13 @@ export default function CalendarPage({ onEditLog }) {
 
   return (
     <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-6">
+      {/* Whoop token warning */}
+      {whoopNeedsReauth && (
+        <div className="flex items-center gap-2 px-3 py-2 mb-3 rounded-xl bg-red-500/10 border border-red-500/20">
+          <span className="text-[12px] text-red-400">⚠️ Whoop data stale — reconnect in Settings</span>
+        </div>
+      )}
+
       {/* Month Header */}
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-[22px] font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h2>

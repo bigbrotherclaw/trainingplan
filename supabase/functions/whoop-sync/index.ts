@@ -13,15 +13,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-async function refreshTokenIfNeeded(supabase: any, userId: string, tokens: any) {
-  const expiresAt = new Date(tokens.expires_at)
-  const now = new Date()
-  
-  // Refresh if expires within 5 minutes
-  if (expiresAt.getTime() - now.getTime() > 5 * 60 * 1000) {
-    return tokens.access_token
-  }
-
+async function refreshToken(supabase: any, userId: string, tokens: any) {
   console.log('Refreshing Whoop token for user:', userId)
   
   const resp = await fetch(WHOOP_TOKEN_URL, {
@@ -37,12 +29,22 @@ async function refreshTokenIfNeeded(supabase: any, userId: string, tokens: any) 
   })
 
   if (!resp.ok) {
-    throw new Error(`Token refresh failed: ${await resp.text()}`)
+    const errText = await resp.text()
+    console.error('Token refresh failed:', resp.status, errText)
+    
+    // Mark token as expired in DB so the app can show a warning
+    await supabase
+      .from('whoop_tokens')
+      .update({ token_error: errText, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+    
+    throw new Error(`Token refresh failed: ${errText}`)
   }
 
   const newTokens = await resp.json()
   const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
 
+  // Always save the new refresh token — Whoop rotates them (one-time use)
   await supabase
     .from('whoop_tokens')
     .update({
@@ -50,10 +52,32 @@ async function refreshTokenIfNeeded(supabase: any, userId: string, tokens: any) 
       refresh_token: newTokens.refresh_token || tokens.refresh_token,
       expires_at: newExpiresAt,
       updated_at: new Date().toISOString(),
+      token_error: null, // clear any previous error
     })
     .eq('user_id', userId)
 
+  console.log('Token refreshed, new expiry:', newExpiresAt, 'new refresh_token:', !!newTokens.refresh_token)
   return newTokens.access_token
+}
+
+async function refreshTokenIfNeeded(supabase: any, userId: string, tokens: any) {
+  const expiresAt = new Date(tokens.expires_at)
+  const now = new Date()
+  const timeLeft = expiresAt.getTime() - now.getTime()
+  
+  // Refresh proactively when 50% through lifetime (not just 5 min before)
+  // Whoop tokens last ~1 hour, so refresh at ~30 min
+  const totalLifetime = tokens.updated_at 
+    ? expiresAt.getTime() - new Date(tokens.updated_at).getTime()
+    : 3600 * 1000 // default 1 hour
+  const halfLife = totalLifetime / 2
+  
+  if (timeLeft > halfLife) {
+    return tokens.access_token
+  }
+
+  console.log(`Token ${timeLeft > 0 ? 'expiring soon' : 'expired'} (${Math.round(timeLeft/1000)}s left), refreshing...`)
+  return refreshToken(supabase, userId, tokens)
 }
 
 async function fetchWhoopData(accessToken: string, endpoint: string, params?: Record<string, string>) {

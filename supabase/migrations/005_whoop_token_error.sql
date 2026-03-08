@@ -1,0 +1,1 @@
+ALTER TABLE whoop_tokens ADD COLUMN IF NOT EXISTS token_error text DEFAULT NULL;
