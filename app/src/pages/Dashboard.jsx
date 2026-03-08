@@ -132,7 +132,7 @@ export default function Dashboard({ onNavigate }) {
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
   return (
-    <div className="px-5 pt-4 pb-32 space-y-14">
+    <div className="px-5 pt-4 pb-32 space-y-10">
 
       {/* YOUR WEEK */}
       <motion.div
@@ -285,7 +285,7 @@ export default function Dashboard({ onNavigate }) {
       )}
 
       {/* TODAY'S WORKOUT */}
-      <GlowBorder color={todayColor} speed={3} width={1.5} radius={16}>
+      <GlowBorder color={todayColor} speed={3} radius={16}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}

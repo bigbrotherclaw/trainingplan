@@ -1,95 +1,99 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 /**
- * Animated rotating glow border.
+ * Animated glowing border using a spinning gradient pseudo-element.
  * 
- * How it works:
- * 1. Outer wrapper has padding (= border width) and the animated gradient background
- * 2. Children sit inside with their own bg, covering the center
- * 3. The gap between outer edge and children = visible "border"
- * 4. A radial gradient highlight moves around the perimeter via JS
+ * Technique: A large square with a conic-gradient rotates behind the card.
+ * The card sits on top covering the center. The visible gap between the
+ * outer container and the inner card = the animated "border".
  * 
- * No Canvas, no conic-gradient, no mask-composite. Just radial-gradient + JS.
+ * CSS transform:rotate() animation is GPU-composited and works in every
+ * browser including iOS WKWebView — no @property, no Canvas, no JS animation.
  */
-export default function GlowBorder({ 
-  color = '#3B82F6', 
-  speed = 3, 
-  width = 2, 
+export default function GlowBorder({
+  color = '#3B82F6',
+  speed = 3,
+  borderWidth = 2,
   radius = 16,
   className = '',
-  children 
+  children
 }) {
-  const borderRef = useRef(null);
-  const glowRef = useRef(null);
+  const spinnerRef = useRef(null);
 
   useEffect(() => {
-    const el = borderRef.current;
-    const glow = glowRef.current;
+    const el = spinnerRef.current;
     if (!el) return;
 
-    let raf;
     let start;
+    let raf;
 
     const animate = (ts) => {
       if (!start) start = ts;
-      const t = ((ts - start) / (speed * 1000)) % 1;
-
-      const rect = el.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
-      if (w === 0 || h === 0) { raf = requestAnimationFrame(animate); return; }
-
-      // Move along rectangle perimeter
-      const perim = 2 * (w + h);
-      const pos = t * perim;
-      let x, y;
-      if (pos < w) { x = pos; y = 0; }
-      else if (pos < w + h) { x = w; y = pos - w; }
-      else if (pos < 2 * w + h) { x = w - (pos - w - h); y = h; }
-      else { x = 0; y = h - (pos - 2 * w - h); }
-
-      const bg = `radial-gradient(circle 60px at ${x}px ${y}px, ${color} 0%, ${color}99 15%, ${color}33 40%, ${color}11 60%, transparent 80%)`;
-      el.style.background = bg;
-
-      if (glow) {
-        glow.style.background = `radial-gradient(circle 100px at ${x}px ${y}px, ${color}55 0%, ${color}20 30%, transparent 65%)`;
-      }
-
+      const elapsed = ts - start;
+      const deg = (elapsed / (speed * 1000)) * 360;
+      el.style.transform = `rotate(${deg}deg)`;
       raf = requestAnimationFrame(animate);
     };
 
     raf = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(raf);
-  }, [color, speed]);
+  }, [speed]);
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Outer glow (behind everything) */}
+    <div
+      className={`relative ${className}`}
+      style={{
+        padding: `${borderWidth}px`,
+        borderRadius: `${radius}px`,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Spinning gradient element — oversized to fill corners during rotation */}
       <div
-        ref={glowRef}
-        className="absolute pointer-events-none"
+        ref={spinnerRef}
         style={{
-          inset: '-6px',
-          borderRadius: `${radius + 6}px`,
-          filter: 'blur(12px)',
+          position: 'absolute',
+          // Center it and make it 200% to cover corners during spin
+          top: '-50%',
+          left: '-50%',
+          width: '200%',
+          height: '200%',
+          background: `conic-gradient(
+            from 0deg,
+            transparent 0deg,
+            transparent 260deg,
+            ${color}44 280deg,
+            ${color}88 310deg,
+            ${color} 330deg,
+            ${color}ff 340deg,
+            ${color}88 350deg,
+            ${color}44 360deg
+          )`,
+          willChange: 'transform',
         }}
       />
 
-      {/* Border layer — this is the visible border */}
+      {/* Subtle static glow underneath the whole thing */}
       <div
-        ref={borderRef}
-        className="relative"
         style={{
-          padding: `${width}px`,
-          borderRadius: `${radius}px`,
-          // Fallback static border
-          background: `${color}15`,
+          position: 'absolute',
+          inset: '-4px',
+          borderRadius: `${radius + 4}px`,
+          boxShadow: `0 0 20px 2px ${color}33, 0 0 40px 4px ${color}18`,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Inner card — covers the center, leaving the border gap visible */}
+      <div
+        style={{
+          position: 'relative',
+          borderRadius: `${Math.max(0, radius - borderWidth)}px`,
+          overflow: 'hidden',
+          zIndex: 1,
         }}
       >
-        {/* Children go here — they must have their own bg to cover the center */}
-        <div style={{ borderRadius: `${Math.max(0, radius - width)}px`, overflow: 'hidden' }}>
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   );

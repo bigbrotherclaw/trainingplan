@@ -87,7 +87,7 @@ const _confirmedDates = new Set();
 const _dismissedDates = new Set();
 
 export default function WhoopAutoLog() {
-  const { workoutHistory, setWorkoutHistory, weekSwaps } = useApp();
+  const { workoutHistory, addWorkout, weekSwaps } = useApp();
   const { connected, workouts: whoopWorkouts } = useWhoop();
   const [, forceUpdate] = useState(0);
 
@@ -162,7 +162,7 @@ export default function WhoopAutoLog() {
     const primarySport = components[0]?.sportName || 'Activity';
     const allSports = components.map(c => `${c.label}: ${c.sportName}`).join(', ');
 
-    setWorkoutHistory(prev => [...prev, {
+    addWorkout({
       id: `whoop-${date.toISOString().split('T')[0]}-${Date.now()}`,
       date: date.toISOString(),
       workoutName: planned.name,
@@ -180,8 +180,8 @@ export default function WhoopAutoLog() {
       details: planned.type === 'strength'
         ? { source: 'whoop-auto', note: `Auto-logged from Whoop: ${allSports}` }
         : { cardio: { name: primarySport, metrics: {} }, source: 'whoop-auto', note: `Auto-logged from Whoop: ${allSports}` },
-    }]);
-  }, [setWorkoutHistory]);
+    });
+  }, [addWorkout]);
 
   const handleDismiss = useCallback((dateKey) => {
     _dismissedDates.add(dateKey);
@@ -191,7 +191,7 @@ export default function WhoopAutoLog() {
   if (!pendingDayMatches.length) return null;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Detected Workouts</h2>
 
       <AnimatePresence mode="popLayout">

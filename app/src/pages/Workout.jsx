@@ -609,8 +609,8 @@ export default function Workout({ showToast }) {
   // REST DAY
   if (todayWorkout.type === 'rest') {
     return (
-      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
-        <GlowBorder color="#6B7280" speed={4} width={1.5} radius={16}>
+      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-10">
+        <GlowBorder color="#8B95A5" speed={4} radius={16}>
           <div className="bg-[#141414] rounded-2xl text-center py-8 px-5">
             <Moon size={48} className="text-[#333333] mx-auto mb-4" />
             <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
@@ -649,7 +649,7 @@ export default function Workout({ showToast }) {
   // OVERVIEW MODE
   if (!loggingMode) {
     return (
-      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
+      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-10">
         <AnimatePresence>
           {showCelebration && (
             <motion.div
@@ -868,7 +868,7 @@ export default function Workout({ showToast }) {
         <GlowBorder
           color={todayWorkout.type === 'strength' ? '#F59E0B' : todayWorkout.type === 'tri' ? '#14B8A6' : todayWorkout.type === 'long' ? '#10B981' : '#6B7280'}
           speed={3}
-          width={1.5}
+          borderWidth={2}
           radius={16}
         >
         <motion.div
@@ -1018,7 +1018,7 @@ export default function Workout({ showToast }) {
 
   // LOGGING MODE
   return (
-    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
+    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-10">
       <AnimatePresence>
         {showCelebration && (
           <motion.div

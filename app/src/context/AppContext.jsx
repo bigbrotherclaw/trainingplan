@@ -77,11 +77,23 @@ export function AppProvider({ children }) {
     }
   }, [user, syncSwaps, saveWeekSwaps, setLocalWeekSwaps]);
 
+  // Direct add — bypasses the diff logic entirely.
+  // Use this when you just want to ADD a single workout entry
+  // without risk of stale-closure diffs deleting other entries.
+  const addWorkout = useCallback((entry) => {
+    if (!user) {
+      setLocalWorkoutHistory(prev => [...prev, entry]);
+      return;
+    }
+    saveWorkout(entry);
+  }, [user, saveWorkout, setLocalWorkoutHistory]);
+
   const value = useMemo(() => ({
     settings,
     setSettings,
     workoutHistory,
     setWorkoutHistory,
+    addWorkout,
     workoutOverrides,
     setWorkoutOverrides,
     weekSwaps,
@@ -91,7 +103,7 @@ export function AppProvider({ children }) {
     needsMigration,
     migrateData,
     isSyncing,
-  }), [settings, workoutHistory, workoutOverrides, weekSwaps, setWorkoutHistory, setWeekSwaps, acceptedSuggestion, needsMigration, migrateData, isSyncing]);
+  }), [settings, workoutHistory, workoutOverrides, weekSwaps, setWorkoutHistory, addWorkout, setWeekSwaps, acceptedSuggestion, needsMigration, migrateData, isSyncing]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
