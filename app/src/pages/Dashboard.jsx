@@ -1,9 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Moon } from 'lucide-react';
+import { ChevronRight, Moon, Flame, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
-import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
 import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
@@ -24,18 +23,185 @@ const TYPE_BADGE_BG = {
   long: 'bg-emerald-500/20 text-emerald-400',
 };
 
+// ── Animated Number Counter ──
+function AnimatedNumber({ value, duration = 1.5, decimals = 0, suffix = '' }) {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef(null);
+  const startTimeRef = useRef(null);
+
+  useEffect(() => {
+    if (value == null || isNaN(value)) return;
+    startTimeRef.current = null;
+
+    const animate = (timestamp) => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      const elapsed = (timestamp - startTimeRef.current) / 1000;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(eased * value);
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        setDisplay(value);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [value, duration]);
+
+  const formatted = value == null || isNaN(value) ? '—' : display.toFixed(decimals);
+  return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatted}{suffix}</span>;
+}
+
+// ── Recovery Gauge (circular) ──
+function RecoveryGauge({ score, size = 120 }) {
+  const radius = (size - 12) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const center = size / 2;
+
+  const getColor = (s) => {
+    if (s >= 67) return '#00D46A';
+    if (s >= 34) return '#FFCC00';
+    return '#EF4444';
+  };
+  const color = getColor(score);
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={center} cy={center} r={radius} fill="none" stroke="#222" strokeWidth="8" />
+        <motion.circle
+          cx={center} cy={center} r={radius} fill="none"
+          stroke={color} strokeWidth="8" strokeLinecap="round"
+          initial={{ strokeDasharray: `0 ${circumference}` }}
+          animate={{ strokeDasharray: `${(score / 100) * circumference} ${circumference}` }}
+          transition={{ duration: 1.8, ease: [0.34, 1.56, 0.64, 1] }}
+          style={{ filter: `drop-shadow(0 0 6px ${color}60)` }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="text-[28px] font-bold" style={{ color, fontVariantNumeric: 'tabular-nums' }}>
+          <AnimatedNumber value={score} decimals={0} suffix="%" duration={1.8} />
+        </div>
+        <div className="text-[10px] uppercase tracking-widest text-[#666]">Recovery</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Strain Bar ──
+function StrainBar({ strain, maxStrain = 21 }) {
+  const pct = Math.min((strain / maxStrain) * 100, 100);
+  const getColor = (s) => {
+    if (s <= 7) return '#00D46A';
+    if (s <= 14) return '#FFCC00';
+    return '#EF4444';
+  };
+  const color = getColor(strain);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="text-[10px] uppercase tracking-widest text-[#666]">Day Strain</div>
+        <div className="text-[15px] font-bold" style={{ color, fontVariantNumeric: 'tabular-nums' }}>
+          <AnimatedNumber value={strain} decimals={1} duration={1.5} />
+        </div>
+      </div>
+      <div className="w-full rounded-full overflow-hidden" style={{ height: 6, backgroundColor: '#222' }}>
+        <motion.div
+          className="h-full rounded-full"
+          style={{ backgroundColor: color, filter: `drop-shadow(0 0 4px ${color}60)` }}
+          initial={{ width: '0%' }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
+        />
+      </div>
+      <div className="flex justify-between text-[9px] text-[#444] mt-1">
+        <span>0</span><span>7</span><span>14</span><span>21</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Sleep Gauge (semi-circle) ──
+function SleepGauge({ score, size = 80 }) {
+  const radius = (size - 8) / 2;
+  const semiCircumference = Math.PI * radius;
+  const center = size / 2;
+
+  const getColor = (s) => {
+    if (s >= 70) return '#6366F1';
+    if (s >= 40) return '#A78BFA';
+    return '#EF4444';
+  };
+  const color = getColor(score);
+
+  return (
+    <div style={{ width: size, height: size / 2 + 8 }} className="relative">
+      <svg viewBox={`0 0 ${size} ${size / 2 + 4}`} className="w-full h-full">
+        <path
+          d={`M 4 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 4} ${size / 2}`}
+          fill="none" stroke="#222" strokeWidth="6"
+        />
+        <motion.path
+          d={`M 4 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 4} ${size / 2}`}
+          fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+          initial={{ strokeDasharray: `0 ${semiCircumference}` }}
+          animate={{ strokeDasharray: `${(score / 100) * semiCircumference} ${semiCircumference}` }}
+          transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
+          style={{ filter: `drop-shadow(0 0 4px ${color}50)` }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-end justify-center" style={{ paddingBottom: 2 }}>
+        <span className="text-[15px] font-bold" style={{ color, fontVariantNumeric: 'tabular-nums' }}>
+          <AnimatedNumber value={score} decimals={0} suffix="%" duration={1.5} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Stat Mini Card ──
+function StatMiniCard({ label, icon, children, delay = 0 }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+      className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4 flex flex-col items-center justify-center"
+    >
+      {icon && <div style={{ marginBottom: 6 }}>{icon}</div>}
+      {children}
+      <div className="text-[10px] uppercase tracking-widest text-[#666]" style={{ marginTop: 4 }}>{label}</div>
+    </motion.div>
+  );
+}
+
 export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
   const { workoutHistory, weekSwaps } = useApp();
-  const { connected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
+  const { connected, workouts: whoopWorkouts, data: whoopData, connect } = useWhoop();
 
-  // Recovery data
-  const recoverySuggestion = useMemo(() => {
-    if (!connected || !latestRecovery) return null;
-    return getRecoverySuggestion(latestRecovery, latestSleep, latestCycle);
-  }, [connected, latestRecovery, latestSleep, latestCycle]);
+  // Extract latest Whoop metrics
+  const whoopMetrics = useMemo(() => {
+    if (!connected) return null;
+    const latestRecovery = whoopData?.recovery?.length > 0 ? whoopData.recovery[whoopData.recovery.length - 1] : null;
+    const latestSleep = whoopData?.sleep?.length > 0 ? whoopData.sleep[whoopData.sleep.length - 1] : null;
+    const latestCycle = whoopData?.cycle?.length > 0 ? whoopData.cycle[whoopData.cycle.length - 1] : null;
 
-  const recoveryScore = recoverySuggestion?.score ?? null;
-  const zoneColor = recoverySuggestion ? getZoneColor(recoverySuggestion.zone) : null;
+    const recoveryScore = latestRecovery?.score?.recovery_score ?? null;
+    const hrv = latestRecovery?.score?.hrv?.rmssd_milli ?? null;
+    const restingHR = latestRecovery?.score?.resting_heart_rate ?? null;
+    const sleepScore = latestSleep?.score?.sleep_performance_percentage ?? null;
+    const strain = latestCycle?.score?.strain ?? null;
+    const kilojoules = latestCycle?.score?.kilojoule ?? null;
+    const calories = kilojoules != null ? Math.round(kilojoules * 0.239006) : null;
+
+    if (recoveryScore == null && hrv == null && strain == null) return null;
+
+    return { recoveryScore, hrv, restingHR, sleepScore, strain, calories };
+  }, [connected, whoopData]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayWorkout = useMemo(() => getSwappedWorkoutForDate(today, weekSwaps), [today, weekSwaps]);
@@ -180,70 +346,129 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
         </p>
       </motion.div>
 
+      {/* TODAY'S WORKOUT */}
+      <div style={{marginTop:"12px"}}>
+      <GlowBorder color={todayColor} speed={4} radius={16}>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.03 }}
+        className="relative bg-[#141414] rounded-2xl overflow-hidden"
+      >
+        <div className="p-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Today</h2>
+            <span className={`text-[12px] font-medium px-3 py-1 rounded-full shrink-0 flex items-center gap-1.5 ${TYPE_BADGE_BG[todayWorkout.type] || 'bg-gray-500/20 text-gray-400'}`}>
+              {todayWorkout.type === 'rest' && <Moon size={12} />}
+              {todayWorkout.label || todayWorkout.type}
+            </span>
+          </div>
+          <h3 className="text-[22px] font-bold text-white mb-1">{todayWorkout.name}</h3>
+          <p className="text-[15px] text-[#A0A0A0]">
+            {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          </p>
+
+          {todayLogged ? (
+            <div className="flex items-center justify-center gap-2 text-accent-green text-[15px] font-medium mt-4">
+              <div className="w-2 h-2 rounded-full bg-accent-green" />
+              Completed today
+            </div>
+          ) : todayWorkout.type !== 'rest' ? (
+            <button
+              onClick={() => onNavigateToWorkout(today)}
+              className="flex items-center justify-center gap-2 w-full bg-accent-blue hover:bg-accent-blue/90 text-white rounded-2xl text-[17px] font-semibold transition-colors active:scale-[0.98] mt-4 min-h-[52px]"
+            >
+              Start Workout
+              <ChevronRight size={18} />
+            </button>
+          ) : (
+            <p className="text-[15px] text-[#666666] italic mt-4">Take time to recover and prepare for tomorrow.</p>
+          )}
+        </div>
+      </motion.div>
+      </GlowBorder>
+      </div>
+
+      {/* WHOOP STATS */}
+      <div style={{marginTop:"12px"}}>
+      {whoopMetrics ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          {/* Recovery Gauge - full width */}
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 flex flex-col items-center">
+            <RecoveryGauge score={whoopMetrics.recoveryScore} size={130} />
+          </div>
+
+          {/* Day Strain - full width bar */}
+          {whoopMetrics.strain != null && (
+            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4" style={{ marginTop: 8 }}>
+              <StrainBar strain={whoopMetrics.strain} />
+            </div>
+          )}
+
+          {/* 2-column grid for smaller stats */}
+          <div className="grid grid-cols-2 gap-2" style={{ marginTop: 8 }}>
+            <StatMiniCard label="HRV" delay={0.1} icon={<Zap size={14} color="#00D46A" />}>
+              <div className="text-[22px] font-bold text-white">
+                <AnimatedNumber value={whoopMetrics.hrv} decimals={1} suffix=" ms" />
+              </div>
+            </StatMiniCard>
+
+            <StatMiniCard label="Resting HR" delay={0.15} icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+              </svg>
+            }>
+              <div className="text-[22px] font-bold text-white">
+                <AnimatedNumber value={whoopMetrics.restingHR} decimals={0} suffix=" bpm" />
+              </div>
+            </StatMiniCard>
+
+            <StatMiniCard label="Sleep" delay={0.2} icon={<Moon size={14} color="#6366F1" />}>
+              <SleepGauge score={whoopMetrics.sleepScore ?? 0} size={72} />
+            </StatMiniCard>
+
+            <StatMiniCard label="Calories" delay={0.25} icon={<Flame size={14} color="#F97316" />}>
+              <div className="text-[22px] font-bold text-white">
+                <AnimatedNumber value={whoopMetrics.calories} decimals={0} />
+              </div>
+            </StatMiniCard>
+          </div>
+        </motion.div>
+      ) : connected ? null : (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
+        >
+          <div className="flex flex-col items-center gap-3 py-2">
+            <div className="text-[13px] text-[#666]">Connect Whoop for recovery & strain insights</div>
+            <button
+              onClick={connect}
+              className="text-[13px] font-semibold text-accent-blue"
+            >
+              Connect Whoop
+            </button>
+          </div>
+        </motion.div>
+      )}
+      </div>
+
       {/* WHOOP AUTO-LOG PROMPTS */}
       <div style={{marginTop:"12px"}}>
       <WhoopAutoLog />
       </div>
-
-      {/* RECOVERY SUMMARY (Whoop) */}
-      {recoverySuggestion && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.03 }}
-          className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Recovery</h2>
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: zoneColor + '20', color: zoneColor }}>
-              {recoverySuggestion.zone === 'green' ? 'Green' : recoverySuggestion.zone === 'yellow' ? 'Yellow' : 'Red'}
-            </span>
-          </div>
-
-          {/* Score + metrics row */}
-          <div className="flex items-center gap-4">
-            {/* Recovery arc */}
-            <div className="relative w-14 h-14 shrink-0">
-              <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90">
-                <circle cx="28" cy="28" r="24" fill="none" stroke="#333" strokeWidth="4" />
-                <circle cx="28" cy="28" r="24" fill="none" stroke={zoneColor} strokeWidth="4"
-                  strokeDasharray={`${(recoveryScore / 100) * 150.8} 150.8`}
-                  strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[15px] font-bold" style={{ color: zoneColor }}>{recoveryScore}%</span>
-              </div>
-            </div>
-
-            {/* Metrics */}
-            <div className="flex-1 grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <div className="text-[15px] font-semibold text-white">{recoverySuggestion.hrv?.toFixed(1) ?? '—'}</div>
-                <div className="text-[10px] text-[#666666] uppercase">HRV</div>
-              </div>
-              <div className="text-center">
-                <div className="text-[15px] font-semibold text-white">{recoverySuggestion.sleepScore ?? '—'}%</div>
-                <div className="text-[10px] text-[#666666] uppercase">Sleep</div>
-              </div>
-              <div className="text-center">
-                <div className="text-[15px] font-semibold text-white">{recoverySuggestion.strain?.toFixed(1) ?? '—'}</div>
-                <div className="text-[10px] text-[#666666] uppercase">Strain</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Suggestion headline */}
-          <p className="text-[13px] text-[#A0A0A0] mt-3 leading-snug">{recoverySuggestion.headline}</p>
-        </motion.div>
-      )}
 
       {/* RECENT WHOOP ACTIVITIES */}
       {connected && whoopWorkouts?.length > 0 && (<div style={{marginTop:"12px"}}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
+          transition={{ delay: 0.06 }}
           className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
         >
           <div className="relative mb-4">
@@ -289,49 +514,6 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
           </div>
         </motion.div>
       </div>)}
-
-      {/* TODAY'S WORKOUT */}
-      <div style={{marginTop:"12px"}}>
-      <GlowBorder color={todayColor} speed={4} radius={16}>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="relative bg-[#141414] rounded-2xl overflow-hidden"
-      >
-        <div className="p-6 text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Today</h2>
-            <span className={`text-[12px] font-medium px-3 py-1 rounded-full shrink-0 flex items-center gap-1.5 ${TYPE_BADGE_BG[todayWorkout.type] || 'bg-gray-500/20 text-gray-400'}`}>
-              {todayWorkout.type === 'rest' && <Moon size={12} />}
-              {todayWorkout.label || todayWorkout.type}
-            </span>
-          </div>
-          <h3 className="text-[22px] font-bold text-white mb-1">{todayWorkout.name}</h3>
-          <p className="text-[15px] text-[#A0A0A0]">
-            {today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-          </p>
-
-          {todayLogged ? (
-            <div className="flex items-center justify-center gap-2 text-accent-green text-[15px] font-medium mt-4">
-              <div className="w-2 h-2 rounded-full bg-accent-green" />
-              Completed today
-            </div>
-          ) : todayWorkout.type !== 'rest' ? (
-            <button
-              onClick={() => onNavigateToWorkout(today)}
-              className="flex items-center justify-center gap-2 w-full bg-accent-blue hover:bg-accent-blue/90 text-white rounded-2xl text-[17px] font-semibold transition-colors active:scale-[0.98] mt-4 min-h-[52px]"
-            >
-              Start Workout
-              <ChevronRight size={18} />
-            </button>
-          ) : (
-            <p className="text-[15px] text-[#666666] italic mt-4">Take time to recover and prepare for tomorrow.</p>
-          )}
-        </div>
-      </motion.div>
-      </GlowBorder>
-      </div>
 
       {/* STATS ROW */}
       <div style={{marginTop:"12px"}}>

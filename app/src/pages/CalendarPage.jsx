@@ -559,9 +559,9 @@ export default function CalendarPage() {
               <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
 
               {/* Day Info Header */}
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <div className="flex items-center gap-2">
+              <div className="relative mb-5">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2">
                     <h3 className="text-[17px] font-bold text-white">
                       {format(selectedDay.date, 'EEEE, MMM d')}
                     </h3>
@@ -573,7 +573,7 @@ export default function CalendarPage() {
                     )}
                   </div>
                   {selectedSummary && (
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center justify-center gap-2 mt-1">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedSummary.accent }} />
                       <span className="text-[14px] font-medium" style={{ color: selectedSummary.accent }}>
                         {selectedSummary.label === 'Rest' ? 'Rest Day' : selectedSummary.label}
@@ -588,7 +588,7 @@ export default function CalendarPage() {
                 </div>
                 <button
                   onClick={() => { setSelectedDay(null); setShowSwapPicker(false); setLogMode(null); }}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10"
+                  className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10"
                 >
                   <X size={16} className="text-white/60" />
                 </button>
