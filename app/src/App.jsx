@@ -120,25 +120,28 @@ export default function App() {
           transition={{ duration: 0.25 }}
           className="flex flex-col h-dvh bg-black"
         >
-          <header id="app-header" className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 pb-4 flex items-center justify-between" style={{ paddingTop: 'max(env(safe-area-inset-top, 60px), 60px)' }}>
-            <div className="flex items-center gap-3">
-              {!showProfile && activeTab === 'dashboard' && (
-                <img src={dunedainLogo} alt="" className="w-14 h-14 rounded-xl object-cover" />
-              )}
-              <div>
-                <h1 className="text-[22px] font-bold text-white tracking-tight">
-                  {showProfile ? 'Profile' : activeTab === 'dashboard' ? 'Dúnedain' : tabs.find(t => t.id === activeTab)?.label}
+          <header id="app-header" className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 pb-4 flex items-center" style={{ paddingTop: 'max(env(safe-area-inset-top, 60px), 60px)', justifyContent: (!showProfile && activeTab === 'dashboard') ? 'space-between' : 'center', position: 'relative' }}>
+            {(!showProfile && activeTab === 'dashboard') ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <img src={dunedainLogo} alt="" className="w-14 h-14 rounded-xl object-cover" />
+                  <div>
+                    <h1 className="text-[22px] font-bold text-white tracking-tight">Dúnedain</h1>
+                    <p className="text-[13px] text-[#666666] mt-0.5">Block {settings.block} / Week {settings.week}</p>
+                  </div>
+                </div>
+                <UserAvatar user={user} profile={profile} onClick={() => setShowProfile((v) => !v)} />
+              </>
+            ) : (
+              <>
+                <h1 className="text-[22px] font-bold text-white tracking-tight text-center">
+                  {showProfile ? 'Profile' : tabs.find(t => t.id === activeTab)?.label}
                 </h1>
-                {!showProfile && activeTab === 'dashboard' && (
-                  <p className="text-[13px] text-[#666666] mt-0.5">Block {settings.block} / Week {settings.week}</p>
-                )}
-              </div>
-            </div>
-            <UserAvatar
-              user={user}
-              profile={profile}
-              onClick={() => setShowProfile((v) => !v)}
-            />
+                <div style={{ position: 'absolute', right: 20 }}>
+                  <UserAvatar user={user} profile={profile} onClick={() => setShowProfile((v) => !v)} />
+                </div>
+              </>
+            )}
           </header>
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>

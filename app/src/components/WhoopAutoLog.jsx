@@ -189,6 +189,51 @@ export default function WhoopAutoLog() {
     const primarySport = components[0]?.sportName || 'Activity';
     const allSports = components.map(c => `${c.label}: ${c.sportName}`).join(', ');
 
+    // Build details with actual Whoop metrics so Stats page can use them
+    let details = { source: 'whoop-auto', note: `Auto-logged from Whoop: ${allSports}` };
+    
+    if (planned.type === 'tri' || planned.type === 'long') {
+      // Find the cardio component (first non-strength activity)
+      const cardioComp = mapped.find(m => m.role === 'cardio' || m.role === 'full');
+      const cardioActivity = cardioComp?.activity;
+      const hicComp = mapped.find(m => m.role === 'hic');
+      
+      const cardioMetrics = {};
+      if (cardioActivity) {
+        const distM = cardioActivity.score?.distance_meter;
+        const dur = cardioActivity.start && cardioActivity.end 
+          ? Math.round((new Date(cardioActivity.end) - new Date(cardioActivity.start)) / 60000) : null;
+        if (distM) {
+          const distMi = distM * 0.000621371;
+          cardioMetrics.distance = parseFloat(distMi.toFixed(2));
+          if (dur && distMi > 0) {
+            cardioMetrics.avgPace = parseFloat((dur / distMi).toFixed(2));
+          }
+        }
+        if (dur) cardioMetrics.totalTime = String(dur);
+        if (cardioActivity.score?.average_heart_rate) cardioMetrics.avgHR = String(cardioActivity.score.average_heart_rate);
+        if (cardioActivity.score?.max_heart_rate) cardioMetrics.maxHR = String(cardioActivity.score.max_heart_rate);
+      }
+      
+      const cardioName = cardioComp 
+        ? getSportName(cardioActivity?.sport_id, cardioActivity) 
+        : primarySport;
+      
+      details.cardio = { name: cardioName, metrics: cardioMetrics };
+      
+      if (planned.type === 'tri' && hicComp) {
+        details.hic = { 
+          name: getSportName(hicComp.activity.sport_id, hicComp.activity),
+          metrics: {
+            totalTime: hicComp.activity.start && hicComp.activity.end 
+              ? String(Math.round((new Date(hicComp.activity.end) - new Date(hicComp.activity.start)) / 60000)) : undefined,
+          },
+        };
+      } else if (planned.type === 'tri') {
+        details.hic = { name: 'Skipped', skipped: true };
+      }
+    }
+
     addWorkout({
       id: `whoop-${date.toISOString().split('T')[0]}-${Date.now()}`,
       date: date.toISOString(),
@@ -204,9 +249,7 @@ export default function WhoopAutoLog() {
         calories: components.reduce((sum, c) => sum + (c.calories || 0), 0) || undefined,
         components,
       },
-      details: planned.type === 'strength'
-        ? { source: 'whoop-auto', note: `Auto-logged from Whoop: ${allSports}` }
-        : { cardio: { name: primarySport, metrics: {} }, source: 'whoop-auto', note: `Auto-logged from Whoop: ${allSports}` },
+      details,
     });
   }, [addWorkout]);
 

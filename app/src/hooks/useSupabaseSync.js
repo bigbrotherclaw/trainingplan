@@ -6,6 +6,47 @@ const LS_HISTORY = 'workoutHistory'
 const LS_SWAPS = 'weekSwaps'
 const LS_PENDING = 'pendingSync'
 
+// UUID v4 pattern check
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Map app entry → Supabase row (DB has snake_case columns, app uses camelCase)
+function toDbRow(entry, userId) {
+  return {
+    // Only include id if it's a valid UUID; otherwise let DB generate one
+    ...(entry.id && UUID_RE.test(entry.id) ? { id: entry.id } : {}),
+    user_id: userId,
+    date: entry.date,
+    type: entry.type,
+    day: entry.workoutName || entry.day || null,
+    energy_level: entry.energyLevel || null,
+    duration_min: entry.duration || null,
+    details: {
+      ...(entry.details || {}),
+      // Stash extra fields in details so nothing is lost
+      ...(entry.source ? { source: entry.source } : {}),
+      ...(entry.whoopActivity ? { whoopActivity: entry.whoopActivity } : {}),
+      workoutName: entry.workoutName || null,
+    },
+  }
+}
+
+// Map Supabase row → app entry
+function fromDbRow(row) {
+  const details = row.details || {}
+  const { source, whoopActivity, workoutName, ...restDetails } = details
+  return {
+    id: row.id,
+    date: row.date,
+    type: row.type,
+    workoutName: workoutName || row.day || null,
+    energyLevel: row.energy_level || null,
+    duration: row.duration_min || null,
+    details: restDetails,
+    ...(source ? { source } : {}),
+    ...(whoopActivity ? { whoopActivity } : {}),
+  }
+}
+
 function getLS(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
@@ -81,10 +122,12 @@ export function useSupabaseSync() {
         if (!remoteHistory?.length && localHistory.length) {
           setNeedsMigration(true)
         } else if (remoteHistory?.length) {
+          // Map DB rows to app format
+          const remoteEntries = remoteHistory.map(fromDbRow)
           // Merge: Supabase wins on date conflicts
-          const remoteByDate = Object.fromEntries(remoteHistory.map((e) => [e.date, e]))
+          const remoteByDate = Object.fromEntries(remoteEntries.map((e) => [e.date, e]))
           const localOnly = localHistory.filter((e) => !remoteByDate[e.date])
-          const merged = [...remoteHistory, ...localOnly].sort(
+          const merged = [...remoteEntries, ...localOnly].sort(
             (a, b) => new Date(b.date) - new Date(a.date)
           )
           setWorkoutHistory(merged)
@@ -120,7 +163,7 @@ export function useSupabaseSync() {
     setIsSyncing(true)
     try {
       if (localHistory.length) {
-        const rows = localHistory.map((e) => ({ ...e, user_id: user.id }))
+        const rows = localHistory.map((e) => toDbRow(e, user.id))
         const { error } = await supabase.from('workout_history').upsert(rows)
         if (error) return { error }
       }
@@ -157,7 +200,7 @@ export function useSupabaseSync() {
       setLS(LS_HISTORY, updated)
 
       if (!user) return
-      const payload = { ...entry, user_id: user.id }
+      const payload = toDbRow(entry, user.id)
       try {
         const { error } = await supabase.from('workout_history').upsert(payload)
         if (error) enqueuePending({ type: 'saveWorkout', payload })

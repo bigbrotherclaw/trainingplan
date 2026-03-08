@@ -330,7 +330,7 @@ export default function Stats() {
 
   return (
     <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-3">
-      <h1 className="text-[28px] font-bold text-white mb-2">Stats</h1>
+      {/* Title handled by App header */}
 
       {/* VIEW TOGGLE */}
       <div className="flex bg-[#1A1A1A] rounded-xl p-1">
