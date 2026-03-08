@@ -104,7 +104,7 @@ const _confirmedDates = loadSet('whoopAutoLog_confirmed');
 const _dismissedDates = loadSet('whoopAutoLog_dismissed');
 
 export default function WhoopAutoLog() {
-  const { workoutHistory, addWorkout, weekSwaps } = useApp();
+  const { workoutHistory, addWorkout, setWorkoutHistory, weekSwaps } = useApp();
   const { connected, workouts: whoopWorkouts } = useWhoop();
   const [, forceUpdate] = useState(0);
 
@@ -112,6 +112,17 @@ export default function WhoopAutoLog() {
     () => new Set(workoutHistory.map(e => new Date(e.date).toDateString())),
     [workoutHistory]
   );
+
+  // Map date → existing log entry (for merge detection)
+  const loggedByDate = useMemo(() => {
+    const map = {};
+    for (const e of workoutHistory) {
+      const dk = new Date(e.date).toDateString();
+      // Keep the most recent entry per date
+      if (!map[dk] || new Date(e.date) > new Date(map[dk].date)) map[dk] = e;
+    }
+    return map;
+  }, [workoutHistory]);
 
   const pendingDayMatches = useMemo(() => {
     if (!connected || !whoopWorkouts?.length) return [];
@@ -134,7 +145,15 @@ export default function WhoopAutoLog() {
 
     const dayMatches = [];
     for (const [dateKey, { date, activities }] of Object.entries(byDate)) {
-      if (loggedDates.has(dateKey) || _confirmedDates.has(dateKey) || _dismissedDates.has(dateKey)) continue;
+      if (_confirmedDates.has(dateKey) || _dismissedDates.has(dateKey)) continue;
+      
+      // Check if already logged
+      const existingEntry = loggedByDate[dateKey];
+      const alreadyHasWhoop = existingEntry?.whoopActivity || existingEntry?.source === 'whoop';
+      // Skip if already has Whoop data merged in
+      if (alreadyHasWhoop) continue;
+      // If logged but without Whoop data, we'll offer to merge
+      const isMerge = !!existingEntry;
 
       const planned = getSwappedWorkoutForDate(date, weekSwaps);
       
@@ -157,7 +176,7 @@ export default function WhoopAutoLog() {
         return sum + Math.round((new Date(a.end) - new Date(a.start)) / 60000);
       }, 0);
 
-      dayMatches.push({ dateKey, date, planned, mapped, allActivities: activities, totalStrain, totalDuration });
+      dayMatches.push({ dateKey, date, planned, mapped, allActivities: activities, totalStrain, totalDuration, isMerge, existingEntry });
     }
 
     return dayMatches.sort((a, b) => b.date - a.date).slice(0, 3);
@@ -165,7 +184,7 @@ export default function WhoopAutoLog() {
   }, [connected, whoopWorkouts, loggedDates, weekSwaps, _confirmedDates.size, _dismissedDates.size]);
 
   const handleConfirm = useCallback((dayMatch) => {
-    const { dateKey, date, planned, mapped, totalStrain, totalDuration } = dayMatch;
+    const { dateKey, date, planned, mapped, totalStrain, totalDuration, isMerge, existingEntry } = dayMatch;
 
     // Mark as confirmed in module-level Set FIRST, then persist
     _confirmedDates.add(dateKey);
@@ -234,24 +253,49 @@ export default function WhoopAutoLog() {
       }
     }
 
-    addWorkout({
-      id: `whoop-${date.toISOString().split('T')[0]}-${Date.now()}`,
-      date: date.toISOString(),
-      workoutName: planned.name,
-      type: planned.type,
-      ...(totalDuration ? { duration: totalDuration } : {}),
-      source: 'whoop',
-      whoopActivity: {
-        sportName: primarySport,
-        strain: totalStrain,
-        avgHR: components[0]?.avgHR,
-        maxHR: Math.max(...components.map(c => c.maxHR || 0)) || undefined,
-        calories: components.reduce((sum, c) => sum + (c.calories || 0), 0) || undefined,
-        components,
-      },
-      details,
-    });
-  }, [addWorkout]);
+    const whoopData = {
+      sportName: primarySport,
+      strain: totalStrain,
+      avgHR: components[0]?.avgHR,
+      maxHR: Math.max(...components.map(c => c.maxHR || 0)) || undefined,
+      calories: components.reduce((sum, c) => sum + (c.calories || 0), 0) || undefined,
+      components,
+    };
+
+    if (isMerge && existingEntry) {
+      // Merge Whoop data into existing entry (preserve lift details, cardio selections, etc.)
+      const merged = {
+        ...existingEntry,
+        source: 'whoop',
+        whoopActivity: whoopData,
+        ...(totalDuration && !existingEntry.duration ? { duration: totalDuration } : {}),
+        details: {
+          ...existingEntry.details,
+          // Add Whoop cardio metrics if the existing entry doesn't have them
+          ...(details.cardio && !existingEntry.details?.cardio?.metrics?.avgHR ? { cardio: details.cardio } : {}),
+          ...(details.hic && !existingEntry.details?.hic ? { hic: details.hic } : {}),
+          whoopNote: `Whoop data merged: ${allSports}`,
+        },
+      };
+      // Update via setWorkoutHistory to replace the existing entry
+      setWorkoutHistory(prev => prev.map(e => {
+        if (e === existingEntry || (e.id && e.id === existingEntry.id)) return merged;
+        if (!e.id && new Date(e.date).toDateString() === dateKey && e.workoutName === existingEntry.workoutName) return merged;
+        return e;
+      }));
+    } else {
+      addWorkout({
+        id: `whoop-${date.toISOString().split('T')[0]}-${Date.now()}`,
+        date: date.toISOString(),
+        workoutName: planned.name,
+        type: planned.type,
+        ...(totalDuration ? { duration: totalDuration } : {}),
+        source: 'whoop',
+        whoopActivity: whoopData,
+        details,
+      });
+    }
+  }, [addWorkout, setWorkoutHistory]);
 
   const handleDismiss = useCallback((dateKey) => {
     _dismissedDates.add(dateKey);
@@ -328,7 +372,9 @@ export default function WhoopAutoLog() {
                 </div>
 
                 <p className="text-[13px] text-[#A0A0A0] mb-4 leading-relaxed">
-                  {mapped.length > 1
+                  {dayMatch.isMerge
+                    ? <>Add Whoop data (<span className="text-white font-medium">{totalStrain.toFixed(1)} strain</span>) to your logged <span className="text-white font-medium">{planned.name}</span>?</>
+                    : mapped.length > 1
                     ? <>Detected <span className="text-white font-medium">{mapped.length} activities</span>{planned.type !== 'extra' ? <> for your <span className="text-white font-medium">{planned.name}</span></> : ''}. Log all?</>
                     : <>Was this your planned <span className="text-white font-medium">{planned.name}</span> workout?</>}
                 </p>
@@ -339,7 +385,7 @@ export default function WhoopAutoLog() {
                     className="flex-1 flex items-center justify-center gap-2 min-h-[42px] rounded-xl text-[13px] font-semibold text-white transition-colors active:scale-[0.98]"
                     style={{ backgroundColor: accentColor }}
                   >
-                    <Check size={16} /> Yes, Log It
+                    <Check size={16} /> {dayMatch.isMerge ? 'Merge Data' : 'Yes, Log It'}
                   </button>
                   <button
                     onClick={() => handleDismiss(dateKey)}
