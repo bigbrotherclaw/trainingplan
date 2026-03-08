@@ -60,6 +60,11 @@ export function useGarmin() {
         return { error: result.error || 'Connection failed' };
       }
 
+      // Check if MFA is needed
+      if (result.needsMfa) {
+        return { needsMfa: true };
+      }
+
       setConnected(true);
       // Trigger initial sync
       setTimeout(async () => {
@@ -70,6 +75,38 @@ export function useGarmin() {
       return { success: true };
     } catch (err) {
       console.error('[Garmin] Connect failed:', err);
+      return { error: err.message };
+    }
+  }, [session]);
+
+  // ── Verify MFA code ──
+  const verifyMfa = useCallback(async (code) => {
+    if (!session?.access_token) return { error: 'Not authenticated' };
+
+    try {
+      const resp = await fetch(`${EDGE_BASE}/garmin-auth/verify-mfa`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+      const result = await resp.json();
+
+      if (!resp.ok) {
+        return { error: result.error || 'MFA verification failed' };
+      }
+
+      setConnected(true);
+      setTimeout(async () => {
+        await syncDataDirect(30);
+        await loadCachedData(30);
+      }, 500);
+
+      return { success: true };
+    } catch (err) {
+      console.error('[Garmin] MFA verification failed:', err);
       return { error: err.message };
     }
   }, [session]);
@@ -186,6 +223,7 @@ export function useGarmin() {
     data,
     activities,
     connect,
+    verifyMfa,
     disconnect,
     syncData,
     loadCachedData,

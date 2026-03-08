@@ -623,63 +623,68 @@ export default function CalendarPage({ onEditLog }) {
               onClick={() => { setSelectedDay(null); setShowSwapPicker(false); setLogMode(null); }}
             />
             <motion.div
-              className="fixed bottom-0 left-0 right-0 z-50 bg-[#141414] rounded-t-3xl border-t border-white/[0.10] px-5 pt-3 max-h-[85vh] overflow-y-auto overscroll-contain"
-              style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 5rem))' }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-[#141414] rounded-t-3xl border-t border-white/[0.10] pt-3 max-h-[85vh] flex flex-col"
+              style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             >
-              {/* Handle */}
-              <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
+              {/* Fixed Header (handle + day info + close button) */}
+              <div className="flex-shrink-0 px-5">
+                {/* Handle */}
+                <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
 
-              {/* Day Info Header */}
-              <div className="relative mb-5">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <h3 className="text-[17px] font-bold text-white">
-                      {format(selectedDay.date, 'EEEE, MMM d')}
-                    </h3>
-                    {selectedDayLogged && (
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15">
-                          <Check size={11} className="text-emerald-400" />
-                          <span className="text-[10px] font-semibold text-emerald-400">Logged</span>
+                {/* Day Info Header */}
+                <div className="relative mb-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <h3 className="text-[17px] font-bold text-white">
+                        {format(selectedDay.date, 'EEEE, MMM d')}
+                      </h3>
+                      {selectedDayLogged && (
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15">
+                            <Check size={11} className="text-emerald-400" />
+                            <span className="text-[10px] font-semibold text-emerald-400">Logged</span>
+                          </div>
+                          {onEditLog && (
+                            <button
+                              onClick={() => { setSelectedDay(null); onEditLog(selectedDay.date); }}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 active:bg-white/10"
+                            >
+                              <Pencil size={11} className="text-white/50" />
+                              <span className="text-[10px] font-medium text-white/50">Edit</span>
+                            </button>
+                          )}
                         </div>
-                        {onEditLog && (
-                          <button
-                            onClick={() => { setSelectedDay(null); onEditLog(selectedDay.date); }}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 active:bg-white/10"
-                          >
-                            <Pencil size={11} className="text-white/50" />
-                            <span className="text-[10px] font-medium text-white/50">Edit</span>
-                          </button>
+                      )}
+                    </div>
+                    {selectedSummary && (
+                      <div className="flex items-center justify-center gap-2 mt-1">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedSummary.accent }} />
+                        <span className="text-[14px] font-medium" style={{ color: selectedSummary.accent }}>
+                          {selectedSummary.label === 'Rest' ? 'Rest Day' : selectedSummary.label}
+                        </span>
+                        {isDaySwapped(selectedDay.date) && (
+                          <span className="text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full font-medium">
+                            Modified
+                          </span>
                         )}
                       </div>
                     )}
                   </div>
-                  {selectedSummary && (
-                    <div className="flex items-center justify-center gap-2 mt-1">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedSummary.accent }} />
-                      <span className="text-[14px] font-medium" style={{ color: selectedSummary.accent }}>
-                        {selectedSummary.label === 'Rest' ? 'Rest Day' : selectedSummary.label}
-                      </span>
-                      {isDaySwapped(selectedDay.date) && (
-                        <span className="text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full font-medium">
-                          Modified
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <button
+                    onClick={() => { setSelectedDay(null); setShowSwapPicker(false); setLogMode(null); }}
+                    className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10"
+                  >
+                    <X size={16} className="text-white/60" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => { setSelectedDay(null); setShowSwapPicker(false); setLogMode(null); }}
-                  className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10"
-                >
-                  <X size={16} className="text-white/60" />
-                </button>
               </div>
 
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto overscroll-contain px-5" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 5rem))' }}>
               {logMode === 'detailed' ? (
                 <DetailedLogForm
                   workout={selectedWorkout}
@@ -845,6 +850,7 @@ export default function CalendarPage({ onEditLog }) {
                   )}
                 </>
               )}
+              </div>{/* end scrollable content */}
             </motion.div>
           </>
         )}

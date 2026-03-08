@@ -8,11 +8,13 @@ import { getGarminActivityName, formatGarminDuration, garminMetersToMiles } from
 export default function SettingsPage({ showToast, onNavigateToSocial }) {
   const { settings, setSettings, workoutHistory, setWorkoutHistory, setWorkoutOverrides, setWeekSwaps } = useApp();
   const { connected: whoopConnected, loading: whoopLoading, syncing, connect: whoopConnect, disconnect: whoopDisconnect, syncData: whoopSync, latestRecovery, latestSleep } = useWhoop();
-  const { connected: garminConnected, loading: garminLoading, syncing: garminSyncing, activities: garminActivities, connect: garminConnect, disconnect: garminDisconnect, syncData: garminSync } = useGarmin();
+  const { connected: garminConnected, loading: garminLoading, syncing: garminSyncing, activities: garminActivities, connect: garminConnect, verifyMfa: garminVerifyMfa, disconnect: garminDisconnect, syncData: garminSync } = useGarmin();
   const [garminEmail, setGarminEmail] = useState('');
   const [garminPassword, setGarminPassword] = useState('');
   const [garminError, setGarminError] = useState('');
   const [garminConnecting, setGarminConnecting] = useState(false);
+  const [garminMfaPending, setGarminMfaPending] = useState(false);
+  const [garminMfaCode, setGarminMfaCode] = useState('');
   const [resetConfirmPending, setResetConfirmPending] = useState(false);
   const resetTimerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -167,12 +169,39 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       const result = await garminConnect(garminEmail, garminPassword);
       if (result.error) {
         setGarminError(result.error);
+      } else if (result.needsMfa) {
+        setGarminMfaPending(true);
+        setGarminError('');
       } else {
         setGarminEmail('');
         setGarminPassword('');
       }
     } catch (err) {
       setGarminError(err.message || 'Connection failed');
+    } finally {
+      setGarminConnecting(false);
+    }
+  };
+
+  const handleGarminMfa = async () => {
+    if (!garminMfaCode) {
+      setGarminError('Enter the verification code from your email');
+      return;
+    }
+    setGarminError('');
+    setGarminConnecting(true);
+    try {
+      const result = await garminVerifyMfa(garminMfaCode);
+      if (result.error) {
+        setGarminError(result.error);
+      } else {
+        setGarminMfaPending(false);
+        setGarminMfaCode('');
+        setGarminEmail('');
+        setGarminPassword('');
+      }
+    } catch (err) {
+      setGarminError(err.message || 'Verification failed');
     } finally {
       setGarminConnecting(false);
     }
@@ -397,25 +426,45 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
                 <Watch size={16} className="text-[#007dff]" />
                 <span className="text-[13px] text-[#888888]">Garmin Connect</span>
               </div>
-              <input
-                type="email"
-                value={garminEmail}
-                onChange={(e) => setGarminEmail(e.target.value)}
-                placeholder="Garmin email"
-                className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3.5 min-h-[48px] text-[15px] text-white placeholder-[#555]"
-              />
-              <input
-                type="password"
-                value={garminPassword}
-                onChange={(e) => setGarminPassword(e.target.value)}
-                placeholder="Garmin password"
-                className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3.5 min-h-[48px] text-[15px] text-white placeholder-[#555]"
-              />
+              {!garminMfaPending ? (
+                <>
+                  <input
+                    type="email"
+                    value={garminEmail}
+                    onChange={(e) => setGarminEmail(e.target.value)}
+                    placeholder="Garmin email"
+                    className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3.5 min-h-[48px] text-[15px] text-white placeholder-[#555]"
+                  />
+                  <input
+                    type="password"
+                    value={garminPassword}
+                    onChange={(e) => setGarminPassword(e.target.value)}
+                    placeholder="Garmin password"
+                    className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3.5 min-h-[48px] text-[15px] text-white placeholder-[#555]"
+                  />
+                </>
+              ) : (
+                <>
+                  <p className="text-[13px] text-[#007dff]">
+                    Check your email for a verification code from Garmin.
+                  </p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={garminMfaCode}
+                    onChange={(e) => setGarminMfaCode(e.target.value)}
+                    placeholder="Enter verification code"
+                    className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3.5 min-h-[48px] text-[15px] text-white placeholder-[#555] text-center tracking-widest"
+                    maxLength={6}
+                    autoFocus
+                  />
+                </>
+              )}
               {garminError && (
                 <p className="text-[13px] text-red-400">{garminError}</p>
               )}
               <button
-                onClick={handleGarminConnect}
+                onClick={garminMfaPending ? handleGarminMfa : handleGarminConnect}
                 disabled={garminConnecting}
                 className="w-full min-h-[48px] bg-[#1A1A1A] rounded-xl text-[15px] font-medium text-white flex items-center justify-center gap-2 border border-[#007dff]/30 active:bg-[#222222] disabled:opacity-50"
               >
@@ -424,8 +473,16 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
                 ) : (
                   <Watch size={16} className="text-[#007dff]" />
                 )}
-                {garminConnecting ? 'Connecting...' : 'Connect Garmin'}
+                {garminConnecting ? 'Verifying...' : garminMfaPending ? 'Verify Code' : 'Connect Garmin'}
               </button>
+              {garminMfaPending && (
+                <button
+                  onClick={() => { setGarminMfaPending(false); setGarminMfaCode(''); setGarminError(''); }}
+                  className="w-full min-h-[36px] text-[#555] text-[13px]"
+                >
+                  Back to login
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
