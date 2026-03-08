@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, ChevronLeft, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route, Footprints, Waves } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronLeft, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route, Footprints, Waves, Pencil } from 'lucide-react';
 import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
@@ -371,6 +371,7 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
   const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion, setAcceptedSuggestion } = useApp();
   const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
   const [loggingMode, setLoggingMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(null);
   const [selectedCardio, setSelectedCardio] = useState(null);
@@ -446,10 +447,18 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
     [loggedDates, today]
   );
 
+  const todayLogEntry = useMemo(() => {
+    if (!todayLogged) return null;
+    const todayStr = today.toDateString();
+    // Find the most recent log entry for this date
+    return [...workoutHistory].reverse().find(e => new Date(e.date).toDateString() === todayStr) || null;
+  }, [todayLogged, today, workoutHistory]);
+
   const handleCalendarDateSelect = (date) => {
     if (onSelectedDateChange) onSelectedDateChange(date);
     // Reset logging state when changing dates
     setLoggingMode(false);
+    setIsEditing(false);
     setEnergyLevel(null);
     setSelectedCardio(null);
     setSelectedHic(null);
@@ -657,6 +666,58 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
     showToast('Workout swapped for today!');
   };
 
+  const handleEditLog = () => {
+    if (!todayLogEntry) return;
+    setIsEditing(true);
+    const entry = todayLogEntry;
+    // Pre-fill energy level
+    if (entry.energyLevel) setEnergyLevel(entry.energyLevel);
+    // Pre-fill duration
+    if (entry.duration) setDurationMin(String(entry.duration));
+    // Pre-fill type-specific data
+    if (entry.type === 'strength' && entry.details?.lifts) {
+      const ld = {};
+      const cs = {};
+      entry.details.lifts.forEach(lift => {
+        ld[`${lift.name}-weight`] = String(lift.weight || '');
+        ld[`${lift.name}-reps`] = String(lift.reps || '');
+        for (let i = 1; i <= (lift.setsCompleted || 0); i++) {
+          cs[`${lift.name}-${i}`] = true;
+        }
+      });
+      setLiftData(ld);
+      setCompletedSets(cs);
+      if (entry.details?.accessories) {
+        const ad = {};
+        const cas = {};
+        entry.details.accessories.forEach(acc => {
+          ad[`${acc.name}-weight`] = String(acc.weight || '');
+          ad[`${acc.name}-reps`] = String(acc.reps || '');
+          for (let i = 1; i <= (acc.setsCompleted || 0); i++) {
+            cas[`${acc.name}-${i}`] = true;
+          }
+        });
+        setAccessoryData(ad);
+        setCompletedAccessorySets(cas);
+      }
+    } else if ((entry.type === 'tri' || entry.type === 'long') && entry.details?.cardio) {
+      setSelectedCardio(entry.details.cardio.name || null);
+      setCardioMetrics(entry.details.cardio.metrics || {});
+      if (entry.type === 'tri' && entry.details?.hic) {
+        if (entry.details.hic.skipped) {
+          setSkippedHic(true);
+        } else {
+          setSelectedHic(entry.details.hic.name || null);
+          setHicMetrics(entry.details.hic.metrics || {});
+        }
+      }
+      if (entry.type === 'long' && entry.details?.notes) {
+        setLongNotes(entry.details.notes);
+      }
+    }
+    setLoggingMode(true);
+  };
+
   const handleLogWorkout = () => {
     if (acceptedSuggestion?.modifications?.suggestedEnergyLevel) {
       setEnergyLevel(acceptedSuggestion.modifications.suggestedEnergyLevel);
@@ -684,6 +745,8 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
   };
 
   const handleComplete = () => {
+    let newEntry = null;
+
     if (todayWorkout.type === 'strength') {
       const activeLifts = getActiveLifts();
       const lifts = activeLifts.map((lift) => {
@@ -705,19 +768,19 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
         return { name: acc.name, weight, reps, setsCompleted };
       });
       const dur = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
-      setWorkoutHistory((prev) => [...prev, {
+      newEntry = {
         date: getLogDate(),
         workoutName: todayWorkout.name,
         type: 'strength',
         ...(dur ? { duration: dur } : {}),
         ...(energyLevel ? { energyLevel } : {}),
         details: { lifts, accessories, loading: { sets: loadingInfo.sets, reps: loadingInfo.reps, percentage: loadingInfo.percentage } },
-      }]);
+      };
     } else if (todayWorkout.type === 'tri') {
       if (!selectedCardio) { showToast('Please select a cardio workout', 'error'); return; }
       if (!selectedHic && !skippedHic) { showToast('Please select an HIC or skip it', 'error'); return; }
       const durTri = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
-      setWorkoutHistory((prev) => [...prev, {
+      newEntry = {
         date: getLogDate(),
         workoutName: todayWorkout.name,
         type: 'tri',
@@ -727,22 +790,42 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
           cardio: { name: selectedCardio, metrics: { ...cardioMetrics } },
           hic: skippedHic ? { name: 'Skipped', skipped: true } : { name: selectedHic, metrics: { ...hicMetrics } },
         },
-      }]);
+      };
     } else if (todayWorkout.type === 'long') {
       if (!selectedCardio) { showToast('Please select a cardio workout', 'error'); return; }
       const durLong = parseInt(durationMin) || (elapsedSeconds > 60 ? Math.round(elapsedSeconds / 60) : undefined);
-      setWorkoutHistory((prev) => [...prev, {
+      newEntry = {
         date: getLogDate(),
         workoutName: todayWorkout.name,
         type: 'long',
         ...(durLong ? { duration: durLong } : {}),
         ...(energyLevel ? { energyLevel } : {}),
         details: { cardio: { name: selectedCardio, metrics: { ...cardioMetrics } }, notes: longNotes },
-      }]);
+      };
     }
+
+    if (!newEntry) return;
+
+    if (isEditing && todayLogEntry) {
+      // Replace the existing entry (preserve its id if it has one)
+      newEntry.id = todayLogEntry.id;
+      // Also preserve whoop data if the original had it
+      if (todayLogEntry.source) newEntry.source = todayLogEntry.source;
+      if (todayLogEntry.whoopActivity) newEntry.whoopActivity = todayLogEntry.whoopActivity;
+      setWorkoutHistory((prev) => prev.map(e => {
+        if (e === todayLogEntry || (e.id && e.id === todayLogEntry.id)) return newEntry;
+        // Match by date + workoutName as fallback
+        if (!e.id && new Date(e.date).toDateString() === new Date(todayLogEntry.date).toDateString() && e.workoutName === todayLogEntry.workoutName) return newEntry;
+        return e;
+      }));
+    } else {
+      setWorkoutHistory((prev) => [...prev, newEntry]);
+    }
+
     setShowCelebration(true);
     setLoggingMode(false);
-    showToast('Workout logged!');
+    setIsEditing(false);
+    showToast(isEditing ? 'Workout updated!' : 'Workout logged!');
     setTimeout(() => setShowCelebration(false), 2500);
   };
 
@@ -1080,8 +1163,16 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
           <h2 className="text-[22px] font-bold text-white mb-4">{todayWorkout.name}</h2>
 
           {todayLogged && (
-            <div className="bg-emerald-950/30 border border-emerald-800/20 rounded-xl px-4 py-2 text-emerald-400 text-sm font-medium flex items-center gap-2 mb-3">
-              <Check size={16} /> Already logged today
+            <div className="bg-emerald-950/30 border border-emerald-800/20 rounded-xl px-4 py-2 text-emerald-400 text-sm font-medium flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Check size={16} /> Already logged
+              </div>
+              <button
+                onClick={handleEditLog}
+                className="flex items-center gap-1.5 text-emerald-400/70 hover:text-emerald-300 transition-colors text-xs font-medium"
+              >
+                <Pencil size={13} /> Edit
+              </button>
             </div>
           )}
 
@@ -1223,7 +1314,7 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
       </AnimatePresence>
 
       <div className="flex items-center justify-between mb-1">
-        <button onClick={() => { setLoggingMode(false); setEnergyLevel(null); }} className="flex items-center gap-1.5 text-[#666666] hover:text-white transition-colors text-sm">
+        <button onClick={() => { setLoggingMode(false); setIsEditing(false); setEnergyLevel(null); }} className="flex items-center gap-1.5 text-[#666666] hover:text-white transition-colors text-sm">
           <ArrowLeft size={18} />
           Back
         </button>
@@ -1594,7 +1685,7 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
             onClick={handleComplete}
             className="w-full min-h-[52px] rounded-2xl bg-accent-green hover:bg-accent-green/90 text-white font-semibold text-[17px] tracking-wide transition-colors"
           >
-            Complete Workout
+            {isEditing ? 'Update Workout' : 'Complete Workout'}
           </motion.button>
         </>
       )}

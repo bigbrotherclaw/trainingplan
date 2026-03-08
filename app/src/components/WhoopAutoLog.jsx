@@ -40,6 +40,8 @@ function mapActivitiesToWorkout(activities, planned) {
   }));
 
   const workoutName = (planned.name || '').toLowerCase();
+  const mapped = [];
+  const usedActivities = new Set();
 
   if (planned.type === 'tri') {
     const isRunDay = workoutName.includes('run');
@@ -55,29 +57,34 @@ function mapActivitiesToWorkout(activities, planned) {
       if (a.strain >= 5 && ['running', 'cycling', 'rowing'].includes(a.category)) return true;
       return false;
     });
-    const mapped = [];
-    if (cardioMatch) mapped.push({ activity: cardioMatch.activity, role: 'cardio', label: isRunDay ? 'Run' : isSwimBikeDay ? 'Swim/Bike' : 'Cardio' });
-    if (hicMatch) mapped.push({ activity: hicMatch.activity, role: 'hic', label: 'HIC' });
-    if (mapped.length === 0 && categorized.length > 0) {
-      const best = [...categorized].sort((a, b) => b.strain - a.strain)[0];
-      mapped.push({ activity: best.activity, role: 'full', label: planned.name });
-    }
-    return mapped;
-  }
-
-  if (planned.type === 'strength') {
+    if (cardioMatch) { mapped.push({ activity: cardioMatch.activity, role: 'cardio', label: isRunDay ? 'Run' : isSwimBikeDay ? 'Swim/Bike' : 'Cardio' }); usedActivities.add(cardioMatch.activity); }
+    if (hicMatch) { mapped.push({ activity: hicMatch.activity, role: 'hic', label: 'HIC' }); usedActivities.add(hicMatch.activity); }
+  } else if (planned.type === 'strength') {
     const match = categorized.find(a => a.category === 'strength') || [...categorized].sort((a, b) => b.strain - a.strain)[0];
-    return match ? [{ activity: match.activity, role: 'full', label: planned.name }] : [];
-  }
-
-  if (planned.type === 'long') {
+    if (match) { mapped.push({ activity: match.activity, role: 'full', label: planned.name }); usedActivities.add(match.activity); }
+  } else if (planned.type === 'long') {
     const match = categorized.find(a => a.category === 'endurance')
       || [...categorized].filter(a => ['running', 'cycling', 'swimming', 'rowing'].includes(a.category)).sort((a, b) => b.durationMin - a.durationMin)[0]
       || [...categorized].sort((a, b) => b.strain - a.strain)[0];
-    return match ? [{ activity: match.activity, role: 'full', label: planned.name }] : [];
+    if (match) { mapped.push({ activity: match.activity, role: 'full', label: planned.name }); usedActivities.add(match.activity); }
   }
 
-  return [];
+  // If nothing matched the plan, pick the highest-strain activity as the primary
+  if (mapped.length === 0 && categorized.length > 0) {
+    const best = [...categorized].sort((a, b) => b.strain - a.strain)[0];
+    mapped.push({ activity: best.activity, role: 'full', label: planned.name });
+    usedActivities.add(best.activity);
+  }
+
+  // Add any remaining activities as extras (so nothing gets lost)
+  for (const c of categorized) {
+    if (!usedActivities.has(c.activity)) {
+      const sportName = getSportName(c.activity.sport_id, c.activity);
+      mapped.push({ activity: c.activity, role: 'extra', label: sportName });
+    }
+  }
+
+  return mapped;
 }
 
 // ─── MODULE-LEVEL state + localStorage persistence ──────────────────────────
@@ -253,6 +260,7 @@ export default function WhoopAutoLog() {
                     const sportName = getSportName(activity.sport_id, activity);
                     const strain = activity.score?.strain;
                     const duration = formatDuration(activity.start, activity.end);
+                    const isExtra = role === 'extra';
                     return (
                       <div key={idx} className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: sportColor + '15' }}>
@@ -261,7 +269,11 @@ export default function WhoopAutoLog() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-medium text-white">{sportName}</span>
-                            {isMultiPart && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/[0.06] text-[#888888] uppercase">{label}</span>}
+                            {isMultiPart && (
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded uppercase ${isExtra ? 'bg-purple-500/10 text-purple-400' : 'bg-white/[0.06] text-[#888888]'}`}>
+                                {isExtra ? 'Extra' : label}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-[#666666]">
                             {duration !== '—' ? duration : ''}{strain != null && <>{duration !== '—' ? ' · ' : ''}{strain.toFixed(1)} strain</>}
@@ -273,8 +285,8 @@ export default function WhoopAutoLog() {
                 </div>
 
                 <p className="text-[13px] text-[#A0A0A0] mb-4 leading-relaxed">
-                  {isMultiPart
-                    ? <>Detected <span className="text-white font-medium">{mapped.length} activities</span> matching your planned <span className="text-white font-medium">{planned.name}</span>. Log it?</>
+                  {mapped.length > 1
+                    ? <>Detected <span className="text-white font-medium">{mapped.length} activities</span>{planned.type !== 'extra' ? <> for your <span className="text-white font-medium">{planned.name}</span></> : ''}. Log all?</>
                     : <>Was this your planned <span className="text-white font-medium">{planned.name}</span> workout?</>}
                 </p>
 

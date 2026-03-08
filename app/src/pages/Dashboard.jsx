@@ -125,7 +125,24 @@ function DonutGauge({ value, max = 100, label, size = 90, getColor, decimals = 0
 // (Old RecoveryGauge, StrainBar, SleepGauge removed — replaced by DonutGauge)
 
 // ── Stat Mini Card ──
-function StatMiniCard({ label, icon, children, delay = 0 }) {
+function TrendIndicator({ value, avg, invert = false }) {
+  if (value == null || avg == null) return null;
+  const diff = value - avg;
+  const pct = Math.abs(Math.round((diff / avg) * 100));
+  if (pct < 1) return null; // negligible difference
+  // invert: for resting HR, lower is better (green), higher is worse (red)
+  const isUp = diff > 0;
+  const isGood = invert ? !isUp : isUp;
+  const color = isGood ? '#00D46A' : '#EF4444';
+  const arrow = isUp ? '▲' : '▼';
+  return (
+    <span style={{ color, fontSize: 9, fontWeight: 600, marginLeft: 3 }}>
+      {arrow}{pct}%
+    </span>
+  );
+}
+
+function StatMiniCard({ label, icon, children, avg, delay = 0 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -135,6 +152,11 @@ function StatMiniCard({ label, icon, children, delay = 0 }) {
     >
       {icon && <div style={{ marginBottom: 6 }}>{icon}</div>}
       {children}
+      {avg != null && (
+        <div className="text-[10px] text-[#444]" style={{ marginTop: 2 }}>
+          avg {avg}
+        </div>
+      )}
       <div className="text-[10px] uppercase tracking-widest text-[#666]" style={{ marginTop: 4 }}>{label}</div>
     </motion.div>
   );
@@ -172,7 +194,24 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
 
     if (recoveryScore == null && hrv == null && strain == null) return null;
 
-    return { recoveryScore, hrv, restingHR, sleepScore, strain, calories };
+    // Compute averages from all historical data (excluding today)
+    const avg = (arr, extractor) => {
+      if (!arr?.length) return null;
+      const vals = arr
+        .filter(r => r.date !== todayKey)
+        .map(extractor)
+        .filter(v => v != null && !isNaN(v));
+      return vals.length >= 2 ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+    };
+
+    const avgHrv = avg(whoopData?.recovery, r => r.score?.hrv_rmssd_milli);
+    const avgRestingHR = avg(whoopData?.recovery, r => r.score?.resting_heart_rate);
+    const avgCalories = avg(whoopData?.cycle, r => {
+      const kj = r.score?.kilojoule;
+      return kj != null ? Math.round(kj * 0.239006) : null;
+    });
+
+    return { recoveryScore, hrv, restingHR, sleepScore, strain, calories, avgHrv, avgRestingHR, avgCalories };
   }, [connected, whoopData]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
@@ -411,27 +450,30 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
 
           {/* HRV / Resting HR / Calories row */}
           <div className="grid grid-cols-3 gap-2" style={{ marginTop: 8 }}>
-            <StatMiniCard label="HRV" delay={0.1} icon={<Zap size={14} color="#00D46A" />}>
-              <div className="text-[18px] font-bold text-white">
+            <StatMiniCard label="HRV" delay={0.1} icon={<Zap size={14} color="#00D46A" />} avg={whoopMetrics.avgHrv != null ? Math.round(whoopMetrics.avgHrv) : null}>
+              <div className="text-[18px] font-bold text-white flex items-center justify-center">
                 <AnimatedNumber value={whoopMetrics.hrv != null ? Math.round(whoopMetrics.hrv) : null} decimals={0} suffix="" />
+                <TrendIndicator value={whoopMetrics.hrv} avg={whoopMetrics.avgHrv} />
               </div>
               <div className="text-[10px] text-[#555]">ms</div>
             </StatMiniCard>
 
-            <StatMiniCard label="Resting HR" delay={0.15} icon={
+            <StatMiniCard label="Resting HR" delay={0.15} avg={whoopMetrics.avgRestingHR != null ? Math.round(whoopMetrics.avgRestingHR) : null} icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
               </svg>
             }>
-              <div className="text-[18px] font-bold text-white">
+              <div className="text-[18px] font-bold text-white flex items-center justify-center">
                 <AnimatedNumber value={whoopMetrics.restingHR} decimals={0} suffix="" />
+                <TrendIndicator value={whoopMetrics.restingHR} avg={whoopMetrics.avgRestingHR} invert />
               </div>
               <div className="text-[10px] text-[#555]">bpm</div>
             </StatMiniCard>
 
-            <StatMiniCard label="Calories" delay={0.2} icon={<Flame size={14} color="#F97316" />}>
-              <div className="text-[18px] font-bold text-white">
+            <StatMiniCard label="Calories" delay={0.2} icon={<Flame size={14} color="#F97316" />} avg={whoopMetrics.avgCalories != null ? Math.round(whoopMetrics.avgCalories) : null}>
+              <div className="text-[18px] font-bold text-white flex items-center justify-center">
                 <AnimatedNumber value={whoopMetrics.calories} decimals={0} />
+                <TrendIndicator value={whoopMetrics.calories} avg={whoopMetrics.avgCalories} />
               </div>
               <div className="text-[10px] text-[#555]">kcal</div>
             </StatMiniCard>
