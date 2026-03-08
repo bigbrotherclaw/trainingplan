@@ -45,6 +45,7 @@ function UserAvatar({ user, profile, onClick }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState(null);
+  const [editFromCalendar, setEditFromCalendar] = useState(false);
   const [toast, setToast] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showMigrationModal, setShowMigrationModal] = useState(false);
@@ -82,9 +83,9 @@ export default function App() {
       case 'dashboard':
         return <Dashboard onNavigate={setActiveTab} onNavigateToWorkout={navigateToWorkout} />;
       case 'workout':
-        return <Workout showToast={showToast} selectedDate={selectedDate} onSelectedDateChange={setSelectedDate} />;
+        return <Workout showToast={showToast} selectedDate={selectedDate} onSelectedDateChange={setSelectedDate} editFromCalendar={editFromCalendar} onEditFromCalendarHandled={() => setEditFromCalendar(false)} />;
       case 'calendar':
-        return <CalendarPage onNavigate={setActiveTab} />;
+        return <CalendarPage onNavigate={setActiveTab} onEditLog={(date) => { setSelectedDate(date); setEditFromCalendar(true); setActiveTab('workout'); }} />;
       case 'stats':
         return <Stats />;
       case 'settings':

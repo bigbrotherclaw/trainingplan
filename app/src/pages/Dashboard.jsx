@@ -4,7 +4,7 @@ import { ChevronRight, Moon, Flame, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
 import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
-import { getSwappedWorkoutForDate } from '../utils/workout';
+import { getWorkoutForDate, getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
 import WhoopAutoLog from '../components/WhoopAutoLog';
 import GlowBorder from '../components/GlowBorder';
@@ -240,6 +240,27 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
 
   const weekWorkouts = weekData.filter(d => d.isLogged).length;
   const plannedWorkouts = weekData.filter(d => d.workout.type !== 'rest').length;
+  
+  // Compliance: original (unswapped) plan vs what was actually logged
+  const complianceData = useMemo(() => {
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const original = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + i);
+      const workout = getWorkoutForDate(date); // original template, no swaps
+      const isLogged = loggedDates.has(date.toDateString());
+      const isPast = date < today;
+      const isToday = date.toDateString() === today.toDateString();
+      return { date, workout, isLogged, isPast, isToday };
+    });
+    const plannedOriginal = original.filter(d => d.workout.type !== 'rest');
+    const completedOriginal = plannedOriginal.filter(d => d.isLogged);
+    const missedOriginal = plannedOriginal.filter(d => !d.isLogged && d.isPast);
+    const upcomingOriginal = plannedOriginal.filter(d => !d.isLogged && !d.isPast);
+    const pct = plannedOriginal.length > 0 ? Math.round((completedOriginal.length / plannedOriginal.length) * 100) : 100;
+    return { planned: plannedOriginal, completed: completedOriginal, missed: missedOriginal, upcoming: upcomingOriginal, pct };
+  }, [today, loggedDates]);
 
   // Weekly tonnage
   const weekTonnage = useMemo(() => {
@@ -304,7 +325,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
     return { streak: current, bestStreak: Math.max(best, current) };
   }, [workoutHistory, loggedDates, today, weekSwaps]);
 
-  const compliancePct = Math.min(100, Math.round((weekWorkouts / 6) * 100));
+  const compliancePct = complianceData.pct;
   const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
@@ -582,7 +603,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
       </motion.div>
       </div>
 
-      {/* WEEKLY COMPLIANCE RING */}
+      {/* WEEKLY COMPLIANCE */}
       <div style={{marginTop:"12px"}}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -590,12 +611,84 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
         transition={{ delay: 0.15 }}
         className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
       >
-        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-5">Weekly Compliance</h2>
-        {weekWorkouts === 0 ? (
-          <p className="text-[13px] text-[#555555] text-center py-1">Complete your first workout to track compliance</p>
+        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Weekly Compliance</h2>
+        {complianceData.planned.length === 0 ? (
+          <p className="text-[13px] text-[#555555] text-center py-1">No workouts planned this week</p>
         ) : (
-          <div className="flex justify-center">
-            <ComplianceRing weekWorkouts={weekWorkouts} size={80} />
+          <div className="space-y-4">
+            {/* Progress bar */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2.5 bg-white/[0.06] rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${compliancePct}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: compliancePct >= 80 ? '#10B981' : compliancePct >= 50 ? '#F59E0B' : '#EF4444' }}
+                />
+              </div>
+              <span className="text-[15px] font-bold text-white w-12 text-right">{compliancePct}%</span>
+            </div>
+            
+            {/* Completed */}
+            <div className="text-[12px] text-[#888]">
+              <span className="text-emerald-400 font-medium">{complianceData.completed.length}</span> of{' '}
+              <span className="text-white font-medium">{complianceData.planned.length}</span> planned workouts completed
+            </div>
+
+            {/* Workout breakdown */}
+            <div className="space-y-1.5">
+              {complianceData.planned.map((d, i) => {
+                const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.date.getDay()];
+                const status = d.isLogged ? 'done' : d.isPast ? 'missed' : d.isToday ? 'today' : 'upcoming';
+                return (
+                  <div key={i} className="flex items-center justify-between py-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        status === 'done' ? 'bg-emerald-400' : status === 'missed' ? 'bg-red-400' : status === 'today' ? 'bg-blue-400' : 'bg-white/20'
+                      }`} />
+                      <span className="text-[12px] text-[#888]">{dayName}</span>
+                      <span className="text-[12px] text-white/80">{d.workout.name}</span>
+                    </div>
+                    <span className={`text-[11px] font-medium ${
+                      status === 'done' ? 'text-emerald-400' : status === 'missed' ? 'text-red-400' : status === 'today' ? 'text-blue-400' : 'text-white/30'
+                    }`}>
+                      {status === 'done' ? '✓' : status === 'missed' ? 'Missed' : status === 'today' ? 'Today' : '—'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Impact note if missed workouts */}
+            {complianceData.missed.length > 0 && (
+              <div className="bg-red-500/[0.08] border border-red-500/20 rounded-xl px-3.5 py-3 mt-2">
+                <p className="text-[12px] text-red-300/90 leading-relaxed">
+                  {complianceData.missed.length === 1 ? (
+                    <>Missed <span className="font-semibold text-red-300">{complianceData.missed[0].workout.name}</span>. {
+                      complianceData.missed[0].workout.type === 'strength' 
+                        ? 'Missing a strength session reduces weekly volume — consider doubling up if energy allows.'
+                        : 'Skipping conditioning affects aerobic base. Try to hit the next one.'
+                    }</>
+                  ) : (
+                    <>Missed <span className="font-semibold text-red-300">{complianceData.missed.length} workouts</span> this week. {
+                      complianceData.missed.some(m => m.workout.type === 'strength') && complianceData.missed.some(m => m.workout.type === 'tri')
+                        ? 'Both strength and conditioning gaps — prioritize the remaining sessions to maintain baseline.'
+                        : complianceData.missed.every(m => m.workout.type === 'strength')
+                        ? 'Strength volume is behind this week. Focus on hitting the next sessions at full intensity.'
+                        : 'Conditioning volume is behind. Make sure to complete remaining endurance work.'
+                    }</>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* All done note */}
+            {complianceData.missed.length === 0 && complianceData.upcoming.length === 0 && compliancePct === 100 && (
+              <div className="bg-emerald-500/[0.08] border border-emerald-500/20 rounded-xl px-3.5 py-3 mt-2">
+                <p className="text-[12px] text-emerald-300/90">Perfect week — every planned session completed. 💪</p>
+              </div>
+            )}
           </div>
         )}
       </motion.div>

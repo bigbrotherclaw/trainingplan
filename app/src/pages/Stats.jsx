@@ -6,6 +6,7 @@ import { OPERATOR_LIFTS, EXERCISE_MUSCLE_MAP } from '../data/training';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import { useWhoop } from '../hooks/useWhoop';
 import { getSportName, getSportIcon, getSportColor, formatDuration as formatWhoopDuration, metersToMiles, kjToKcal } from '../utils/whoopSports';
+import { LiftIcon } from '../components/LiftIcons';
 import { getStrainCorrelation, getWeeklyStrainTrend } from '../utils/strainCorrelation';
 
 const LIFT_COLORS = { 'Bench Press': '#3b82f6', 'Back Squat': '#ef4444', 'Weighted Pull-up': '#10b981' };
@@ -378,7 +379,7 @@ export default function Stats() {
                       : 'bg-[#1A1A1A] text-[#666666]'
                   }`}
                 >
-                  {lift.short}
+                  <span className="flex items-center gap-1.5"><LiftIcon name={lift.name} size={15} color={selectedLift === lift.name ? '#fff' : '#666'} />{lift.short}</span>
                 </button>
               ))}
             </div>
@@ -717,6 +718,7 @@ export default function Stats() {
         <ActivityTab
           whoopConnected={whoopConnected}
           whoopWorkouts={whoopData?.workout || []}
+          whoopCycles={whoopData?.cycle || []}
           workoutHistory={workoutHistory}
           expandedActivity={expandedActivity}
           setExpandedActivity={setExpandedActivity}
@@ -737,7 +739,7 @@ const CHART_RANGES = [
   { key: 'monthly', label: 'Monthly' },
 ];
 
-function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedActivity, setExpandedActivity }) {
+function ActivityTab({ whoopConnected, whoopWorkouts, whoopCycles, workoutHistory, expandedActivity, setExpandedActivity }) {
   const [chartMetric, setChartMetric] = useState('strain');
   const [chartRange, setChartRange] = useState('daily');
 
@@ -753,10 +755,30 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
     });
   }, [whoopWorkouts, todayStr]);
 
+  // Build cycle calorie lookup (date → total daily kcal) from cycle data
+  const cycleCals = useMemo(() => {
+    const map = {};
+    for (const c of whoopCycles) {
+      const dk = c.date || (c.start ? c.start.split('T')[0] : null);
+      if (dk && c.score?.kilojoule) map[dk] = Math.round(c.score.kilojoule * 0.239006);
+    }
+    return map;
+  }, [whoopCycles]);
+
   // Configurable chart data
   const chartData = useMemo(() => {
     const now = new Date();
     const getDateKey = (w) => w.date || (w.start ? w.start.split('T')[0] : null);
+    
+    const getCalories = (keys) => {
+      // Use cycle (total daily) calories, not workout calories
+      const vals = keys.map(k => cycleCals[k]).filter(Boolean);
+      return vals.reduce((s, v) => s + v, 0);
+    };
+    const getAvgCalories = (keys) => {
+      const vals = keys.map(k => cycleCals[k]).filter(Boolean);
+      return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0;
+    };
 
     if (chartRange === 'daily') {
       const days = [];
@@ -773,7 +795,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
           const hrs = matching.filter(w => w.score?.average_heart_rate).map(w => w.score.average_heart_rate);
           value = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
         } else {
-          value = Math.round(matching.reduce((s, w) => s + (w.score?.kilojoule || 0) * 0.239006, 0));
+          value = cycleCals[key] || 0;
         }
         days.push({ label: dayLabel, value: Math.round(value * 10) / 10, isToday: i === 0 });
       }
@@ -788,11 +810,14 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
         const label = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+        // Collect all date keys in this week
+        const weekKeys = [];
+        for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+          weekKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+        }
         const matching = whoopWorkouts.filter(w => {
           const dk = getDateKey(w);
-          if (!dk || !w.score) return false;
-          return dk >= `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}` &&
-                 dk <= `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
+          return dk && w.score && weekKeys.includes(dk);
         });
         let value = 0;
         if (chartMetric === 'strain') {
@@ -801,7 +826,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
           const hrs = matching.filter(w => w.score?.average_heart_rate).map(w => w.score.average_heart_rate);
           value = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
         } else {
-          value = Math.round(matching.reduce((s, w) => s + (w.score?.kilojoule || 0) * 0.239006, 0));
+          value = getAvgCalories(weekKeys);
         }
         weeks.push({ label, value: Math.round(value * 10) / 10, isToday: i === 0 });
       }
@@ -815,6 +840,11 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
       const mEnd = new Date(m.getFullYear(), m.getMonth() + 1, 0);
       const mKey = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
       const label = m.toLocaleString('default', { month: 'short' });
+      // Collect all date keys in this month
+      const monthKeys = [];
+      for (let d = 1; d <= mEnd.getDate(); d++) {
+        monthKeys.push(`${mKey}-${String(d).padStart(2, '0')}`);
+      }
       const matching = whoopWorkouts.filter(w => {
         const dk = getDateKey(w);
         return dk && w.score && dk.startsWith(mKey);
@@ -826,12 +856,12 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
         const hrs = matching.filter(w => w.score?.average_heart_rate).map(w => w.score.average_heart_rate);
         value = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
       } else {
-        value = Math.round(matching.reduce((s, w) => s + (w.score?.kilojoule || 0) * 0.239006, 0));
+        value = getAvgCalories(monthKeys);
       }
       months.push({ label, value: Math.round(value * 10) / 10, isToday: i === 0 });
     }
     return months;
-  }, [whoopWorkouts, chartMetric, chartRange]);
+  }, [whoopWorkouts, whoopCycles, cycleCals, chartMetric, chartRange]);
 
   // Activity history - last 30 days grouped by week
   const activityHistory = useMemo(() => {
@@ -974,15 +1004,15 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
       {/* CONFIGURABLE CHART */}
       <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
         {/* Metric toggle */}
-        <div className="flex gap-1.5 mb-3">
+        <div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-1">
           {CHART_METRICS.map(m => (
             <button
               key={m.key}
               onClick={() => setChartMetric(m.key)}
-              className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+              className={`flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
                 chartMetric === m.key
-                  ? 'bg-white text-black'
-                  : 'bg-white/[0.06] text-[#777]'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-[#666] active:bg-white/[0.06]'
               }`}
             >
               {m.label}
@@ -990,15 +1020,15 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
           ))}
         </div>
         {/* Time range toggle */}
-        <div className="flex gap-1 mb-4">
+        <div className="flex gap-1 mb-4 bg-white/[0.04] rounded-lg p-1">
           {CHART_RANGES.map(r => (
             <button
               key={r.key}
               onClick={() => setChartRange(r.key)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+              className={`flex-1 py-2 rounded-md text-[12px] font-semibold transition-all ${
                 chartRange === r.key
-                  ? 'bg-white/[0.15] text-white'
-                  : 'bg-transparent text-[#555]'
+                  ? 'bg-white/[0.12] text-white'
+                  : 'text-[#555] active:bg-white/[0.06]'
               }`}
             >
               {r.label}
@@ -1010,8 +1040,14 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
             <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={35} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
-              formatter={(value) => [`${value}`, chartMetric === 'strain' ? 'Strain' : chartMetric === 'avgHR' ? 'Avg HR' : 'Calories']}
+              contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '10px', fontSize: '13px', padding: '8px 12px' }}
+              labelStyle={{ color: '#888', fontSize: '11px', marginBottom: '2px' }}
+              formatter={(value) => {
+                const unit = chartMetric === 'strain' ? '' : chartMetric === 'avgHR' ? ' bpm' : ' kcal';
+                const label = chartMetric === 'strain' ? 'Strain' : chartMetric === 'avgHR' ? 'Avg HR' : (chartRange === 'daily' ? 'Total Calories' : 'Avg Daily Cal');
+                return [`${value.toLocaleString()}${unit}`, label];
+              }}
+              cursor={{ fill: 'rgba(255,255,255,0.05)' }}
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, i) => (

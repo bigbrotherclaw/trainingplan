@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, Moon, Repeat2, X, Check, Dumbbell, Zap, ClipboardList, Layers, Play, ArrowLeft, Minus, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, Moon, Repeat2, X, Check, Dumbbell, Zap, ClipboardList, Layers, Play, ArrowLeft, Minus, Plus, Pencil } from 'lucide-react';
 import { format, isSameDay, startOfWeek, addMonths, subMonths } from 'date-fns';
 import { DndContext, DragOverlay, useSensor, useSensors, TouchSensor, MouseSensor, useDraggable, useDroppable, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { useApp } from '../context/AppContext';
@@ -59,7 +59,7 @@ function mergeActivities(activities) {
   };
 }
 
-export default function CalendarPage() {
+export default function CalendarPage({ onEditLog }) {
   const { workoutHistory, weekSwaps, setWeekSwaps, addWorkout, settings } = useApp();
   const { connected: whoopConnected, data: whoopData } = useWhoop();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -571,9 +571,20 @@ export default function CalendarPage() {
                       {format(selectedDay.date, 'EEEE, MMM d')}
                     </h3>
                     {selectedDayLogged && (
-                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15">
-                        <Check size={11} className="text-emerald-400" />
-                        <span className="text-[10px] font-semibold text-emerald-400">Logged</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15">
+                          <Check size={11} className="text-emerald-400" />
+                          <span className="text-[10px] font-semibold text-emerald-400">Logged</span>
+                        </div>
+                        {onEditLog && (
+                          <button
+                            onClick={() => { setSelectedDay(null); onEditLog(selectedDay.date); }}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 active:bg-white/10"
+                          >
+                            <Pencil size={11} className="text-white/50" />
+                            <span className="text-[10px] font-medium text-white/50">Edit</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

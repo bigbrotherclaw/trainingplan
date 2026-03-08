@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, ChevronUp, ChevronLeft, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route, Footprints, Waves, Pencil } from 'lucide-react';
+import { LiftIcon } from '../components/LiftIcons';
 import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
@@ -189,7 +190,7 @@ function UpcomingWorkoutCard({ date, workout, settings, isExpanded, onToggle }) 
                       const weight = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
                       return (
                         <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                          <span className="text-[12px] text-[#B3B3B3]">{lift.name}</span>
+                          <span className="text-[12px] text-[#B3B3B3] flex items-center gap-1.5"><LiftIcon name={lift.name} size={14} color="#777" />{lift.name}</span>
                           <span className="text-[12px] text-[#666666]">{weight} lbs</span>
                         </div>
                       );
@@ -367,7 +368,7 @@ function MiniCalendar({ selectedDate, onSelectDate, loggedDates, weekSwaps }) {
   );
 }
 
-export default function Workout({ showToast, selectedDate: selectedDateProp, onSelectedDateChange }) {
+export default function Workout({ showToast, selectedDate: selectedDateProp, onSelectedDateChange, editFromCalendar, onEditFromCalendarHandled }) {
   const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion, setAcceptedSuggestion } = useApp();
   const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
   const [loggingMode, setLoggingMode] = useState(false);
@@ -717,6 +718,14 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
     }
     setLoggingMode(true);
   };
+
+  // Auto-trigger edit mode when navigating from Calendar's Edit button
+  useEffect(() => {
+    if (editFromCalendar && todayLogEntry) {
+      handleEditLog();
+      onEditFromCalendarHandled?.();
+    }
+  }, [editFromCalendar, todayLogEntry]);
 
   const handleLogWorkout = () => {
     if (acceptedSuggestion?.modifications?.suggestedEnergyLevel) {
@@ -1187,15 +1196,28 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
                   const programmed = Math.round(settings[lift.settingsKey] * (loadingInfo.percentage / 100));
                   const hasAdjustment = activeSuggestion?.modifications?.intensityMultiplier && activeSuggestion.modifications.intensityMultiplier < 1;
                   const adjusted = hasAdjustment ? roundToFive(programmed * activeSuggestion.modifications.intensityMultiplier) : programmed;
+                  
+                  // Show actual logged weights/reps if this workout has been logged
+                  const loggedLift = todayLogEntry?.details?.lifts?.find(l => l.name === lift.name);
+                  const displayWeight = loggedLift ? loggedLift.weight : (hasAdjustment ? adjusted : programmed);
+                  const displayReps = loggedLift ? loggedLift.reps : loadingInfo.reps;
+                  const displaySets = loggedLift ? (loggedLift.setsCompleted || loadingInfo.sets) : loadingInfo.sets;
+                  
                   return (
                     <div key={lift.name} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2.5">
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <LiftIcon name={lift.name} size={18} color="#888" />
                         <span className="text-sm font-medium text-white">{lift.name}</span>
                         <Sparkline data={liftSparklines[lift.name]} />
                       </div>
                       <span className="text-sm text-[#B3B3B3]">
-                        {hasAdjustment ? <>{programmed} <span className="text-[#555]">&rarr;</span> {adjusted} lbs</> : <>{programmed} lbs</>}
-                        {' '}x {loadingInfo.sets}x{loadingInfo.reps}
+                        {todayLogEntry ? (
+                          <>{displayWeight} lbs x {displaySets}x{displayReps}</>
+                        ) : hasAdjustment ? (
+                          <>{programmed} <span className="text-[#555]">&rarr;</span> {adjusted} lbs x {loadingInfo.sets}x{loadingInfo.reps}</>
+                        ) : (
+                          <>{programmed} lbs x {loadingInfo.sets}x{loadingInfo.reps}</>
+                        )}
                       </span>
                     </div>
                   );
@@ -1205,12 +1227,21 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
                 <div className="mt-6 pt-3 border-t border-white/[0.05]">
                   <div className="text-[10px] uppercase text-[#666666] mb-2">Accessories ({todayWorkout.accessories})</div>
                   <div className="divide-y divide-white/[0.05]">
-                    {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => (
-                      <div key={idx} className="flex items-center justify-between py-2">
-                        <span className="text-xs text-[#B3B3B3]">{acc.name}</span>
-                        <span className="text-xs text-[#666666]">{acc.sets}×{acc.reps}</span>
-                      </div>
-                    ))}
+                    {(ACCESSORIES[todayWorkout.accessories] || []).map((acc, idx) => {
+                      const loggedAcc = todayLogEntry?.details?.accessories?.find(a => a.name === acc.name);
+                      return (
+                        <div key={idx} className="flex items-center justify-between py-2">
+                          <span className="text-xs text-[#B3B3B3]">{acc.name}</span>
+                          <span className="text-xs text-[#666666]">
+                            {loggedAcc ? (
+                              <>{loggedAcc.weight ? `${loggedAcc.weight} lbs · ` : ''}{loggedAcc.setsCompleted || acc.sets}×{loggedAcc.reps || acc.reps}</>
+                            ) : (
+                              <>{acc.sets}×{acc.reps}</>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1426,7 +1457,7 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
             const hasAdjustment = activeSuggestion?.modifications?.intensityMultiplier && activeSuggestion.modifications.intensityMultiplier < 1 && weight !== programmed;
             return (
               <div key={lift.name} className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
-                <h3 className="text-[17px] font-semibold text-white mb-1">{lift.name}</h3>
+                <h3 className="text-[17px] font-semibold text-white mb-1 flex items-center gap-2"><LiftIcon name={lift.name} size={20} color="#888" />{lift.name}</h3>
                 <p className="text-[13px] text-[#666666] mb-4">
                   {loadingInfo.sets} × {loadingInfo.reps} @{' '}
                   {hasAdjustment ? <><span className="line-through">{programmed}</span> {weight} lbs</> : <>{weight} lbs</>}
