@@ -304,6 +304,163 @@ export default function CalendarPage({ onEditLog }) {
     return OPERATOR_LOADING.find((l) => l.week === settings.week) || OPERATOR_LOADING[0];
   }, [settings.week]);
 
+  // ── Build Garmin endurance log details ──
+  const buildGarminEnduranceLog = useCallback((garminActivities, whoopActivities) => {
+    const RUN_KEYS = new Set(['running', 'trail_running', 'treadmill_running', 'track_running']);
+    const SWIM_KEYS = new Set(['lap_swimming', 'open_water_swimming', 'pool_swimming', 'swimming']);
+    const CYCLE_KEYS = new Set(['cycling', 'indoor_cycling', 'mountain_biking']);
+
+    const activities = garminActivities.map(a => {
+      const typeKey = a.activityType?.typeKey || '';
+      let sport = 'other';
+      if (RUN_KEYS.has(typeKey)) sport = 'run';
+      else if (SWIM_KEYS.has(typeKey)) sport = 'swim';
+      else if (CYCLE_KEYS.has(typeKey)) sport = 'cycle';
+
+      const activity = {
+        sport,
+        name: getGarminActivityName(a),
+        typeKey,
+        duration: a.duration || 0, // seconds
+        distance: a.distance || 0, // meters
+        avgHR: a.averageHR || 0,
+        maxHR: a.maxHR || 0,
+        calories: a.calories || 0,
+        avgSpeed: a.averageSpeed || 0,
+      };
+
+      // Pace
+      if (sport === 'run' && a.averageSpeed > 0) {
+        activity.paceMinPerMi = 26.8224 / a.averageSpeed;
+      } else if (sport === 'swim' && a.distance > 0 && a.duration > 0) {
+        activity.pacePer100m = (a.duration / a.distance) * 100; // seconds per 100m
+      }
+
+      // Splits / intervals
+      if (a.splits?.length > 0) {
+        activity.allSplits = a.splits.map(sp => ({
+          distance: sp.distance || 0,
+          duration: sp.duration || sp.movingDuration || 0,
+          avgHR: sp.averageHR || sp.averageHeartRate || 0,
+          avgSpeed: sp.averageSpeed || 0,
+          avgSwolf: sp.averageSwolf || 0,
+          strokeCount: sp.totalStrokes || sp.strokes || 0,
+        }));
+
+        // Detect intervals: group splits by similar distance (within 15%)
+        const workSplits = activity.allSplits.filter(sp => sp.distance > 50); // ignore tiny splits
+        if (workSplits.length >= 2) {
+          // Find clusters of similar-distance splits
+          const clusters = [];
+          for (const sp of workSplits) {
+            let placed = false;
+            for (const cluster of clusters) {
+              const refDist = cluster[0].distance;
+              if (Math.abs(sp.distance - refDist) / refDist < 0.15) {
+                cluster.push(sp);
+                placed = true;
+                break;
+              }
+            }
+            if (!placed) clusters.push([sp]);
+          }
+
+          // The largest cluster of 2+ similar-distance splits = the intervals
+          const intervalCluster = clusters
+            .filter(c => c.length >= 2)
+            .sort((a, b) => b.length - a.length)[0];
+
+          if (intervalCluster && intervalCluster.length >= 2) {
+            const avgDist = intervalCluster.reduce((s, sp) => s + sp.distance, 0) / intervalCluster.length;
+            // Round to common interval distances
+            let labelDist;
+            if (avgDist < 300) labelDist = Math.round(avgDist / 100) * 100;
+            else if (avgDist < 600) labelDist = Math.round(avgDist / 200) * 200;
+            else labelDist = Math.round(avgDist / 100) * 100;
+
+            activity.intervals = {
+              count: intervalCluster.length,
+              distance: labelDist,
+              label: `${intervalCluster.length}x${labelDist}m`,
+              splits: intervalCluster.map(sp => ({
+                distance: sp.distance,
+                duration: sp.duration,
+                avgHR: sp.avgHR,
+                pace: sport === 'run' && sp.avgSpeed > 0 ? 26.8224 / sp.avgSpeed : null,
+                pacePer100m: sport === 'swim' && sp.distance > 0 ? (sp.duration / sp.distance) * 100 : null,
+              })),
+              avgDuration: intervalCluster.reduce((s, sp) => s + sp.duration, 0) / intervalCluster.length,
+              bestDuration: Math.min(...intervalCluster.map(sp => sp.duration)),
+              avgHR: Math.round(intervalCluster.reduce((s, sp) => s + sp.avgHR, 0) / intervalCluster.length),
+            };
+
+            // Format interval pace
+            if (sport === 'run') {
+              const avgPace = intervalCluster.reduce((s, sp) => s + (sp.avgSpeed > 0 ? 26.8224 / sp.avgSpeed : 0), 0) / intervalCluster.length;
+              activity.intervals.avgPace = avgPace; // min/mi
+            } else if (sport === 'swim') {
+              const avgP100 = intervalCluster.reduce((s, sp) => s + (sp.distance > 0 ? (sp.duration / sp.distance) * 100 : 0), 0) / intervalCluster.length;
+              activity.intervals.avgPacePer100m = avgP100; // sec/100m
+            }
+          }
+        }
+      }
+
+      // Garmin extended metrics
+      if (a.averageRunningCadenceInStepsPerMinute) activity.cadence = a.averageRunningCadenceInStepsPerMinute;
+      if (a.elevationGain) activity.elevationGain = a.elevationGain;
+      if (a.vO2MaxValue) activity.vO2Max = a.vO2MaxValue;
+      if (a.aerobicTrainingEffect) activity.trainingEffect = a.aerobicTrainingEffect;
+      if (a.averageSwolf) activity.swolf = a.averageSwolf;
+      if (a.totalNumberOfStrokes) activity.strokeCount = a.totalNumberOfStrokes;
+
+      return activity;
+    });
+
+    // Whoop aggregate
+    const whoopMeta = whoopActivities.length > 0 ? {
+      strain: whoopActivities.reduce((s, w) => s + (w.score?.strain || 0), 0),
+      avgHR: Math.round(whoopActivities.reduce((s, w) => s + (w.score?.average_heart_rate || 0), 0) / whoopActivities.length),
+      calories: whoopActivities.reduce((s, w) => s + (w.score?.kilojoule ? Math.round(w.score.kilojoule * 0.239006) : 0), 0),
+    } : {};
+
+    // Build structured details
+    const totalDuration = activities.reduce((s, a) => s + a.duration, 0);
+
+    // Build a human-readable summary
+    const summaryParts = activities.map(a => {
+      const parts = [a.name];
+      if (a.sport === 'run') {
+        if (a.distance > 0) parts.push(`${(a.distance * 0.000621371).toFixed(1)}mi`);
+        if (a.paceMinPerMi) {
+          const m = Math.floor(a.paceMinPerMi);
+          const s = Math.round((a.paceMinPerMi - m) * 60);
+          parts.push(`${m}:${String(s).padStart(2, '0')}/mi`);
+        }
+      } else if (a.sport === 'swim') {
+        if (a.distance > 0) parts.push(`${Math.round(a.distance)}m`);
+        if (a.pacePer100m) {
+          const m = Math.floor(a.pacePer100m / 60);
+          const s = Math.round(a.pacePer100m % 60);
+          parts.push(`${m}:${String(s).padStart(2, '0')}/100m`);
+        }
+      } else if (a.sport === 'cycle') {
+        if (a.distance > 0) parts.push(`${(a.distance * 0.000621371).toFixed(1)}mi`);
+      }
+      if (a.avgHR > 0) parts.push(`${a.avgHR}bpm`);
+      if (a.intervals) parts.push(a.intervals.label);
+      return parts.join(' · ');
+    });
+
+    return {
+      garminActivities: activities,
+      whoopMeta,
+      totalDuration: Math.round(totalDuration / 60), // minutes
+      summary: summaryParts.join('\n'),
+      source: 'garmin',
+    };
+  }, []);
+
   // ── Quick Log handler ──
   const handleQuickLog = useCallback(() => {
     if (!selectedDay) return;
@@ -311,10 +468,49 @@ export default function CalendarPage({ onEditLog }) {
     const dayWhoop = getWhoopForDate(date);
     const dayGarminQL = getGarminForDate(date);
     const isRest = !selectedWorkout || selectedWorkout.type === 'rest';
-    if (isRest && dayWhoop.length === 0 && dayGarminQL.length === 0) return; // Nothing to log
+    if (isRest && dayWhoop.length === 0 && dayGarminQL.length === 0) return;
     
     const d = new Date(date);
     d.setHours(12, 0, 0, 0);
+
+    const hasGarmin = dayGarminQL.length > 0;
+    const isEndurance = selectedWorkout && (selectedWorkout.type === 'tri' || selectedWorkout.type === 'long');
+
+    // For endurance days with Garmin data: build rich log from Garmin
+    if (hasGarmin && (isEndurance || isRest)) {
+      const garminLog = buildGarminEnduranceLog(dayGarminQL, dayWhoop);
+      
+      // Determine the actual workout name from Garmin activities
+      const garminNames = garminLog.garminActivities.map(a => a.name);
+      const actualName = isRest
+        ? `Extra: ${garminNames.join(' + ')}`
+        : (garminNames.length > 1 ? garminNames.join(' + ') : garminNames[0] || selectedWorkout.name);
+
+      const entry = {
+        id: `cal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        date: d.toISOString(),
+        workoutName: actualName,
+        type: isRest ? 'extra' : selectedWorkout.type,
+        duration: garminLog.totalDuration,
+        details: {
+          cardio: {
+            name: actualName,
+            source: 'garmin',
+            metrics: {
+              ...garminLog.whoopMeta,
+              notes: garminLog.summary,
+            },
+          },
+          garminActivities: garminLog.garminActivities,
+        },
+      };
+
+      addWorkout(entry);
+      setSelectedDay(null);
+      return;
+    }
+
+    // Fallback: strength or no Garmin data
     const totalWhoopDur = dayWhoop.reduce((sum, w) => {
       const dur = w.start && w.end ? (new Date(w.end) - new Date(w.start)) / 60000 : 0;
       return sum + dur;
@@ -352,7 +548,7 @@ export default function CalendarPage({ onEditLog }) {
 
     addWorkout(entry);
     setSelectedDay(null);
-  }, [selectedDay, selectedWorkout, getWhoopForDate, getGarminForDate, settings, loadingInfo, addWorkout]);
+  }, [selectedDay, selectedWorkout, getWhoopForDate, getGarminForDate, settings, loadingInfo, addWorkout, buildGarminEnduranceLog]);
 
   // ── Detailed Log handler ──
   const handleDetailedLog = useCallback(() => {
@@ -780,30 +976,41 @@ export default function CalendarPage({ onEditLog }) {
                   })()}
 
                   {/* Log Workout Buttons */}
-                  {!selectedDayLogged && (selectedWorkout || getWhoopForDate(selectedDay.date).length > 0 || getGarminForDate(selectedDay.date).length > 0) && (
+                  {!selectedDayLogged && (selectedWorkout || getWhoopForDate(selectedDay.date).length > 0 || getGarminForDate(selectedDay.date).length > 0) && (() => {
+                    const hasGarminLog = getGarminForDate(selectedDay.date).length > 0;
+                    const isEndurance = selectedWorkout && (selectedWorkout.type === 'tri' || selectedWorkout.type === 'long');
+                    const showAutoLog = hasGarminLog && (isEndurance || !selectedWorkout || selectedWorkout.type === 'rest');
+                    return (
                     <div className="mb-4 space-y-2">
                       <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold mb-2">Log Workout</h4>
                       <div className="flex gap-2">
                         <button
                           onClick={handleQuickLog}
-                          className="flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/20 active:bg-emerald-500/25 transition-colors"
+                          className={`flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl transition-colors ${
+                            showAutoLog
+                              ? 'bg-blue-500/15 border border-blue-500/20 active:bg-blue-500/25'
+                              : 'bg-emerald-500/15 border border-emerald-500/20 active:bg-emerald-500/25'
+                          }`}
                         >
-                          <Zap size={16} className="text-emerald-400" />
-                          <span className="text-[14px] font-medium text-emerald-400">Quick Log</span>
+                          <Zap size={16} className={showAutoLog ? 'text-blue-400' : 'text-emerald-400'} />
+                          <span className={`text-[14px] font-medium ${showAutoLog ? 'text-blue-400' : 'text-emerald-400'}`}>
+                            {showAutoLog ? 'Auto-Log from Garmin' : 'Quick Log'}
+                          </span>
                         </button>
                         <button
                           onClick={handleDetailedLog}
-                          className="flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl bg-blue-500/15 border border-blue-500/20 active:bg-blue-500/25 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl bg-white/[0.06] border border-white/[0.10] active:bg-white/[0.10] transition-colors"
                         >
-                          <ClipboardList size={16} className="text-blue-400" />
-                          <span className="text-[14px] font-medium text-blue-400">Detailed Log</span>
+                          <ClipboardList size={16} className="text-[#999]" />
+                          <span className="text-[14px] font-medium text-[#999]">Detailed</span>
                         </button>
                       </div>
-                      {(getWhoopForDate(selectedDay.date).length > 0 || getGarminForDate(selectedDay.date).length > 0) && (
-                        <p className="text-[11px] text-[#555] text-center">Quick Log auto-fills from wearable data</p>
+                      {showAutoLog && (
+                        <p className="text-[11px] text-blue-400/60 text-center">Logs actual workout data from Garmin + Whoop</p>
                       )}
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {!showSwapPicker ? (
                     <div className="flex flex-col gap-2.5">
