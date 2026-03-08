@@ -176,6 +176,37 @@ function extractActivityData(activity: any) {
   }
 }
 
+// ── Fetch activity detail and splits ──
+
+async function fetchActivityDetails(accessToken: string, activityId: number): Promise<{ detail: any; splits: any[] | null }> {
+  let detail = null
+  let splits = null
+
+  // Fetch full activity detail
+  try {
+    detail = await fetchGarmin(accessToken, `/activity-service/activity/${activityId}`)
+  } catch (err) {
+    console.error(`[Garmin] Failed to fetch detail for activity ${activityId}:`, err.message)
+  }
+
+  // Fetch splits/laps (works for runs, swims, cycling — 404s gracefully for others)
+  try {
+    const splitsResp = await fetchGarmin(accessToken, `/activity-service/activity/${activityId}/splits`)
+    if (splitsResp && Array.isArray(splitsResp.lapDTOs)) {
+      splits = splitsResp.lapDTOs
+    } else if (splitsResp && Array.isArray(splitsResp)) {
+      splits = splitsResp
+    }
+  } catch (err) {
+    // 404 is expected for activity types without splits
+    if (!err.message?.includes('404')) {
+      console.error(`[Garmin] Failed to fetch splits for activity ${activityId}:`, err.message)
+    }
+  }
+
+  return { detail, splits }
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -245,13 +276,53 @@ serve(async (req: Request) => {
     const startStr = startDate.toISOString().split('T')[0]
     let synced = 0
 
-    for (const activity of activities) {
+    // Filter activities within date range first
+    const rangeActivities = activities.filter((activity: any) => {
       const localTime = activity.startTimeLocal || ''
       const date = localTime.split(' ')[0]
-      if (!date || date < startStr) continue
+      return date && date >= startStr
+    })
 
+    console.log('[Garmin] Activities in date range:', rangeActivities.length)
+
+    for (const activity of rangeActivities) {
+      const localTime = activity.startTimeLocal || ''
+      const date = localTime.split(' ')[0]
       const activityData = extractActivityData(activity)
       const activityId = activity.activityId
+
+      // Fetch detailed data (splits, HR zones, training load)
+      try {
+        const { detail, splits } = await fetchActivityDetails(accessToken, activityId)
+        if (splits) {
+          activityData.splits = splits
+        }
+        if (detail) {
+          activityData.detail = {
+            averageSwimCadenceInStrokesPerMinute: detail.averageSwimCadenceInStrokesPerMinute,
+            averageSwolf: detail.averageSwolf,
+            poolLength: detail.poolLength,
+            totalNumberOfStrokes: detail.totalNumberOfStrokes,
+            swimStrokeType: detail.swimStrokeType,
+            aerobicTrainingEffect: detail.aerobicTrainingEffect,
+            anaerobicTrainingEffect: detail.anaerobicTrainingEffect,
+            trainingEffectLabel: detail.trainingEffectLabel,
+            activityTrainingLoad: detail.activityTrainingLoad,
+            hrZones: detail.hrZones,
+            avgPower: detail.avgPower,
+            maxPower: detail.maxPower,
+            normPower: detail.normPower,
+            avgRunCadence: detail.avgRunCadence,
+            maxRunCadence: detail.maxRunCadence,
+            strideLength: detail.strideLength,
+            vO2MaxValue: detail.vO2MaxValue,
+            lactateThreshold: detail.lactateThreshold,
+            maxVerticalOscillation: detail.maxVerticalOscillation,
+          }
+        }
+      } catch (err) {
+        console.error(`[Garmin] Detail fetch failed for ${activityId}:`, err.message)
+      }
 
       const { error } = await supabase.from('garmin_data').upsert({
         user_id: userId,

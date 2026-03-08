@@ -10,56 +10,10 @@ import { useWhoop } from '../hooks/useWhoop';
 import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
 import { useGarmin } from '../hooks/useGarmin';
 import { getGarminActivityName, getGarminActivityIcon, getGarminActivityColor, formatGarminDuration, garminMetersToMiles } from '../utils/garminSports';
+import { mergeActivitiesForDate, formatPace, formatDistance, formatDurationCompact } from '../utils/mergeActivities';
+import MergedActivityCard from '../components/MergedActivityCard';
 
 function roundToFive(n) { return Math.round(n / 5) * 5; }
-
-// ── Merge close-timed Whoop activities ──
-function mergeActivities(activities) {
-  if (activities.length < 2) return null;
-  const sorted = [...activities].sort((a, b) => new Date(a.start) - new Date(b.start));
-
-  // Check if activities are within 30 min gap
-  let canMerge = false;
-  for (let i = 1; i < sorted.length; i++) {
-    const prevEnd = new Date(sorted[i - 1].end);
-    const nextStart = new Date(sorted[i].start);
-    const gapMin = (nextStart - prevEnd) / 60000;
-    if (gapMin <= 30) { canMerge = true; break; }
-  }
-  if (!canMerge) return null;
-
-  let totalDurationMs = 0;
-  let totalStrain = 0;
-  let maxHR = 0;
-  let weightedHRSum = 0;
-  let totalDistM = 0;
-  let totalKJ = 0;
-
-  for (const w of sorted) {
-    const dur = w.start && w.end ? new Date(w.end) - new Date(w.start) : 0;
-    totalDurationMs += dur;
-    totalStrain += w.score?.strain || 0;
-    maxHR = Math.max(maxHR, w.score?.max_heart_rate || 0);
-    weightedHRSum += (w.score?.average_heart_rate || 0) * dur;
-    totalDistM += w.score?.distance_meter || 0;
-    totalKJ += w.score?.kilojoule || 0;
-  }
-
-  const avgHR = totalDurationMs > 0 ? Math.round(weightedHRSum / totalDurationMs) : 0;
-  const durationMin = Math.round(totalDurationMs / 60000);
-
-  return {
-    components: sorted,
-    totalDurationMin: durationMin,
-    totalStrain,
-    maxHR,
-    avgHR,
-    totalDistM,
-    totalKJ,
-    start: sorted[0].start,
-    end: sorted[sorted.length - 1].end,
-  };
-}
 
 export default function CalendarPage({ onEditLog }) {
   const { workoutHistory, weekSwaps, setWeekSwaps, addWorkout, settings } = useApp();
@@ -71,7 +25,6 @@ export default function CalendarPage({ onEditLog }) {
   const [showSwapPicker, setShowSwapPicker] = useState(false);
   const [pendingDrop, setPendingDrop] = useState(null); // { fromInfo, toInfo }
   const [logMode, setLogMode] = useState(null); // null | 'detailed'
-  const [showMerged, setShowMerged] = useState(false);
   const [liftData, setLiftData] = useState({});
   const [accessoryData, setAccessoryData] = useState({});
   const [cardioNotes, setCardioNotes] = useState('');
@@ -356,8 +309,9 @@ export default function CalendarPage({ onEditLog }) {
     if (!selectedDay) return;
     const date = selectedDay.date;
     const dayWhoop = getWhoopForDate(date);
+    const dayGarminQL = getGarminForDate(date);
     const isRest = !selectedWorkout || selectedWorkout.type === 'rest';
-    if (isRest && dayWhoop.length === 0) return; // Nothing to log
+    if (isRest && dayWhoop.length === 0 && dayGarminQL.length === 0) return; // Nothing to log
     
     const d = new Date(date);
     d.setHours(12, 0, 0, 0);
@@ -398,13 +352,14 @@ export default function CalendarPage({ onEditLog }) {
 
     addWorkout(entry);
     setSelectedDay(null);
-  }, [selectedDay, selectedWorkout, getWhoopForDate, settings, loadingInfo, addWorkout]);
+  }, [selectedDay, selectedWorkout, getWhoopForDate, getGarminForDate, settings, loadingInfo, addWorkout]);
 
   // ── Detailed Log handler ──
   const handleDetailedLog = useCallback(() => {
     if (!selectedDay) return;
     const dayWhoop2 = getWhoopForDate(selectedDay.date);
-    if ((!selectedWorkout || selectedWorkout.type === 'rest') && dayWhoop2.length === 0) return;
+    const dayGarmin2 = getGarminForDate(selectedDay.date);
+    if ((!selectedWorkout || selectedWorkout.type === 'rest') && dayWhoop2.length === 0 && dayGarmin2.length === 0) return;
     // Pre-populate lift data with suggested weights
     if (selectedWorkout && selectedWorkout.type === 'strength') {
       const initial = {};
@@ -423,15 +378,87 @@ export default function CalendarPage({ onEditLog }) {
       }
       setAccessoryData(accInit);
     }
-    // Pre-populate duration from Whoop
+    // Pre-populate duration: prefer Garmin, fallback to Whoop
+    const dayGarmin = getGarminForDate(selectedDay.date);
     const dayWhoop = getWhoopForDate(selectedDay.date);
-    const totalWhoopDur = dayWhoop.reduce((sum, w) => {
-      const dur = w.start && w.end ? (new Date(w.end) - new Date(w.start)) / 60000 : 0;
-      return sum + dur;
-    }, 0);
-    if (totalWhoopDur > 0) setLogDuration(String(Math.round(totalWhoopDur)));
+
+    let bestDuration = 0;
+    if (dayGarmin.length > 0) {
+      // Sum Garmin durations (in seconds → minutes)
+      bestDuration = dayGarmin.reduce((sum, a) => sum + ((a.duration || 0) / 60), 0);
+    }
+    if (bestDuration <= 0) {
+      bestDuration = dayWhoop.reduce((sum, w) => {
+        const dur = w.start && w.end ? (new Date(w.end) - new Date(w.start)) / 60000 : 0;
+        return sum + dur;
+      }, 0);
+    }
+    if (bestDuration > 0) setLogDuration(String(Math.round(bestDuration)));
+
+    // Auto-populate cardio notes from Garmin data
+    if (dayGarmin.length > 0) {
+      const RUN_KEYS = new Set(['running', 'trail_running', 'treadmill_running', 'track_running']);
+      const SWIM_KEYS = new Set(['lap_swimming', 'open_water_swimming', 'pool_swimming', 'swimming']);
+      const CYCLE_KEYS = new Set(['cycling', 'indoor_cycling', 'mountain_biking']);
+
+      const notes = dayGarmin.map(a => {
+        const typeKey = a.activityType?.typeKey || '';
+        const name = getGarminActivityName(a);
+        const parts = [name];
+
+        // Distance
+        if (a.distance > 0) {
+          if (SWIM_KEYS.has(typeKey)) {
+            parts.push(`${Math.round(a.distance)}m`);
+          } else {
+            parts.push(`${(a.distance * 0.000621371).toFixed(1)}mi`);
+          }
+        }
+
+        // Pace
+        if (a.averageSpeed > 0) {
+          if (RUN_KEYS.has(typeKey)) {
+            const minPerMi = 26.8224 / a.averageSpeed;
+            const m = Math.floor(minPerMi);
+            const s = Math.round((minPerMi - m) * 60);
+            parts.push(`${m}:${String(s).padStart(2, '0')}/mi`);
+          } else if (SWIM_KEYS.has(typeKey) && a.distance > 0) {
+            const secPer100 = ((a.duration || 0) / a.distance) * 100;
+            const m = Math.floor(secPer100 / 60);
+            const s = Math.round(secPer100 % 60);
+            parts.push(`${m}:${String(s).padStart(2, '0')}/100m`);
+          }
+        }
+
+        // HR
+        if (a.averageHR) parts.push(`${a.averageHR}bpm avg`);
+
+        // Splits summary
+        if (a.splits?.length > 0) {
+          const splitSummary = a.splits.slice(0, 5).map((sp, i) => {
+            const spd = sp.averageSpeed || 0;
+            if (spd > 0 && RUN_KEYS.has(typeKey)) {
+              const mpm = 26.8224 / spd;
+              const mm = Math.floor(mpm);
+              const ss = Math.round((mpm - mm) * 60);
+              return `${i + 1}: ${mm}:${String(ss).padStart(2, '0')}`;
+            }
+            return null;
+          }).filter(Boolean);
+          if (splitSummary.length > 0) {
+            parts.push(`Splits: ${splitSummary.join(', ')}`);
+            if (a.splits.length > 5) parts.push(`(+${a.splits.length - 5} more)`);
+          }
+        }
+
+        return parts.join(' | ');
+      }).join('\n');
+
+      setCardioNotes(notes);
+    }
+
     setLogMode('detailed');
-  }, [selectedDay, selectedWorkout, settings, loadingInfo, getWhoopForDate]);
+  }, [selectedDay, selectedWorkout, settings, loadingInfo, getWhoopForDate, getGarminForDate]);
 
   // ── Submit detailed log ──
   const handleSubmitDetailedLog = useCallback(() => {
@@ -704,50 +731,22 @@ export default function CalendarPage({ onEditLog }) {
                 />
               ) : (
                 <>
-                  {/* Whoop Activity Section */}
+                  {/* Merged Activities Section (Garmin + Whoop) */}
                   {(() => {
                     const dayWhoop = getWhoopForDate(selectedDay.date);
-                    if (dayWhoop.length === 0) return null;
-                    const merged = mergeActivities(dayWhoop);
-
-                    return (
-                      <div className="mb-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold">
-                            Whoop Activity ({dayWhoop.length})
-                          </h4>
-                          {merged && (
-                            <button
-                              onClick={() => setShowMerged(!showMerged)}
-                              className="flex items-center gap-1 text-[11px] font-medium transition-colors"
-                              style={{ color: showMerged ? '#3B82F6' : '#777' }}
-                            >
-                              <Layers size={12} />
-                              {showMerged ? 'Show Individual' : 'Merge Activities'}
-                            </button>
-                          )}
-                        </div>
-
-                        {showMerged && merged ? (
-                          <MergedActivityCard merged={merged} />
-                        ) : (
-                          dayWhoop.map((w, i) => <WhoopActivityCard key={i} w={w} />)
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Garmin Activity Section */}
-                  {(() => {
                     const dayGarmin = getGarminForDate(selectedDay.date);
-                    if (dayGarmin.length === 0) return null;
+                    if (dayWhoop.length === 0 && dayGarmin.length === 0) return null;
+
+                    const mergedList = mergeActivitiesForDate(dayGarmin, dayWhoop, selectedDay.date);
 
                     return (
                       <div className="mb-4 space-y-3">
                         <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold">
-                          Garmin Activity ({dayGarmin.length})
+                          Activities ({mergedList.length})
                         </h4>
-                        {dayGarmin.map((a, i) => <GarminActivityCard key={i} activity={a} />)}
+                        {mergedList.map((a, i) => (
+                          <MergedActivityCard key={`${a.source}-${a.startTime}-${i}`} activity={a} />
+                        ))}
                       </div>
                     );
                   })()}
@@ -1121,84 +1120,6 @@ function GarminActivityCard({ activity }) {
             <div className="text-[15px] font-semibold text-white">{Math.round(activity.averageRunningCadenceInStepsPerMinute)} <span className="text-[11px] text-[#666]">spm</span></div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Merged Activity Card ──
-function MergedActivityCard({ merged }) {
-  const { components, totalDurationMin, totalStrain, maxHR, avgHR, totalDistM, totalKJ } = merged;
-  const durationStr = totalDurationMin >= 60 ? `${Math.floor(totalDurationMin / 60)}h ${totalDurationMin % 60}m` : `${totalDurationMin} min`;
-  const strainColor = totalStrain > 14 ? '#EF4444' : totalStrain >= 8 ? '#F59E0B' : '#10B981';
-  const distMi = totalDistM > 0 ? (totalDistM * 0.000621371).toFixed(1) : null;
-  const kcal = totalKJ > 0 ? Math.round(totalKJ * 0.239) : null;
-
-  return (
-    <div className="bg-white/[0.05] rounded-xl p-3.5 border border-blue-500/20">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500/15">
-            <Layers size={16} color="#3B82F6" strokeWidth={2} />
-          </div>
-          <div>
-            <span className="text-[14px] font-medium text-white block">Merged Workout</span>
-            <span className="text-[11px] text-[#555]">{components.length} activities</span>
-          </div>
-        </div>
-        <span className="text-[13px] text-[#777]">{durationStr}</span>
-      </div>
-
-      {/* Combined metrics */}
-      <div className="grid grid-cols-3 gap-3 mb-3">
-        <div>
-          <div className="text-[10px] uppercase text-[#555] mb-0.5">Total Strain</div>
-          <div className="text-[17px] font-bold" style={{ color: strainColor }}>{totalStrain.toFixed(1)}</div>
-        </div>
-        {avgHR > 0 && (
-          <div>
-            <div className="text-[10px] uppercase text-[#555] mb-0.5">Avg HR</div>
-            <div className="text-[15px] font-semibold text-white">{avgHR} <span className="text-[11px] text-[#666]">bpm</span></div>
-          </div>
-        )}
-        {maxHR > 0 && (
-          <div>
-            <div className="text-[10px] uppercase text-[#555] mb-0.5">Max HR</div>
-            <div className="text-[15px] font-semibold text-white">{maxHR} <span className="text-[11px] text-[#666]">bpm</span></div>
-          </div>
-        )}
-        {distMi && (
-          <div>
-            <div className="text-[10px] uppercase text-[#555] mb-0.5">Distance</div>
-            <div className="text-[15px] font-semibold text-white">{distMi} <span className="text-[11px] text-[#666]">mi</span></div>
-          </div>
-        )}
-        {kcal && (
-          <div>
-            <div className="text-[10px] uppercase text-[#555] mb-0.5">Calories</div>
-            <div className="text-[15px] font-semibold text-white">{kcal} <span className="text-[11px] text-[#666]">kcal</span></div>
-          </div>
-        )}
-      </div>
-
-      {/* Individual components */}
-      <div className="text-[10px] uppercase text-[#555] mb-1.5">Components</div>
-      <div className="space-y-1.5">
-        {components.map((w, i) => {
-          const dur = w.start && w.end ? Math.round((new Date(w.end) - new Date(w.start)) / 60000) : 0;
-          const Icon = getSportIcon(w.sport_id, w);
-          const c = getSportColor(w.sport_id);
-          return (
-            <div key={i} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/[0.04]">
-              <Icon size={13} color={c} strokeWidth={2} />
-              <span className="text-[12px] text-white flex-1">{getSportName(w.sport_id, w)}</span>
-              <span className="text-[11px] text-[#666]">{dur}m</span>
-              <span className="text-[11px] font-medium" style={{ color: (w.score?.strain || 0) > 14 ? '#EF4444' : (w.score?.strain || 0) >= 8 ? '#F59E0B' : '#10B981' }}>
-                {(w.score?.strain || 0).toFixed(1)}
-              </span>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
