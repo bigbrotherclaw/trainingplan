@@ -123,7 +123,7 @@ export default function App() {
           <header id="app-header" className="shrink-0 sticky top-0 z-40 backdrop-blur-xl bg-black/80 border-b border-white/[0.03] px-5 pb-4 flex items-center justify-between" style={{ paddingTop: 'max(env(safe-area-inset-top, 60px), 60px)' }}>
             <div className="flex items-center gap-3">
               {!showProfile && activeTab === 'dashboard' && (
-                <img src={dunedainLogo} alt="" className="w-9 h-9 rounded-lg object-cover" />
+                <img src={dunedainLogo} alt="" className="w-14 h-14 rounded-xl object-cover" />
               )}
               <div>
                 <h1 className="text-[22px] font-bold text-white tracking-tight">

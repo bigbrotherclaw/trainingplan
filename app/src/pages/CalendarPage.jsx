@@ -288,11 +288,14 @@ export default function CalendarPage() {
 
   // ── Quick Log handler ──
   const handleQuickLog = useCallback(() => {
-    if (!selectedDay || !selectedWorkout || selectedWorkout.type === 'rest') return;
+    if (!selectedDay) return;
     const date = selectedDay.date;
+    const dayWhoop = getWhoopForDate(date);
+    const isRest = !selectedWorkout || selectedWorkout.type === 'rest';
+    if (isRest && dayWhoop.length === 0) return; // Nothing to log
+    
     const d = new Date(date);
     d.setHours(12, 0, 0, 0);
-    const dayWhoop = getWhoopForDate(date);
     const totalWhoopDur = dayWhoop.reduce((sum, w) => {
       const dur = w.start && w.end ? (new Date(w.end) - new Date(w.start)) / 60000 : 0;
       return sum + dur;
@@ -301,12 +304,12 @@ export default function CalendarPage() {
     const entry = {
       id: `cal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       date: d.toISOString(),
-      workoutName: selectedWorkout.name,
-      type: selectedWorkout.type,
+      workoutName: isRest ? `Extra: ${dayWhoop.map(w => getSportName(w.sport_id, w)).join(' + ')}` : selectedWorkout.name,
+      type: isRest ? 'extra' : selectedWorkout.type,
       ...(totalWhoopDur > 0 ? { duration: Math.round(totalWhoopDur) } : {}),
     };
 
-    if (selectedWorkout.type === 'strength') {
+    if (!isRest && selectedWorkout.type === 'strength') {
       const lifts = OPERATOR_LIFTS.map((lift) => {
         const oneRM = settings[lift.settingsKey] || 0;
         const weight = roundToFive(oneRM * (loadingInfo.percentage / 100));
@@ -324,7 +327,7 @@ export default function CalendarPage() {
       } : {};
       entry.details = {
         cardio: { name: 'Quick Log (Whoop)', metrics: { ...whoopMeta } },
-        ...(selectedWorkout.type === 'tri' ? { hic: { name: 'Skipped', skipped: true } } : {}),
+        ...(!isRest && selectedWorkout?.type === 'tri' ? { hic: { name: 'Skipped', skipped: true } } : {}),
       };
     }
 
@@ -334,9 +337,11 @@ export default function CalendarPage() {
 
   // ── Detailed Log handler ──
   const handleDetailedLog = useCallback(() => {
-    if (!selectedDay || !selectedWorkout || selectedWorkout.type === 'rest') return;
+    if (!selectedDay) return;
+    const dayWhoop2 = getWhoopForDate(selectedDay.date);
+    if ((!selectedWorkout || selectedWorkout.type === 'rest') && dayWhoop2.length === 0) return;
     // Pre-populate lift data with suggested weights
-    if (selectedWorkout.type === 'strength') {
+    if (selectedWorkout && selectedWorkout.type === 'strength') {
       const initial = {};
       for (const lift of OPERATOR_LIFTS) {
         const oneRM = settings[lift.settingsKey] || 0;
@@ -647,7 +652,7 @@ export default function CalendarPage() {
                   })()}
 
                   {/* Log Workout Buttons */}
-                  {selectedWorkout && selectedWorkout.type !== 'rest' && !selectedDayLogged && (
+                  {!selectedDayLogged && (selectedWorkout || getWhoopForDate(selectedDay.date).length > 0) && (
                     <div className="mb-4 space-y-2">
                       <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold mb-2">Log Workout</h4>
                       <div className="flex gap-2">

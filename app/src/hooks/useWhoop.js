@@ -251,18 +251,47 @@ export function useWhoop() {
         cycle: grouped.cycle.length,
         workout: grouped.workout.length,
       });
+      // Debug: dump latest scores
+      if (grouped.recovery.length > 0) {
+        const r = grouped.recovery[grouped.recovery.length - 1];
+        console.log('[Whoop DEBUG] Latest recovery:', r.date, JSON.stringify(r.score || r));
+      }
+      if (grouped.sleep.length > 0) {
+        const s = grouped.sleep[grouped.sleep.length - 1];
+        console.log('[Whoop DEBUG] Latest sleep:', s.date, JSON.stringify(s.score || s));
+      }
+      if (grouped.cycle.length > 0) {
+        const c = grouped.cycle[grouped.cycle.length - 1];
+        console.log('[Whoop DEBUG] Latest cycle:', c.date, JSON.stringify(c.score || c));
+      }
       setData(grouped);
     } catch (err) {
       console.error('[Whoop] Failed to load cached data:', err);
     }
   }, [session]);
 
-  // Load cached data on mount if connected
+  // Load cached data on mount if connected, then sync fresh from Whoop API
   useEffect(() => {
     if (connected) {
       loadCachedData(30);
+      // Auto-sync fresh data from Whoop API on launch (after a brief delay)
+      const initialSync = setTimeout(() => {
+        console.log('[Whoop] Auto-sync: fetching fresh data from Whoop API...');
+        syncDataDirect(7).then(() => loadCachedData(30));
+      }, 2000);
+      return () => clearTimeout(initialSync);
     }
-  }, [connected, loadCachedData]);
+  }, [connected, loadCachedData, syncDataDirect]);
+
+  // Periodic refresh every 15 minutes
+  useEffect(() => {
+    if (!connected) return;
+    const interval = setInterval(() => {
+      console.log('[Whoop] Periodic sync: refreshing data...');
+      syncDataDirect(3).then(() => loadCachedData(30));
+    }, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [connected, syncDataDirect, loadCachedData]);
 
   // ── Derived latest values ──
   const latestRecovery = data.recovery.length > 0 ? data.recovery[data.recovery.length - 1] : null;

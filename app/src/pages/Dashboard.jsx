@@ -56,112 +56,45 @@ function AnimatedNumber({ value, duration = 1.5, decimals = 0, suffix = '' }) {
 }
 
 // ── Recovery Gauge (circular) ──
-function RecoveryGauge({ score, size = 120 }) {
-  const radius = (size - 12) / 2;
+// ── Donut Gauge (reusable for Sleep, Recovery, Strain) ──
+function DonutGauge({ value, max = 100, label, size = 90, getColor, decimals = 0, suffix = '%', strokeW = 6, delay = 0 }) {
+  const radius = (size - strokeW * 2) / 2;
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
-
-  const getColor = (s) => {
-    if (s >= 67) return '#00D46A';
-    if (s >= 34) return '#FFCC00';
-    return '#EF4444';
-  };
-  const color = getColor(score);
+  const pct = Math.min((value ?? 0) / max, 1);
+  const color = getColor(value ?? 0);
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={center} cy={center} r={radius} fill="none" stroke="#222" strokeWidth="8" />
-        <motion.circle
-          cx={center} cy={center} r={radius} fill="none"
-          stroke={color} strokeWidth="8" strokeLinecap="round"
-          initial={{ strokeDasharray: `0 ${circumference}` }}
-          animate={{ strokeDasharray: `${(score / 100) * circumference} ${circumference}` }}
-          transition={{ duration: 1.8, ease: [0.34, 1.56, 0.64, 1] }}
-          style={{ filter: `drop-shadow(0 0 6px ${color}60)` }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-[28px] font-bold" style={{ color, fontVariantNumeric: 'tabular-nums' }}>
-          <AnimatedNumber value={score} decimals={0} suffix="%" duration={1.8} />
-        </div>
-        <div className="text-[10px] uppercase tracking-widest text-[#666]">Recovery</div>
-      </div>
-    </div>
-  );
-}
-
-// ── Strain Bar ──
-function StrainBar({ strain, maxStrain = 21 }) {
-  const pct = Math.min((strain / maxStrain) * 100, 100);
-  const getColor = (s) => {
-    if (s <= 7) return '#00D46A';
-    if (s <= 14) return '#FFCC00';
-    return '#EF4444';
-  };
-  const color = getColor(strain);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="text-[10px] uppercase tracking-widest text-[#666]">Day Strain</div>
-        <div className="text-[15px] font-bold" style={{ color, fontVariantNumeric: 'tabular-nums' }}>
-          <AnimatedNumber value={strain} decimals={1} duration={1.5} />
+    <motion.div
+      className="flex flex-col items-center"
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+    >
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={center} cy={center} r={radius} fill="none" stroke="#222" strokeWidth={strokeW} />
+          <motion.circle
+            cx={center} cy={center} r={radius} fill="none"
+            stroke={color} strokeWidth={strokeW} strokeLinecap="round"
+            initial={{ strokeDasharray: `0 ${circumference}` }}
+            animate={{ strokeDasharray: `${pct * circumference} ${circumference}` }}
+            transition={{ delay: delay + 0.2, duration: 1.8, ease: [0.34, 1.56, 0.64, 1] }}
+            style={{ filter: `drop-shadow(0 0 6px ${color}60)` }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="font-bold" style={{ color, fontVariantNumeric: 'tabular-nums', fontSize: size * 0.24 }}>
+            <AnimatedNumber value={value} decimals={decimals} suffix={suffix} duration={1.8} />
+          </div>
         </div>
       </div>
-      <div className="w-full rounded-full overflow-hidden" style={{ height: 6, backgroundColor: '#222' }}>
-        <motion.div
-          className="h-full rounded-full"
-          style={{ backgroundColor: color, filter: `drop-shadow(0 0 4px ${color}60)` }}
-          initial={{ width: '0%' }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
-        />
-      </div>
-      <div className="flex justify-between text-[9px] text-[#444] mt-1">
-        <span>0</span><span>7</span><span>14</span><span>21</span>
-      </div>
-    </div>
+      <div className="text-[10px] uppercase tracking-widest text-[#555]" style={{ marginTop: 6 }}>{label}</div>
+    </motion.div>
   );
 }
 
-// ── Sleep Gauge (semi-circle) ──
-function SleepGauge({ score, size = 80 }) {
-  const radius = (size - 8) / 2;
-  const semiCircumference = Math.PI * radius;
-  const center = size / 2;
-
-  const getColor = (s) => {
-    if (s >= 70) return '#6366F1';
-    if (s >= 40) return '#A78BFA';
-    return '#EF4444';
-  };
-  const color = getColor(score);
-
-  return (
-    <div style={{ width: size, height: size / 2 + 8 }} className="relative">
-      <svg viewBox={`0 0 ${size} ${size / 2 + 4}`} className="w-full h-full">
-        <path
-          d={`M 4 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 4} ${size / 2}`}
-          fill="none" stroke="#222" strokeWidth="6"
-        />
-        <motion.path
-          d={`M 4 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 4} ${size / 2}`}
-          fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
-          initial={{ strokeDasharray: `0 ${semiCircumference}` }}
-          animate={{ strokeDasharray: `${(score / 100) * semiCircumference} ${semiCircumference}` }}
-          transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
-          style={{ filter: `drop-shadow(0 0 4px ${color}50)` }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-end justify-center" style={{ paddingBottom: 2 }}>
-        <span className="text-[15px] font-bold" style={{ color, fontVariantNumeric: 'tabular-nums' }}>
-          <AnimatedNumber value={score} decimals={0} suffix="%" duration={1.5} />
-        </span>
-      </div>
-    </div>
-  );
-}
+// (Old RecoveryGauge, StrainBar, SleepGauge removed — replaced by DonutGauge)
 
 // ── Stat Mini Card ──
 function StatMiniCard({ label, icon, children, delay = 0 }) {
@@ -186,12 +119,23 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
   // Extract latest Whoop metrics
   const whoopMetrics = useMemo(() => {
     if (!connected) return null;
-    const latestRecovery = whoopData?.recovery?.length > 0 ? whoopData.recovery[whoopData.recovery.length - 1] : null;
-    const latestSleep = whoopData?.sleep?.length > 0 ? whoopData.sleep[whoopData.sleep.length - 1] : null;
-    const latestCycle = whoopData?.cycle?.length > 0 ? whoopData.cycle[whoopData.cycle.length - 1] : null;
+    // Get today's date key in LOCAL timezone (not UTC)
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    // Try today first, fall back to most recent
+    const findForDate = (arr, dateKey) => {
+      if (!arr?.length) return null;
+      const todayEntry = arr.find(r => r.date === dateKey);
+      return todayEntry || arr[arr.length - 1]; // fallback to latest
+    };
+    
+    const latestRecovery = findForDate(whoopData?.recovery, todayKey);
+    const latestSleep = findForDate(whoopData?.sleep, todayKey);
+    const latestCycle = findForDate(whoopData?.cycle, todayKey);
 
     const recoveryScore = latestRecovery?.score?.recovery_score ?? null;
-    const hrv = latestRecovery?.score?.hrv?.rmssd_milli ?? null;
+    const hrv = latestRecovery?.score?.hrv_rmssd_milli ?? null;
     const restingHR = latestRecovery?.score?.resting_heart_rate ?? null;
     const sleepScore = latestSleep?.score?.sleep_performance_percentage ?? null;
     const strain = latestCycle?.score?.strain ?? null;
@@ -397,24 +341,52 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
         >
-          {/* Recovery Gauge - full width */}
-          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5 flex flex-col items-center">
-            <RecoveryGauge score={whoopMetrics.recoveryScore} size={130} />
+          {/* Sleep / Recovery / Strain — 3 donut gauges side by side */}
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4">
+            <div className="flex items-center justify-around">
+              <DonutGauge
+                value={whoopMetrics.sleepScore ?? 0}
+                max={100}
+                label="Sleep"
+                size={95}
+                strokeW={6}
+                decimals={0}
+                suffix="%"
+                delay={0}
+                getColor={(s) => s >= 70 ? '#6366F1' : s >= 40 ? '#A78BFA' : '#EF4444'}
+              />
+              <DonutGauge
+                value={whoopMetrics.recoveryScore ?? 0}
+                max={100}
+                label="Recovery"
+                size={95}
+                strokeW={6}
+                decimals={0}
+                suffix="%"
+                delay={0.1}
+                getColor={(s) => s >= 67 ? '#00D46A' : s >= 34 ? '#FFCC00' : '#EF4444'}
+              />
+              <DonutGauge
+                value={whoopMetrics.strain ?? 0}
+                max={21}
+                label="Strain"
+                size={95}
+                strokeW={6}
+                decimals={1}
+                suffix=""
+                delay={0.2}
+                getColor={(s) => s <= 7 ? '#00D46A' : s <= 14 ? '#FFCC00' : '#EF4444'}
+              />
+            </div>
           </div>
 
-          {/* Day Strain - full width bar */}
-          {whoopMetrics.strain != null && (
-            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-4" style={{ marginTop: 8 }}>
-              <StrainBar strain={whoopMetrics.strain} />
-            </div>
-          )}
-
-          {/* 2-column grid for smaller stats */}
-          <div className="grid grid-cols-2 gap-2" style={{ marginTop: 8 }}>
+          {/* HRV / Resting HR / Calories row */}
+          <div className="grid grid-cols-3 gap-2" style={{ marginTop: 8 }}>
             <StatMiniCard label="HRV" delay={0.1} icon={<Zap size={14} color="#00D46A" />}>
-              <div className="text-[22px] font-bold text-white">
-                <AnimatedNumber value={whoopMetrics.hrv} decimals={1} suffix=" ms" />
+              <div className="text-[18px] font-bold text-white">
+                <AnimatedNumber value={whoopMetrics.hrv} decimals={1} suffix="" />
               </div>
+              <div className="text-[10px] text-[#555]">ms</div>
             </StatMiniCard>
 
             <StatMiniCard label="Resting HR" delay={0.15} icon={
@@ -422,21 +394,20 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
                 <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
               </svg>
             }>
-              <div className="text-[22px] font-bold text-white">
-                <AnimatedNumber value={whoopMetrics.restingHR} decimals={0} suffix=" bpm" />
+              <div className="text-[18px] font-bold text-white">
+                <AnimatedNumber value={whoopMetrics.restingHR} decimals={0} suffix="" />
               </div>
+              <div className="text-[10px] text-[#555]">bpm</div>
             </StatMiniCard>
 
-            <StatMiniCard label="Sleep" delay={0.2} icon={<Moon size={14} color="#6366F1" />}>
-              <SleepGauge score={whoopMetrics.sleepScore ?? 0} size={72} />
-            </StatMiniCard>
-
-            <StatMiniCard label="Calories" delay={0.25} icon={<Flame size={14} color="#F97316" />}>
-              <div className="text-[22px] font-bold text-white">
+            <StatMiniCard label="Calories" delay={0.2} icon={<Flame size={14} color="#F97316" />}>
+              <div className="text-[18px] font-bold text-white">
                 <AnimatedNumber value={whoopMetrics.calories} decimals={0} />
               </div>
+              <div className="text-[10px] text-[#555]">kcal</div>
             </StatMiniCard>
           </div>
+
         </motion.div>
       ) : connected ? null : (
         <motion.div
