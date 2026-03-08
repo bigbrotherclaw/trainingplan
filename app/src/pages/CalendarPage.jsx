@@ -739,14 +739,42 @@ export default function CalendarPage({ onEditLog }) {
 
                     const mergedList = mergeActivitiesForDate(dayGarmin, dayWhoop, selectedDay.date);
 
+                    // Group activities by shared session for Whoop banner rendering
+                    const sharedSessions = {};
+                    for (const a of mergedList) {
+                      if (a.sharedSessionId && a.whoop) {
+                        sharedSessions[a.sharedSessionId] = a.whoop;
+                      }
+                    }
+
                     return (
                       <div className="mb-4 space-y-3">
                         <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold">
                           Activities ({mergedList.length})
                         </h4>
-                        {mergedList.map((a, i) => (
-                          <MergedActivityCard key={`${a.source}-${a.startTime}-${i}`} activity={a} />
-                        ))}
+                        {mergedList.map((a, i) => {
+                          // Check if this is the LAST card in a shared session group → show banner after it
+                          const isLastInSession = a.sharedSessionId &&
+                            mergedList.filter(x => x.sharedSessionId === a.sharedSessionId).pop() === a;
+                          const sessionWhoop = isLastInSession ? sharedSessions[a.sharedSessionId] : null;
+                          return (
+                            <div key={`${a.source}-${a.startTime}-${i}`}>
+                              <MergedActivityCard activity={a} />
+                              {sessionWhoop && (
+                                <div className="flex items-center gap-4 px-3 py-2 mt-1.5 rounded-lg bg-[#44b700]/8 border border-[#44b700]/15">
+                                  <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#44b700]/20 text-[#44b700]">W</span>
+                                  <span className="text-[11px] text-[#888]">Combined session</span>
+                                  {sessionWhoop.strain > 0 && (
+                                    <span className="text-[12px] font-semibold text-[#44b700]">{sessionWhoop.strain.toFixed(1)} strain</span>
+                                  )}
+                                  {sessionWhoop.calories > 0 && (
+                                    <span className="text-[12px] text-[#777]">{sessionWhoop.calories} cal</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}

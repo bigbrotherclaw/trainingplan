@@ -19,7 +19,7 @@ export default function MergedActivityCard({ activity }) {
 
   const {
     source, type, name, color, startTime, duration, distance, calories,
-    avgHR, maxHR, garmin, whoop,
+    avgHR, maxHR, garmin, whoop, sharedSessionId, sharedSessionCount,
   } = activity;
 
   // Resolve display values
@@ -208,7 +208,7 @@ export default function MergedActivityCard({ activity }) {
       )}
 
       {/* Whoop Strain Footer */}
-      {whoop && (
+      {whoop && !sharedSessionId && (
         <div className="flex items-center gap-4 px-2.5 py-2 rounded-lg bg-[#44b700]/8 border border-[#44b700]/15">
           <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#44b700]/20 text-[#44b700]">W</span>
           {whoop.strain > 0 && (
