@@ -1,11 +1,18 @@
 import { useState, useRef } from 'react';
-import { Download, Upload, ChevronRight, Activity, Moon, Zap, Heart, Clock, Loader2 } from 'lucide-react';
+import { Download, Upload, ChevronRight, Activity, Moon, Zap, Heart, Clock, Loader2, Watch } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
+import { useGarmin } from '../hooks/useGarmin';
+import { getGarminActivityName, formatGarminDuration, garminMetersToMiles } from '../utils/garminSports';
 
 export default function SettingsPage({ showToast, onNavigateToSocial }) {
   const { settings, setSettings, workoutHistory, setWorkoutHistory, setWorkoutOverrides, setWeekSwaps } = useApp();
   const { connected: whoopConnected, loading: whoopLoading, syncing, connect: whoopConnect, disconnect: whoopDisconnect, syncData: whoopSync, latestRecovery, latestSleep } = useWhoop();
+  const { connected: garminConnected, loading: garminLoading, syncing: garminSyncing, activities: garminActivities, connect: garminConnect, disconnect: garminDisconnect, syncData: garminSync } = useGarmin();
+  const [garminEmail, setGarminEmail] = useState('');
+  const [garminPassword, setGarminPassword] = useState('');
+  const [garminError, setGarminError] = useState('');
+  const [garminConnecting, setGarminConnecting] = useState(false);
   const [resetConfirmPending, setResetConfirmPending] = useState(false);
   const resetTimerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -148,6 +155,30 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
       </div>
     </div>
   );
+
+  const handleGarminConnect = async () => {
+    if (!garminEmail || !garminPassword) {
+      setGarminError('Email and password are required');
+      return;
+    }
+    setGarminError('');
+    setGarminConnecting(true);
+    try {
+      const result = await garminConnect(garminEmail, garminPassword);
+      if (result.error) {
+        setGarminError(result.error);
+      } else {
+        setGarminEmail('');
+        setGarminPassword('');
+      }
+    } catch (err) {
+      setGarminError(err.message || 'Connection failed');
+    } finally {
+      setGarminConnecting(false);
+    }
+  };
+
+  const latestGarmin = garminActivities.length > 0 ? garminActivities[garminActivities.length - 1] : null;
 
   const recoveryScore = latestRecovery?.score?.recovery_score ?? '--';
   const hrv = latestRecovery?.score?.hrv_rmssd_milli != null
@@ -348,6 +379,93 @@ export default function SettingsPage({ showToast, onNavigateToSocial }) {
                 className="w-full min-h-[44px] text-red-400/60 text-[13px] font-medium"
               >
                 Disconnect Whoop
+              </button>
+            </div>
+          )}
+
+          {/* Divider between Whoop and Garmin */}
+          <div className="border-t border-white/[0.08] my-4" />
+
+          {/* Garmin Section */}
+          {garminLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 size={20} className="text-[#555555] animate-spin" />
+            </div>
+          ) : !garminConnected ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Watch size={16} className="text-[#007dff]" />
+                <span className="text-[13px] text-[#888888]">Garmin Connect</span>
+              </div>
+              <input
+                type="email"
+                value={garminEmail}
+                onChange={(e) => setGarminEmail(e.target.value)}
+                placeholder="Garmin email"
+                className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3.5 min-h-[48px] text-[15px] text-white placeholder-[#555]"
+              />
+              <input
+                type="password"
+                value={garminPassword}
+                onChange={(e) => setGarminPassword(e.target.value)}
+                placeholder="Garmin password"
+                className="w-full bg-[#1A1A1A] rounded-xl px-4 py-3.5 min-h-[48px] text-[15px] text-white placeholder-[#555]"
+              />
+              {garminError && (
+                <p className="text-[13px] text-red-400">{garminError}</p>
+              )}
+              <button
+                onClick={handleGarminConnect}
+                disabled={garminConnecting}
+                className="w-full min-h-[48px] bg-[#1A1A1A] rounded-xl text-[15px] font-medium text-white flex items-center justify-center gap-2 border border-[#007dff]/30 active:bg-[#222222] disabled:opacity-50"
+              >
+                {garminConnecting ? (
+                  <Loader2 size={16} className="animate-spin text-[#007dff]" />
+                ) : (
+                  <Watch size={16} className="text-[#007dff]" />
+                )}
+                {garminConnecting ? 'Connecting...' : 'Connect Garmin'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#007dff]" />
+                  <span className="text-[13px] text-[#888888]">Garmin connected</span>
+                </div>
+                <span className="text-[11px] text-[#555555]">{garminActivities.length} activities</span>
+              </div>
+
+              {latestGarmin && (
+                <div className="bg-[#1A1A1A] rounded-xl px-3 py-2.5 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Watch size={12} className="text-[#007dff]" />
+                    <span className="text-[11px] text-[#888888] uppercase tracking-wide">Latest Activity</span>
+                  </div>
+                  <div className="text-[15px] font-semibold text-white">{getGarminActivityName(latestGarmin)}</div>
+                  <div className="flex items-center gap-3 text-[12px] text-[#777]">
+                    <span>{formatGarminDuration(latestGarmin.duration)}</span>
+                    {latestGarmin.distance > 0 && <span>{garminMetersToMiles(latestGarmin.distance)} mi</span>}
+                    {latestGarmin.averageHR && <span>{latestGarmin.averageHR} bpm</span>}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => garminSync(7)}
+                disabled={garminSyncing}
+                className="w-full min-h-[48px] bg-[#1A1A1A] rounded-xl text-[15px] font-medium text-white flex items-center justify-center gap-2 active:bg-[#222222] disabled:opacity-50"
+              >
+                {garminSyncing ? <Loader2 size={16} className="animate-spin" /> : <Watch size={16} className="text-[#007dff]" />}
+                {garminSyncing ? 'Syncing...' : 'Sync Now'}
+              </button>
+
+              <button
+                onClick={garminDisconnect}
+                className="w-full min-h-[44px] text-red-400/60 text-[13px] font-medium"
+              >
+                Disconnect Garmin
               </button>
             </div>
           )}

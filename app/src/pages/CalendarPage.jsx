@@ -8,6 +8,8 @@ import { getSwappedWorkoutSummaryForDate, getSwappedWorkoutForDate, getWorkoutSu
 import { WEEKLY_TEMPLATE, OPERATOR_LIFTS, OPERATOR_LOADING, ACCESSORIES } from '../data/training';
 import { useWhoop } from '../hooks/useWhoop';
 import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
+import { useGarmin } from '../hooks/useGarmin';
+import { getGarminActivityName, getGarminActivityIcon, getGarminActivityColor, formatGarminDuration, garminMetersToMiles } from '../utils/garminSports';
 
 function roundToFive(n) { return Math.round(n / 5) * 5; }
 
@@ -62,6 +64,7 @@ function mergeActivities(activities) {
 export default function CalendarPage({ onEditLog }) {
   const { workoutHistory, weekSwaps, setWeekSwaps, addWorkout, settings } = useApp();
   const { connected: whoopConnected, data: whoopData } = useWhoop();
+  const { connected: garminConnected, activities: garminActivities } = useGarmin();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeId, setActiveId] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
@@ -106,6 +109,32 @@ export default function CalendarPage({ onEditLog }) {
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     return whoopByDate[key] || [];
   }, [whoopByDate]);
+
+  // Index Garmin activities by date
+  const garminByDate = useMemo(() => {
+    const map = {};
+    if (!garminActivities) return map;
+    for (const a of garminActivities) {
+      const keys = new Set();
+      if (a.date) keys.add(a.date);
+      if (a.startTimeLocal) {
+        const localDate = a.startTimeLocal.split(' ')[0];
+        if (localDate) keys.add(localDate);
+      }
+      for (const key of keys) {
+        if (!map[key]) map[key] = [];
+        if (!map[key].some(existing => existing.activityId === a.activityId)) {
+          map[key].push(a);
+        }
+      }
+    }
+    return map;
+  }, [garminActivities]);
+
+  const getGarminForDate = useCallback((date) => {
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return garminByDate[key] || [];
+  }, [garminByDate]);
 
   const monthData = useMemo(() => getMonthData(currentMonth.getFullYear(), currentMonth.getMonth()), [currentMonth]);
 
@@ -512,6 +541,8 @@ export default function CalendarPage({ onEditLog }) {
               const swapped = dayInfo.isCurrentMonth && isDaySwapped(dayInfo.date);
               const whoopActivities = dayInfo.isCurrentMonth ? getWhoopForDate(dayInfo.date) : [];
               const maxStrain = whoopActivities.reduce((max, w) => Math.max(max, w.score?.strain || 0), 0);
+              const garminActs = dayInfo.isCurrentMonth ? getGarminForDate(dayInfo.date) : [];
+              const hasGarmin = garminActs.length > 0;
 
               const cellWeekStart = dayInfo.isCurrentMonth ? startOfWeek(dayInfo.date, { weekStartsOn: 0 }).getTime() : null;
               const isValidTarget = activeId && !isDragging && dayInfo.isCurrentMonth && cellWeekStart === activeWeekStart;
@@ -549,6 +580,7 @@ export default function CalendarPage({ onEditLog }) {
                   swapped={swapped}
                   whoopStrain={maxStrain}
                   whoopExtras={whoopExtras}
+                  hasGarmin={hasGarmin}
                   workout={cellWorkout}
                   onTap={handleDayTap}
                 />
@@ -700,8 +732,23 @@ export default function CalendarPage({ onEditLog }) {
                     );
                   })()}
 
+                  {/* Garmin Activity Section */}
+                  {(() => {
+                    const dayGarmin = getGarminForDate(selectedDay.date);
+                    if (dayGarmin.length === 0) return null;
+
+                    return (
+                      <div className="mb-4 space-y-3">
+                        <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold">
+                          Garmin Activity ({dayGarmin.length})
+                        </h4>
+                        {dayGarmin.map((a, i) => <GarminActivityCard key={i} activity={a} />)}
+                      </div>
+                    );
+                  })()}
+
                   {/* Log Workout Buttons */}
-                  {!selectedDayLogged && (selectedWorkout || getWhoopForDate(selectedDay.date).length > 0) && (
+                  {!selectedDayLogged && (selectedWorkout || getWhoopForDate(selectedDay.date).length > 0 || getGarminForDate(selectedDay.date).length > 0) && (
                     <div className="mb-4 space-y-2">
                       <h4 className="text-[11px] uppercase tracking-widest text-[#555555] font-semibold mb-2">Log Workout</h4>
                       <div className="flex gap-2">
@@ -720,8 +767,8 @@ export default function CalendarPage({ onEditLog }) {
                           <span className="text-[14px] font-medium text-blue-400">Detailed Log</span>
                         </button>
                       </div>
-                      {getWhoopForDate(selectedDay.date).length > 0 && (
-                        <p className="text-[11px] text-[#555] text-center">Quick Log auto-fills from Whoop data</p>
+                      {(getWhoopForDate(selectedDay.date).length > 0 || getGarminForDate(selectedDay.date).length > 0) && (
+                        <p className="text-[11px] text-[#555] text-center">Quick Log auto-fills from wearable data</p>
                       )}
                     </div>
                   )}
@@ -998,6 +1045,77 @@ function WhoopActivityCard({ w }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Garmin Activity Card ──
+function GarminActivityCard({ activity }) {
+  const name = getGarminActivityName(activity);
+  const Icon = getGarminActivityIcon(activity);
+  const color = getGarminActivityColor(activity);
+  const durationStr = formatGarminDuration(activity.duration);
+  const distMi = garminMetersToMiles(activity.distance);
+  const avgHR = activity.averageHR;
+  const maxHR = activity.maxHR;
+  const calories = activity.calories;
+  const startTime = activity.startTimeLocal
+    ? (() => { const parts = activity.startTimeLocal.split(' '); if (parts[1]) { const [h, m] = parts[1].split(':'); const hr = parseInt(h); const ampm = hr >= 12 ? 'PM' : 'AM'; return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${ampm}`; } return null; })()
+    : null;
+
+  return (
+    <div className="bg-white/[0.05] rounded-xl p-3.5 border border-[#007dff]/20">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: color + '15' }}>
+            <Icon size={16} color={color} strokeWidth={2} />
+          </div>
+          <div>
+            <span className="text-[14px] font-medium text-white block">{name}</span>
+            {startTime && <span className="text-[11px] text-[#555]">{startTime}</span>}
+          </div>
+        </div>
+        <span className="text-[13px] text-[#777]">{durationStr}</span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {avgHR && (
+          <div>
+            <div className="text-[10px] uppercase text-[#555] mb-0.5">Avg HR</div>
+            <div className="text-[15px] font-semibold text-white">{avgHR} <span className="text-[11px] text-[#666]">bpm</span></div>
+          </div>
+        )}
+        {maxHR && (
+          <div>
+            <div className="text-[10px] uppercase text-[#555] mb-0.5">Max HR</div>
+            <div className="text-[15px] font-semibold text-white">{maxHR} <span className="text-[11px] text-[#666]">bpm</span></div>
+          </div>
+        )}
+        {distMi && (
+          <div>
+            <div className="text-[10px] uppercase text-[#555] mb-0.5">Distance</div>
+            <div className="text-[15px] font-semibold text-white">{distMi} <span className="text-[11px] text-[#666]">mi</span></div>
+          </div>
+        )}
+        {calories > 0 && (
+          <div>
+            <div className="text-[10px] uppercase text-[#555] mb-0.5">Calories</div>
+            <div className="text-[15px] font-semibold text-white">{calories} <span className="text-[11px] text-[#666]">kcal</span></div>
+          </div>
+        )}
+        {activity.elevationGain > 0 && (
+          <div>
+            <div className="text-[10px] uppercase text-[#555] mb-0.5">Elevation</div>
+            <div className="text-[15px] font-semibold text-white">{Math.round(activity.elevationGain * 3.28084)} <span className="text-[11px] text-[#666]">ft</span></div>
+          </div>
+        )}
+        {activity.averageRunningCadenceInStepsPerMinute > 0 && (
+          <div>
+            <div className="text-[10px] uppercase text-[#555] mb-0.5">Cadence</div>
+            <div className="text-[15px] font-semibold text-white">{Math.round(activity.averageRunningCadenceInStepsPerMinute)} <span className="text-[11px] text-[#666]">spm</span></div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1292,7 +1410,7 @@ function abbrevLabel(label, workout) {
   return label.toUpperCase().slice(0, 8);
 }
 
-function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, whoopExtras, workout, onTap }) {
+function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, whoopExtras, hasGarmin, workout, onTap }) {
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id,
     disabled: !dayInfo.isCurrentMonth,
@@ -1362,6 +1480,9 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
           className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
           style={{ backgroundColor: whoopStrain > 14 ? '#EF4444' : whoopStrain >= 8 ? '#F59E0B' : '#10B981' }}
         />
+      )}
+      {hasGarmin && !isDragging && (
+        <div className="absolute bottom-0.5 right-1 w-1.5 h-1.5 rounded-full bg-[#007dff]" />
       )}
     </div>
   );
