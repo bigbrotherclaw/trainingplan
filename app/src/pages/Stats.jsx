@@ -726,7 +726,21 @@ export default function Stats() {
   );
 }
 
+const CHART_METRICS = [
+  { key: 'strain', label: 'Strain' },
+  { key: 'avgHR', label: 'Avg HR' },
+  { key: 'calories', label: 'Calories' },
+];
+const CHART_RANGES = [
+  { key: 'daily', label: 'Daily' },
+  { key: 'weekly', label: 'Weekly' },
+  { key: 'monthly', label: 'Monthly' },
+];
+
 function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedActivity, setExpandedActivity }) {
+  const [chartMetric, setChartMetric] = useState('strain');
+  const [chartRange, setChartRange] = useState('daily');
+
   const todayStr = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -739,24 +753,85 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
     });
   }, [whoopWorkouts, todayStr]);
 
-  // Weekly strain - last 7 days, per-day
-  const weeklyStrain = useMemo(() => {
-    const days = [];
+  // Configurable chart data
+  const chartData = useMemo(() => {
     const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const dayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
-      let totalStrain = 0;
-      for (const w of whoopWorkouts) {
-        const wk = w.date || (w.start ? w.start.split('T')[0] : null);
-        if (wk === key && w.score?.strain) totalStrain += w.score.strain;
+    const getDateKey = (w) => w.date || (w.start ? w.start.split('T')[0] : null);
+
+    if (chartRange === 'daily') {
+      const days = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const dayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+        const matching = whoopWorkouts.filter(w => getDateKey(w) === key && w.score);
+        let value = 0;
+        if (chartMetric === 'strain') {
+          value = matching.reduce((s, w) => s + (w.score?.strain || 0), 0);
+        } else if (chartMetric === 'avgHR') {
+          const hrs = matching.filter(w => w.score?.average_heart_rate).map(w => w.score.average_heart_rate);
+          value = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
+        } else {
+          value = Math.round(matching.reduce((s, w) => s + (w.score?.kilojoule || 0) * 0.239006, 0));
+        }
+        days.push({ label: dayLabel, value: Math.round(value * 10) / 10, isToday: i === 0 });
       }
-      days.push({ day: dayLabel, strain: Math.round(totalStrain * 10) / 10, isToday: i === 0 });
+      return days;
     }
-    return days;
-  }, [whoopWorkouts]);
+
+    if (chartRange === 'weekly') {
+      const weeks = [];
+      for (let i = 7; i >= 0; i--) {
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay() - i * 7);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        const label = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+        const matching = whoopWorkouts.filter(w => {
+          const dk = getDateKey(w);
+          if (!dk || !w.score) return false;
+          return dk >= `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}` &&
+                 dk <= `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
+        });
+        let value = 0;
+        if (chartMetric === 'strain') {
+          value = matching.reduce((s, w) => s + (w.score?.strain || 0), 0);
+        } else if (chartMetric === 'avgHR') {
+          const hrs = matching.filter(w => w.score?.average_heart_rate).map(w => w.score.average_heart_rate);
+          value = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
+        } else {
+          value = Math.round(matching.reduce((s, w) => s + (w.score?.kilojoule || 0) * 0.239006, 0));
+        }
+        weeks.push({ label, value: Math.round(value * 10) / 10, isToday: i === 0 });
+      }
+      return weeks;
+    }
+
+    // monthly
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mEnd = new Date(m.getFullYear(), m.getMonth() + 1, 0);
+      const mKey = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+      const label = m.toLocaleString('default', { month: 'short' });
+      const matching = whoopWorkouts.filter(w => {
+        const dk = getDateKey(w);
+        return dk && w.score && dk.startsWith(mKey);
+      });
+      let value = 0;
+      if (chartMetric === 'strain') {
+        value = matching.reduce((s, w) => s + (w.score?.strain || 0), 0);
+      } else if (chartMetric === 'avgHR') {
+        const hrs = matching.filter(w => w.score?.average_heart_rate).map(w => w.score.average_heart_rate);
+        value = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
+      } else {
+        value = Math.round(matching.reduce((s, w) => s + (w.score?.kilojoule || 0) * 0.239006, 0));
+      }
+      months.push({ label, value: Math.round(value * 10) / 10, isToday: i === 0 });
+    }
+    return months;
+  }, [whoopWorkouts, chartMetric, chartRange]);
 
   // Activity history - last 30 days grouped by week
   const activityHistory = useMemo(() => {
@@ -896,23 +971,54 @@ function ActivityTab({ whoopConnected, whoopWorkouts, workoutHistory, expandedAc
         )}
       </div>
 
-      {/* WEEKLY STRAIN CHART */}
+      {/* CONFIGURABLE CHART */}
       <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
-        <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Weekly Strain</h2>
+        {/* Metric toggle */}
+        <div className="flex gap-1.5 mb-3">
+          {CHART_METRICS.map(m => (
+            <button
+              key={m.key}
+              onClick={() => setChartMetric(m.key)}
+              className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+                chartMetric === m.key
+                  ? 'bg-white text-black'
+                  : 'bg-white/[0.06] text-[#777]'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {/* Time range toggle */}
+        <div className="flex gap-1 mb-4">
+          {CHART_RANGES.map(r => (
+            <button
+              key={r.key}
+              onClick={() => setChartRange(r.key)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                chartRange === r.key
+                  ? 'bg-white/[0.15] text-white'
+                  : 'bg-transparent text-[#555]'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={weeklyStrain} barCategoryGap="20%">
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={30} />
+          <BarChart data={chartData} barCategoryGap="20%">
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={35} />
             <Tooltip
               contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
-              formatter={(value) => [`${value}`, 'Strain']}
+              formatter={(value) => [`${value}`, chartMetric === 'strain' ? 'Strain' : chartMetric === 'avgHR' ? 'Avg HR' : 'Calories']}
             />
-            <Bar dataKey="strain" radius={[4, 4, 0, 0]}>
-              {weeklyStrain.map((entry, i) => (
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {chartData.map((entry, i) => (
                 <Cell
                   key={i}
-                  fill={entry.isToday ? '#3B82F6' : strainColor(entry.strain)}
-                  opacity={entry.strain === 0 ? 0.15 : 1}
+                  fill={entry.isToday ? '#3B82F6' : chartMetric === 'strain' ? strainColor(entry.value) : chartMetric === 'avgHR' ? '#8B5CF6' : '#F59E0B'}
+                  opacity={entry.value === 0 ? 0.15 : 1}
                 />
               ))}
             </Bar>
