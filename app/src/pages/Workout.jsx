@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Sparkles, Moon, ArrowLeft, ChevronRight, Clock, RefreshCw, Battery, Activity, Heart, Zap, Dumbbell, Bike, Route, Footprints, Waves } from 'lucide-react';
 import { addDays, startOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
@@ -122,9 +122,22 @@ const WORKOUT_TYPE_CONFIG = {
   rest: { icon: Moon, color: '#6B7280', label: 'Rest', bg: 'rgba(107, 114, 128, 0.10)' },
 };
 
+function getWorkoutIcon(workout) {
+  const name = (workout.name || '').toLowerCase();
+  if (workout.type === 'strength') return { icon: Dumbbell, color: '#F59E0B', label: 'Strength', bg: 'rgba(245, 158, 11, 0.10)' };
+  if (workout.type === 'rest') return { icon: Moon, color: '#6B7280', label: 'Rest', bg: 'rgba(107, 114, 128, 0.10)' };
+  if (workout.type === 'long') return { icon: Route, color: '#10B981', label: 'Endurance', bg: 'rgba(16, 185, 129, 0.10)' };
+  // Tri days — pick icon based on the specific cardio
+  if (name.includes('run')) return { icon: Footprints, color: '#14B8A6', label: 'Run + HIC', bg: 'rgba(20, 184, 166, 0.10)' };
+  if (name.includes('swim')) return { icon: Waves, color: '#14B8A6', label: 'Swim + HIC', bg: 'rgba(20, 184, 166, 0.10)' };
+  if (name.includes('bike')) return { icon: Bike, color: '#14B8A6', label: 'Bike + HIC', bg: 'rgba(20, 184, 166, 0.10)' };
+  // Default tri
+  return { icon: Activity, color: '#14B8A6', label: 'Cardio + HIC', bg: 'rgba(20, 184, 166, 0.10)' };
+}
+
 function UpcomingWorkoutCard({ date, workout, settings, isExpanded, onToggle }) {
   const loadingInfo = OPERATOR_LOADING.find((l) => l.week === settings.week) || OPERATOR_LOADING[0];
-  const config = WORKOUT_TYPE_CONFIG[workout.type] || WORKOUT_TYPE_CONFIG.rest;
+  const config = getWorkoutIcon(workout);
   const TypeIcon = config.icon;
   const dateLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const cardioInfo = workout.type !== 'strength' && workout.type !== 'rest' ? getCardioPresetsForWorkout(workout, settings.week) : null;
@@ -609,18 +622,18 @@ export default function Workout({ showToast }) {
   // REST DAY
   if (todayWorkout.type === 'rest') {
     return (
-      <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-10">
-        <GlowBorder color="#8B95A5" speed={4} radius={16}>
-          <div className="bg-[#141414] rounded-2xl text-center py-8 px-5">
+      <div className="px-5 pt-4 pb-32 min-h-screen bg-black">
+        <GlowBorder color="#E63946" speed={5} radius={16}>
+          <div className="bg-[#141414] rounded-2xl text-center py-8 px-10">
             <Moon size={48} className="text-[#333333] mx-auto mb-4" />
             <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
             <p className="text-sm text-[#666666]">Take time to recover and prepare for tomorrow.</p>
           </div>
         </GlowBorder>
 
-        <div>
-          <h3 className="text-xs font-semibold text-[#555555] uppercase tracking-widest mb-4">Upcoming</h3>
-          <div className="space-y-3">
+        <div style={{marginTop:"12px"}}>
+          <h3 className="text-xs font-semibold text-[#555555] uppercase tracking-widest mb-6">Upcoming</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
             {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 3).map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard
                 key={idx}
@@ -867,14 +880,13 @@ export default function Workout({ showToast }) {
         {/* Today's Workout Card */}
         <GlowBorder
           color={todayWorkout.type === 'strength' ? '#F59E0B' : todayWorkout.type === 'tri' ? '#14B8A6' : todayWorkout.type === 'long' ? '#10B981' : '#6B7280'}
-          speed={3}
-          borderWidth={2}
+          speed={4}
           radius={16}
         >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`relative bg-[#141414] rounded-2xl p-5 pr-5 active:scale-[0.98] transition-transform`}
+          className={`relative bg-[#141414] rounded-2xl p-6 pl-10 pr-10 overflow-hidden active:scale-[0.98] transition-transform`}
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-[15px] text-[#A0A0A0]">
@@ -988,9 +1000,9 @@ export default function Workout({ showToast }) {
         </GlowBorder>
 
         {/* Upcoming Workouts */}
-        <div>
-          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Upcoming</h3>
-          <div className="space-y-3">
+        <div style={{marginTop:"12px"}}>
+          <h3 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-6">Upcoming</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
             {upcomingWorkouts.slice(0, showAllUpcoming ? 5 : 3).map(({ date, workout }, idx) => (
               <UpcomingWorkoutCard
                 key={idx}

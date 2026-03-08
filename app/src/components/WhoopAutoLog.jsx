@@ -80,11 +80,21 @@ function mapActivitiesToWorkout(activities, planned) {
   return [];
 }
 
-// ─── MODULE-LEVEL state (immune to React rendering) ─────────────────────────
-// This is the ONLY source of truth for which dates have been confirmed/dismissed.
-// React can't touch it, batching can't touch it, unmounts can't touch it.
-const _confirmedDates = new Set();
-const _dismissedDates = new Set();
+// ─── MODULE-LEVEL state + localStorage persistence ──────────────────────────
+// Module-level Sets are immune to React rendering/batching/unmounts.
+// We also persist to localStorage so they survive app reloads.
+function loadSet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+function saveSet(key, set) {
+  try { localStorage.setItem(key, JSON.stringify([...set])); } catch {}
+}
+
+const _confirmedDates = loadSet('whoopAutoLog_confirmed');
+const _dismissedDates = loadSet('whoopAutoLog_dismissed');
 
 export default function WhoopAutoLog() {
   const { workoutHistory, addWorkout, weekSwaps } = useApp();
@@ -120,9 +130,18 @@ export default function WhoopAutoLog() {
       if (loggedDates.has(dateKey) || _confirmedDates.has(dateKey) || _dismissedDates.has(dateKey)) continue;
 
       const planned = getSwappedWorkoutForDate(date, weekSwaps);
-      if (!planned || planned.type === 'rest') continue;
+      
+      // If it's a rest day or no plan, still show the activity — user worked out anyway
+      const effectivePlanned = (!planned || planned.type === 'rest')
+        ? { name: 'Extra Workout', type: 'extra' }
+        : planned;
 
-      const mapped = mapActivitiesToWorkout(activities, planned);
+      let mapped = mapActivitiesToWorkout(activities, effectivePlanned);
+      // For unmatched activities (extra days or mismatched types), create a generic mapping
+      if (mapped.length === 0) {
+        const best = [...activities].sort((a, b) => (b.score?.strain || 0) - (a.score?.strain || 0))[0];
+        if (best) mapped = [{ activity: best, role: 'full', label: effectivePlanned.name }];
+      }
       if (mapped.length === 0) continue;
 
       const totalStrain = activities.reduce((sum, a) => sum + (a.score?.strain || 0), 0);
@@ -141,8 +160,9 @@ export default function WhoopAutoLog() {
   const handleConfirm = useCallback((dayMatch) => {
     const { dateKey, date, planned, mapped, totalStrain, totalDuration } = dayMatch;
 
-    // Mark as confirmed in module-level Set FIRST
+    // Mark as confirmed in module-level Set FIRST, then persist
     _confirmedDates.add(dateKey);
+    saveSet('whoopAutoLog_confirmed', _confirmedDates);
 
     // Force React to re-render so the card disappears
     forceUpdate(n => n + 1);
@@ -185,6 +205,7 @@ export default function WhoopAutoLog() {
 
   const handleDismiss = useCallback((dateKey) => {
     _dismissedDates.add(dateKey);
+    saveSet('whoopAutoLog_dismissed', _dismissedDates);
     forceUpdate(n => n + 1);
   }, []);
 
@@ -200,7 +221,7 @@ export default function WhoopAutoLog() {
           const dateLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
           const isMultiPart = mapped.length > 1;
           const accentColor = planned.type === 'strength' ? '#F59E0B'
-            : planned.type === 'tri' ? '#14B8A6' : planned.type === 'long' ? '#10B981' : '#6B7280';
+            : planned.type === 'tri' ? '#14B8A6' : planned.type === 'long' ? '#10B981' : planned.type === 'extra' ? '#8B5CF6' : '#6B7280';
 
           return (
             <motion.div

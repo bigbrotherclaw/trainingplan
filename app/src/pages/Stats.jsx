@@ -329,7 +329,7 @@ export default function Stats() {
   const currentPBs = endurancePBs[selectedSport] || {};
 
   return (
-    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
+    <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-3">
       <h1 className="text-[28px] font-bold text-white mb-2">Stats</h1>
 
       {/* VIEW TOGGLE */}

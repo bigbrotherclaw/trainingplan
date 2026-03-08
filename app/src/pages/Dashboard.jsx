@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Moon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWhoop } from '../hooks/useWhoop';
 import { getRecoverySuggestion, getZoneColor } from '../utils/recoveryAdvisor';
@@ -11,7 +11,7 @@ import WhoopAutoLog from '../components/WhoopAutoLog';
 import GlowBorder from '../components/GlowBorder';
 
 const TYPE_COLORS = {
-  rest: '#6B7280',
+  rest: '#E63946',
   strength: '#F59E0B',
   tri: '#14B8A6',
   long: '#10B981',
@@ -132,7 +132,7 @@ export default function Dashboard({ onNavigate }) {
   const todayColor = TYPE_COLORS[todayWorkout.type];
 
   return (
-    <div className="px-5 pt-4 pb-32 space-y-10">
+    <div className="px-5 pt-4 pb-32">
 
       {/* YOUR WEEK */}
       <motion.div
@@ -177,7 +177,9 @@ export default function Dashboard({ onNavigate }) {
       </motion.div>
 
       {/* WHOOP AUTO-LOG PROMPTS */}
+      <div style={{marginTop:"12px"}}>
       <WhoopAutoLog />
+      </div>
 
       {/* RECOVERY SUMMARY (Whoop) */}
       {recoverySuggestion && (
@@ -233,7 +235,7 @@ export default function Dashboard({ onNavigate }) {
       )}
 
       {/* RECENT WHOOP ACTIVITIES */}
-      {connected && whoopWorkouts?.length > 0 && (
+      {connected && whoopWorkouts?.length > 0 && (<div style={{marginTop:"12px"}}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -241,7 +243,7 @@ export default function Dashboard({ onNavigate }) {
           className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold pl-0.5">Recent Activities</h2>
+            <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold pl-2">Recent Activities</h2>
             <button onClick={() => onNavigate('stats')} className="text-[11px] text-accent-blue font-medium">View All</button>
           </div>
           <div className="divide-y divide-white/[0.06]">
@@ -282,26 +284,24 @@ export default function Dashboard({ onNavigate }) {
             })}
           </div>
         </motion.div>
-      )}
+      </div>)}
 
       {/* TODAY'S WORKOUT */}
-      <GlowBorder color={todayColor} speed={3} radius={16}>
+      <div style={{marginTop:"12px"}}>
+      <GlowBorder color={todayColor} speed={4} radius={16}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
         className="relative bg-[#141414] rounded-2xl overflow-hidden"
       >
-        {/* Left color accent bar */}
-        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: todayColor }} />
-        <div className="p-5 pl-6">
-          <div className="flex items-center justify-between mb-3">
+        <div className="p-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
             <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Today</h2>
-            <div className="flex items-center gap-2">
-              <span className={`text-[12px] font-medium px-3 py-1 rounded-full shrink-0 ${TYPE_BADGE_BG[todayWorkout.type] || 'bg-gray-500/20 text-gray-400'}`}>
-                {todayWorkout.label || todayWorkout.type}
-              </span>
-            </div>
+            <span className={`text-[12px] font-medium px-3 py-1 rounded-full shrink-0 flex items-center gap-1.5 ${TYPE_BADGE_BG[todayWorkout.type] || 'bg-gray-500/20 text-gray-400'}`}>
+              {todayWorkout.type === 'rest' && <Moon size={12} />}
+              {todayWorkout.label || todayWorkout.type}
+            </span>
           </div>
           <h3 className="text-[22px] font-bold text-white mb-1">{todayWorkout.name}</h3>
           <p className="text-[15px] text-[#A0A0A0]">
@@ -309,7 +309,7 @@ export default function Dashboard({ onNavigate }) {
           </p>
 
           {todayLogged ? (
-            <div className="flex items-center gap-2 text-accent-green text-[15px] font-medium mt-4">
+            <div className="flex items-center justify-center gap-2 text-accent-green text-[15px] font-medium mt-4">
               <div className="w-2 h-2 rounded-full bg-accent-green" />
               Completed today
             </div>
@@ -327,8 +327,10 @@ export default function Dashboard({ onNavigate }) {
         </div>
       </motion.div>
       </GlowBorder>
+      </div>
 
       {/* STATS ROW */}
+      <div style={{marginTop:"12px"}}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -350,8 +352,10 @@ export default function Dashboard({ onNavigate }) {
         </div>
         </>); })()}
       </motion.div>
+      </div>
 
       {/* WEEKLY COMPLIANCE RING */}
+      <div style={{marginTop:"12px"}}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -367,6 +371,7 @@ export default function Dashboard({ onNavigate }) {
           </div>
         )}
       </motion.div>
+      </div>
 
     </div>
   );
