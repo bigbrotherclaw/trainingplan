@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, BarChart3, ChevronDown, ChevronUp, Timer, Zap } from 'lucide-react';
 import { OPERATOR_LIFTS, EXERCISE_MUSCLE_MAP } from '../data/training';
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import { useWhoop } from '../hooks/useWhoop';
+import { useGarmin } from '../hooks/useGarmin';
 import { getSportName, getSportIcon, getSportColor, formatDuration as formatWhoopDuration, metersToMiles, kjToKcal } from '../utils/whoopSports';
 import { LiftIcon } from '../components/LiftIcons';
 import { getStrainCorrelation, getWeeklyStrainTrend } from '../utils/strainCorrelation';
+import { formatPace, formatSwimPace, calcSwimPace, formatDistance, formatDurationCompact, formatSplitPace } from '../utils/mergeActivities';
 
 const LIFT_COLORS = { 'Bench Press': '#3b82f6', 'Back Squat': '#ef4444', 'Weighted Pull-up': '#10b981' };
 const LIFT_TABS = [
@@ -40,11 +42,137 @@ function identifySport(name) {
   return null;
 }
 
-function formatPace(pace) {
+function formatPaceLocal(pace) {
   if (!pace && pace !== 0) return '--';
   const mins = Math.floor(pace);
   const secs = Math.round((pace - mins) * 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ── Garmin activity type detection ──
+const RUN_TYPE_KEYS = new Set(['running', 'trail_running', 'treadmill_running', 'track_running']);
+const SWIM_TYPE_KEYS = new Set(['lap_swimming', 'open_water_swimming', 'pool_swimming', 'swimming']);
+const CYCLE_TYPE_KEYS = new Set(['cycling', 'indoor_cycling', 'mountain_biking']);
+
+function getGarminSportType(activity) {
+  const typeKey = activity?.activityType?.typeKey || '';
+  if (RUN_TYPE_KEYS.has(typeKey)) return 'run';
+  if (SWIM_TYPE_KEYS.has(typeKey)) return 'swim';
+  if (CYCLE_TYPE_KEYS.has(typeKey)) return 'bike';
+  return null;
+}
+
+// ── Interval Detection Algorithm ──
+
+function roundToStandardDistance(meters) {
+  const standards = [100, 200, 400, 800, 1200, 1600, 2000, 3200, 5000];
+  let closest = standards[0];
+  let minDiff = Math.abs(meters - standards[0]);
+  for (const s of standards) {
+    const diff = Math.abs(meters - s);
+    if (diff < minDiff) { minDiff = diff; closest = s; }
+  }
+  // Only snap if within 15% of a standard distance
+  return minDiff / closest < 0.15 ? closest : Math.round(meters / 50) * 50;
+}
+
+function analyzeGarminSplits(activity) {
+  const sportType = getGarminSportType(activity);
+  if (!sportType) return null;
+
+  const splits = activity.splits || [];
+  if (splits.length < 2) return null;
+
+  const date = activity.startTimeLocal ? activity.startTimeLocal.split(' ')[0] : activity.date || '';
+  const totalDistance = activity.distance || 0;
+  const totalDuration = activity.duration || 0;
+  const avgPace = totalDistance > 0 && totalDuration > 0 ? totalDistance / totalDuration : 0;
+  const avgHR = activity.averageHR || 0;
+
+  // Parse splits into normalized form
+  const parsed = splits.map((s, i) => ({
+    index: i,
+    distance: s.distance || 0,
+    duration: s.duration || s.movingDuration || 0,
+    avgSpeed: s.averageSpeed || (s.distance && s.duration ? s.distance / s.duration : 0),
+    hr: s.averageHR || s.averageHeartRate || 0,
+    pace: s.averageSpeed > 0 ? s.averageSpeed : (s.distance && s.duration ? s.distance / s.duration : 0),
+  })).filter(s => s.distance > 0 && s.duration > 0);
+
+  if (parsed.length < 2) return {
+    date, type: sportType, activityName: activity.activityName || '', workoutType: 'easy',
+    intervals: null, totalDistance, totalDuration, avgPace, avgHR,
+  };
+
+  // Compute overall avg pace across all splits
+  const totalSplitDist = parsed.reduce((s, p) => s + p.distance, 0);
+  const totalSplitDur = parsed.reduce((s, p) => s + p.duration, 0);
+  const overallPace = totalSplitDist / totalSplitDur;
+
+  // Find splits that are significantly faster than average (>15% faster = higher m/s)
+  const fastThreshold = overallPace * 1.15;
+  const fastSplits = parsed.filter(s => s.pace >= fastThreshold);
+
+  // Group fast splits by distance similarity (within 10%)
+  const distanceGroups = [];
+  for (const split of fastSplits) {
+    let foundGroup = false;
+    for (const group of distanceGroups) {
+      const groupAvgDist = group.reduce((s, g) => s + g.distance, 0) / group.length;
+      if (Math.abs(split.distance - groupAvgDist) / groupAvgDist < 0.10) {
+        group.push(split);
+        foundGroup = true;
+        break;
+      }
+    }
+    if (!foundGroup) distanceGroups.push([split]);
+  }
+
+  // Find the largest group of similar-distance fast splits (these are our intervals)
+  const bestGroup = distanceGroups.sort((a, b) => b.length - a.length)[0];
+
+  if (bestGroup && bestGroup.length >= 2) {
+    const avgDist = bestGroup.reduce((s, g) => s + g.distance, 0) / bestGroup.length;
+    const standardDist = roundToStandardDistance(avgDist);
+    const intervalSplits = bestGroup.map(s => ({
+      pace: s.pace,
+      hr: s.hr,
+      duration: s.duration,
+      distance: s.distance,
+    }));
+    const intervalAvgPace = intervalSplits.reduce((s, sp) => s + sp.pace, 0) / intervalSplits.length;
+    const bestPace = Math.max(...intervalSplits.map(s => s.pace));
+    const intervalAvgHR = intervalSplits.filter(s => s.hr > 0).length > 0
+      ? Math.round(intervalSplits.filter(s => s.hr > 0).reduce((s, sp) => s + sp.hr, 0) / intervalSplits.filter(s => s.hr > 0).length)
+      : 0;
+
+    return {
+      date, type: sportType, activityName: activity.activityName || '', workoutType: 'interval',
+      intervals: {
+        count: bestGroup.length,
+        distance: standardDist,
+        label: `${bestGroup.length}x${standardDist}m`,
+        splits: intervalSplits,
+        avgPace: intervalAvgPace,
+        bestPace,
+        avgHR: intervalAvgHR,
+      },
+      totalDistance, totalDuration, avgPace, avgHR,
+    };
+  }
+
+  // Check for tempo: consistent pace (low variance)
+  const paces = parsed.map(s => s.pace);
+  const avgP = paces.reduce((a, b) => a + b, 0) / paces.length;
+  const variance = paces.reduce((s, p) => s + Math.pow(p - avgP, 2), 0) / paces.length;
+  const cv = Math.sqrt(variance) / avgP; // coefficient of variation
+
+  const workoutType = cv < 0.08 ? 'tempo' : (totalDuration > 2400 ? 'long' : 'easy');
+
+  return {
+    date, type: sportType, activityName: activity.activityName || '', workoutType,
+    intervals: null, totalDistance, totalDuration, avgPace, avgHR,
+  };
 }
 
 function epley(weight, reps) {
@@ -69,11 +197,15 @@ const ZONE_KEYS = ['zone_one_milli', 'zone_two_milli', 'zone_three_milli', 'zone
 export default function Stats() {
   const { workoutHistory, weekSwaps } = useApp();
   const { connected: whoopConnected, data: whoopData } = useWhoop();
+  const { activities: garminActivities } = useGarmin();
   const [selectedLift, setSelectedLift] = useState('Bench Press');
   const [timeRange, setTimeRange] = useState('All');
   const [statsView, setStatsView] = useState('activity');
   const [selectedSport, setSelectedSport] = useState('run');
   const [expandedActivity, setExpandedActivity] = useState(null);
+  const [expandedInterval, setExpandedInterval] = useState(null);
+  const [intervalDistFilter, setIntervalDistFilter] = useState('all');
+  const [enduranceSportTab, setEnduranceSportTab] = useState('run');
 
   const now = useMemo(() => new Date(), []);
 
@@ -317,7 +449,107 @@ export default function Stats() {
     }));
   }, [enduranceSessions]);
 
-  if (workoutHistory.length === 0) {
+  // === GARMIN SPLIT ANALYSIS ===
+
+  const garminAnalysis = useMemo(() => {
+    if (!garminActivities || garminActivities.length === 0) return [];
+    return garminActivities
+      .map(a => analyzeGarminSplits(a))
+      .filter(Boolean)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [garminActivities]);
+
+  const garminIntervalWorkouts = useMemo(() => {
+    return garminAnalysis.filter(a => a.workoutType === 'interval' && a.intervals);
+  }, [garminAnalysis]);
+
+  const garminByType = useMemo(() => {
+    const byType = { run: [], swim: [], bike: [] };
+    garminAnalysis.forEach(a => { if (byType[a.type]) byType[a.type].push(a); });
+    return byType;
+  }, [garminAnalysis]);
+
+  // Available interval distances for filter
+  const availableDistances = useMemo(() => {
+    const dists = new Set();
+    garminIntervalWorkouts
+      .filter(w => w.type === enduranceSportTab)
+      .forEach(w => dists.add(w.intervals.distance));
+    return [...dists].sort((a, b) => a - b);
+  }, [garminIntervalWorkouts, enduranceSportTab]);
+
+  // Interval progression data (filtered by sport tab and distance)
+  const intervalProgressionData = useMemo(() => {
+    let workouts = garminIntervalWorkouts.filter(w => w.type === enduranceSportTab);
+    if (intervalDistFilter !== 'all') {
+      workouts = workouts.filter(w => w.intervals.distance === Number(intervalDistFilter));
+    }
+    return filterByRange(workouts.map(w => {
+      const d = new Date(w.date);
+      const label = `${d.getMonth() + 1}/${d.getDate()}`;
+      const isSwim = w.type === 'swim';
+      // For chart: use avg interval duration in seconds for consistent comparison
+      const avgDuration = w.intervals.splits.reduce((s, sp) => s + sp.duration, 0) / w.intervals.splits.length;
+      return {
+        date: label,
+        fullDate: w.date,
+        avgDuration,
+        avgPace: w.intervals.avgPace,
+        bestPace: w.intervals.bestPace,
+        label: w.intervals.label,
+        avgHR: w.intervals.avgHR,
+        count: w.intervals.count,
+        distance: w.intervals.distance,
+      };
+    }));
+  }, [garminIntervalWorkouts, enduranceSportTab, intervalDistFilter, timeRange]);
+
+  // Pace trend data (all runs/swims, not just intervals)
+  const garminPaceTrend = useMemo(() => {
+    const activities = garminByType[enduranceSportTab] || [];
+    return filterByRange(activities.map(a => {
+      const d = new Date(a.date);
+      const label = `${d.getMonth() + 1}/${d.getDate()}`;
+      return {
+        date: label,
+        fullDate: a.date,
+        avgPace: a.avgPace,
+        workoutType: a.workoutType,
+        intervalPace: a.intervals ? a.intervals.avgPace : null,
+      };
+    }));
+  }, [garminByType, enduranceSportTab, timeRange]);
+
+  // Personal records from intervals
+  const intervalPRs = useMemo(() => {
+    const prs = {};
+    garminIntervalWorkouts
+      .filter(w => w.type === enduranceSportTab)
+      .forEach(w => {
+        const dist = w.intervals.distance;
+        w.intervals.splits.forEach(s => {
+          if (!prs[dist] || s.pace > prs[dist].pace) {
+            prs[dist] = { pace: s.pace, duration: s.duration, distance: s.distance, date: w.date, hr: s.hr };
+          }
+        });
+      });
+    return Object.entries(prs)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([dist, pr]) => ({ distance: Number(dist), ...pr }));
+  }, [garminIntervalWorkouts, enduranceSportTab]);
+
+  // Split comparison table data
+  const splitTableData = useMemo(() => {
+    let workouts = garminIntervalWorkouts.filter(w => w.type === enduranceSportTab);
+    return filterByRange(workouts.map(w => ({
+      ...w,
+      fullDate: w.date,
+    }))).reverse(); // Most recent first
+  }, [garminIntervalWorkouts, enduranceSportTab, timeRange]);
+
+  const hasGarminEnduranceData = garminByType[enduranceSportTab]?.length > 0;
+
+  if (workoutHistory.length === 0 && garminActivities.length === 0) {
     return (
       <div className="px-5 pt-2 pb-32 bg-black min-h-screen flex flex-col items-center justify-center text-center">
         <BarChart3 size={48} className="text-[#333333] mx-auto mb-4" />
@@ -406,7 +638,7 @@ export default function Stats() {
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={35} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
+                      contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px', color: '#fff' }} labelStyle={{ color: '#999' }} itemStyle={{ color: '#fff' }}
                       formatter={(value, name) => [`${value} lbs`, name === 'e1rm' ? 'E1RM' : 'Weight']}
                     />
                     <Line type="monotone" dataKey="weight" stroke={LIFT_COLORS[selectedLift]} strokeWidth={2} dot={{ r: 4, fill: LIFT_COLORS[selectedLift] }} activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }} />
@@ -437,7 +669,7 @@ export default function Stats() {
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px', color: '#fff' }} labelStyle={{ color: '#999' }} itemStyle={{ color: '#fff' }}
                   formatter={(value) => [`${value.toLocaleString()} lbs`, 'Tonnage']}
                 />
                 <Bar dataKey="tonnage" radius={[4, 4, 0, 0]}>
@@ -523,7 +755,7 @@ export default function Stats() {
                   <div className="text-[11px] uppercase tracking-wider text-[#555555] font-semibold mb-2">Run</div>
                   <p className="text-[17px] font-bold text-white">{enduranceOverview.run.distance.toFixed(1)}<span className="text-[11px] text-[#666666] font-normal"> mi</span></p>
                   <p className="text-[11px] text-[#555555] mt-1">
-                    {enduranceOverview.run.count > 0 ? `${formatPace(enduranceOverview.run.paceSum / enduranceOverview.run.count)} /mi avg` : 'No data'}
+                    {enduranceOverview.run.count > 0 ? `${formatPaceLocal(enduranceOverview.run.paceSum / enduranceOverview.run.count)} /mi avg` : 'No data'}
                   </p>
                 </div>
                 <div className="bg-[#1A1A1A] rounded-xl p-3 text-center">
@@ -590,12 +822,12 @@ export default function Stats() {
                       tickLine={false}
                       width={40}
                       reversed={selectedSport !== 'bike'}
-                      tickFormatter={v => selectedSport === 'bike' ? `${v}W` : selectedSport === 'run' ? formatPace(v) : `${Math.round(v)}s`}
+                      tickFormatter={v => selectedSport === 'bike' ? `${v}W` : selectedSport === 'run' ? formatPaceLocal(v) : `${Math.round(v)}s`}
                     />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
+                      contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px', color: '#fff' }} labelStyle={{ color: '#999' }} itemStyle={{ color: '#fff' }}
                       formatter={(value, name) => {
-                        if (name === 'pace') return [selectedSport === 'run' ? `${formatPace(value)} /mi` : `${Math.round(value)}s /100y`, 'Pace'];
+                        if (name === 'pace') return [selectedSport === 'run' ? `${formatPaceLocal(value)} /mi` : `${Math.round(value)}s /100y`, 'Pace'];
                         if (name === 'power') return [`${value}W`, 'Avg Power'];
                         if (name === 'distance') return [selectedSport === 'swim' ? `${value} yds` : `${value} mi`, 'Distance'];
                         return [value, name];
@@ -616,7 +848,7 @@ export default function Stats() {
                       <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-xl">
                         <span className="text-[13px] text-[#666666]">Fastest Pace</span>
                         <span className="text-[15px] font-bold" style={{ color: SPORT_COLORS.run }}>
-                          {currentPBs.fastestPace ? `${formatPace(currentPBs.fastestPace)} /mi` : '--'}
+                          {currentPBs.fastestPace ? `${formatPaceLocal(currentPBs.fastestPace)} /mi` : '--'}
                         </span>
                       </div>
                       {currentPBs.longestDist && (
@@ -674,7 +906,7 @@ export default function Stats() {
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={35} tickFormatter={v => `${v.toFixed(1)}`} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px', color: '#fff' }} labelStyle={{ color: '#999' }} itemStyle={{ color: '#fff' }}
                   formatter={(value, name) => [`${value.toFixed(2)} mi`, name.charAt(0).toUpperCase() + name.slice(1)]}
                 />
                 <Bar dataKey="run" stackId="endurance" fill={SPORT_COLORS.run} />
@@ -708,6 +940,284 @@ export default function Stats() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ GARMIN SPLIT ANALYSIS ═══ */}
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Timer size={14} className="text-[#555555]" />
+              <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Interval Progression</h2>
+            </div>
+
+            {/* Sport sub-tabs */}
+            <div className="flex gap-2 mb-4">
+              {SPORT_TABS.map(s => (
+                <button
+                  key={s.key}
+                  onClick={() => { setEnduranceSportTab(s.key); setIntervalDistFilter('all'); }}
+                  className={`px-4 py-2 min-h-[40px] rounded-xl text-[13px] font-medium transition-colors ${
+                    enduranceSportTab === s.key ? 'text-white' : 'bg-[#1A1A1A] text-[#666666]'
+                  }`}
+                  style={enduranceSportTab === s.key ? { backgroundColor: s.color } : {}}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Distance filter */}
+            {availableDistances.length > 0 && (
+              <div className="flex gap-2 mb-4 flex-wrap">
+                <button
+                  onClick={() => setIntervalDistFilter('all')}
+                  className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[12px] font-medium transition-colors ${
+                    intervalDistFilter === 'all' ? 'bg-white/10 text-white' : 'text-[#555555]'
+                  }`}
+                >
+                  All
+                </button>
+                {availableDistances.map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setIntervalDistFilter(String(d))}
+                    className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[12px] font-medium transition-colors ${
+                      intervalDistFilter === String(d) ? 'bg-white/10 text-white' : 'text-[#555555]'
+                    }`}
+                  >
+                    {d}m
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Time range */}
+            <div className="flex gap-2 mb-4">
+              {TIME_RANGES.map(r => (
+                <button
+                  key={r}
+                  onClick={() => setTimeRange(r)}
+                  className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[12px] font-medium transition-colors ${
+                    timeRange === r ? 'bg-white/10 text-white' : 'text-[#555555]'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+
+            {intervalProgressionData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={intervalProgressionData}>
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#666666' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={45}
+                    reversed
+                    tickFormatter={v => formatDurationCompact(v)}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px', color: '#fff' }}
+                    labelStyle={{ color: '#999' }}
+                    formatter={(value, name) => {
+                      if (name === 'avgDuration') return [formatDurationCompact(value), 'Avg Interval Time'];
+                      return [value, name];
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="avgDuration"
+                    stroke={SPORT_COLORS[enduranceSportTab]}
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: SPORT_COLORS[enduranceSportTab] }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-center text-[13px] text-[#555555] py-8">
+                {hasGarminEnduranceData ? 'No interval workouts detected in this range' : 'No Garmin data yet — sync to see split analysis'}
+              </p>
+            )}
+          </div>
+
+          {/* PACE TREND (all workouts) */}
+          {garminPaceTrend.length > 0 && (
+            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+              <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">
+                {enduranceSportTab === 'swim' ? 'Swim' : enduranceSportTab === 'bike' ? 'Bike' : 'Run'} Pace Trend
+              </h2>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={garminPaceTrend}>
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#666666' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={50}
+                    reversed={enduranceSportTab !== 'bike'}
+                    tickFormatter={v => {
+                      if (enduranceSportTab === 'swim') return formatSwimPace(v > 0 ? 100 / v : 0);
+                      return formatPace(v);
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '12px', fontSize: '12px', color: '#fff' }}
+                    labelStyle={{ color: '#999' }}
+                    formatter={(value, name) => {
+                      if (name === 'avgPace') {
+                        if (enduranceSportTab === 'swim') return [formatSwimPace(value > 0 ? 100 / value : 0), 'Avg Pace'];
+                        return [formatPace(value), 'Avg Pace'];
+                      }
+                      if (name === 'intervalPace') {
+                        if (enduranceSportTab === 'swim') return [formatSwimPace(value > 0 ? 100 / value : 0), 'Interval Pace'];
+                        return [formatPace(value), 'Interval Pace'];
+                      }
+                      return [value, name];
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="avgPace"
+                    stroke={SPORT_COLORS[enduranceSportTab]}
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: SPORT_COLORS[enduranceSportTab] }}
+                    connectNulls
+                    name="avgPace"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="intervalPace"
+                    stroke="#EF4444"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3, fill: '#EF4444' }}
+                    connectNulls
+                    name="intervalPace"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="flex justify-center gap-4 mt-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-0.5 rounded" style={{ backgroundColor: SPORT_COLORS[enduranceSportTab] }} />
+                  <span className="text-[11px] text-[#666666]">Avg Pace</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-0.5 rounded border-dashed" style={{ borderTop: '2px dashed #EF4444' }} />
+                  <span className="text-[11px] text-[#666666]">Interval Pace</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SPLIT COMPARISON TABLE */}
+          {splitTableData.length > 0 && (
+            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+              <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold mb-4">Interval Workouts</h2>
+              <div className="space-y-2">
+                {splitTableData.map((w, wi) => {
+                  const d = new Date(w.date);
+                  const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+                  const isExpanded = expandedInterval === wi;
+                  const isSwim = w.type === 'swim';
+                  return (
+                    <div key={wi}>
+                      <button
+                        onClick={() => setExpandedInterval(isExpanded ? null : wi)}
+                        className="flex items-center w-full p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+                      >
+                        <span className="text-[12px] text-[#555] w-12 shrink-0">{dateLabel}</span>
+                        <span className="text-[13px] font-semibold mr-2" style={{ color: SPORT_COLORS[w.type] }}>
+                          {w.intervals.label}
+                        </span>
+                        <span className="text-[12px] text-[#888] flex-1 text-left">
+                          {isSwim
+                            ? formatSwimPace(w.intervals.avgPace > 0 ? 100 / w.intervals.avgPace : 0)
+                            : formatPace(w.intervals.avgPace)
+                          } avg
+                        </span>
+                        {w.intervals.avgHR > 0 && (
+                          <span className="text-[11px] text-[#666] mr-2">{w.intervals.avgHR} bpm</span>
+                        )}
+                        {isExpanded ? <ChevronUp size={14} className="text-[#555]" /> : <ChevronDown size={14} className="text-[#555]" />}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="ml-4 mt-1.5 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                          <div className="grid grid-cols-4 gap-1 mb-2 text-[10px] uppercase text-[#555] font-semibold">
+                            <span>Split</span>
+                            <span>Pace</span>
+                            <span>Time</span>
+                            <span>HR</span>
+                          </div>
+                          {w.intervals.splits.map((s, si) => (
+                            <div key={si} className="grid grid-cols-4 gap-1 py-1.5 border-t border-white/[0.04]">
+                              <span className="text-[12px] text-[#888]">#{si + 1}</span>
+                              <span className="text-[12px] font-medium text-white">
+                                {isSwim
+                                  ? formatSwimPace(s.pace > 0 ? 100 / s.pace : 0)
+                                  : formatPace(s.pace)
+                                }
+                              </span>
+                              <span className="text-[12px] text-[#888]">{formatDurationCompact(s.duration)}</span>
+                              <span className="text-[12px] text-[#888]">{s.hr > 0 ? `${s.hr}` : '—'}</span>
+                            </div>
+                          ))}
+                          <div className="grid grid-cols-4 gap-1 pt-2 border-t border-white/[0.08] mt-1">
+                            <span className="text-[11px] text-[#666] font-semibold">Best</span>
+                            <span className="text-[12px] font-bold" style={{ color: SPORT_COLORS[w.type] }}>
+                              {isSwim
+                                ? formatSwimPace(w.intervals.bestPace > 0 ? 100 / w.intervals.bestPace : 0)
+                                : formatPace(w.intervals.bestPace)
+                              }
+                            </span>
+                            <span className="text-[12px] text-[#888]">
+                              {formatDurationCompact(Math.min(...w.intervals.splits.map(s => s.duration)))}
+                            </span>
+                            <span />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* INTERVAL PERSONAL RECORDS */}
+          {intervalPRs.length > 0 && (
+            <div className="bg-[#141414] rounded-2xl border border-white/[0.10] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Zap size={14} className="text-amber-500" />
+                <h2 className="text-xs uppercase tracking-widest text-[#555555] font-semibold">Interval PRs</h2>
+              </div>
+              <div className="space-y-2">
+                {intervalPRs.map(pr => {
+                  const d = new Date(pr.date);
+                  const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+                  const isSwim = enduranceSportTab === 'swim';
+                  return (
+                    <div key={pr.distance} className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-xl">
+                      <div>
+                        <span className="text-[14px] font-semibold text-white">{pr.distance}m</span>
+                        <span className="text-[11px] text-[#555] ml-2">{dateLabel}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[15px] font-bold" style={{ color: SPORT_COLORS[enduranceSportTab] }}>
+                          {isSwim
+                            ? formatSwimPace(pr.pace > 0 ? 100 / pr.pace : 0)
+                            : formatPace(pr.pace)
+                          }
+                        </span>
+                        <span className="text-[11px] text-[#666] ml-2">{formatDurationCompact(pr.duration)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1040,7 +1550,7 @@ function ActivityTab({ whoopConnected, whoopWorkouts, whoopCycles, workoutHistor
             <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fill: '#666666' }} axisLine={false} tickLine={false} width={35} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '10px', fontSize: '13px', padding: '8px 12px' }}
+              contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '10px', fontSize: '13px', padding: '8px 12px', color: '#fff' }} labelStyle={{ color: '#999' }} itemStyle={{ color: '#fff' }}
               labelStyle={{ color: '#888', fontSize: '11px', marginBottom: '2px' }}
               formatter={(value) => {
                 const unit = chartMetric === 'strain' ? '' : chartMetric === 'avgHR' ? ' bpm' : ' kcal';
