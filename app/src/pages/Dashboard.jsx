@@ -8,6 +8,7 @@ import { getSportName, getSportIcon, getSportColor, formatDuration } from '../ut
 import { getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
 import WhoopAutoLog from '../components/WhoopAutoLog';
+import GlowBorder from '../components/GlowBorder';
 
 const TYPE_COLORS = {
   rest: '#6B7280',
@@ -284,11 +285,12 @@ export default function Dashboard({ onNavigate }) {
       )}
 
       {/* TODAY'S WORKOUT */}
+      <GlowBorder color={todayColor} speed={3} width={1.5} radius={16}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="relative bg-[#141414] rounded-2xl border border-white/[0.10] overflow-hidden"
+        className="relative bg-[#141414] rounded-2xl overflow-hidden"
       >
         {/* Left color accent bar */}
         <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: todayColor }} />
@@ -324,6 +326,7 @@ export default function Dashboard({ onNavigate }) {
           )}
         </div>
       </motion.div>
+      </GlowBorder>
 
       {/* STATS ROW */}
       <motion.div

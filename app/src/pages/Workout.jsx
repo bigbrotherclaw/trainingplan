@@ -9,6 +9,7 @@ import { OPERATOR_LOADING, OPERATOR_LIFTS, ACCESSORIES, WEEKLY_TEMPLATE } from '
 import { BIKE_PRESETS, BIKE_ENDURANCE_PRESETS, RUN_PRESETS, RUN_ENDURANCE_PRESETS, SWIM_PRESETS, getCardioForWeek } from '../data/cardio';
 import { HIC_PRESETS, HIC_INPUT_FIELDS, DEFAULT_HIC_FIELDS, getRecommendedHics } from '../data/hic';
 import { getStrainCorrelation, getExpectedStrain } from '../utils/strainCorrelation';
+import GlowBorder from '../components/GlowBorder';
 
 function roundToFive(n) {
   return Math.round(n / 5) * 5;
@@ -862,26 +863,16 @@ export default function Workout({ showToast }) {
         </AnimatePresence>
 
         {/* Today's Workout Card */}
+        <GlowBorder
+          color={todayWorkout.type === 'strength' ? '#F59E0B' : todayWorkout.type === 'tri' ? '#14B8A6' : todayWorkout.type === 'long' ? '#10B981' : '#6B7280'}
+          speed={3}
+          width={1.5}
+          radius={16}
+        >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className={`relative bg-[#141414] rounded-2xl p-5 pr-5 active:scale-[0.98] transition-transform`}
-          style={{
-            border: `1.5px solid ${
-              todayWorkout.type === 'strength' ? 'rgba(245, 158, 11, 0.35)' :
-              todayWorkout.type === 'tri' ? 'rgba(20, 184, 166, 0.35)' :
-              todayWorkout.type === 'long' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(107, 114, 128, 0.35)'
-            }`,
-            boxShadow: `0 0 20px ${
-              todayWorkout.type === 'strength' ? 'rgba(245, 158, 11, 0.12)' :
-              todayWorkout.type === 'tri' ? 'rgba(20, 184, 166, 0.12)' :
-              todayWorkout.type === 'long' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(107, 114, 128, 0.12)'
-            }, 0 0 60px ${
-              todayWorkout.type === 'strength' ? 'rgba(245, 158, 11, 0.06)' :
-              todayWorkout.type === 'tri' ? 'rgba(20, 184, 166, 0.06)' :
-              todayWorkout.type === 'long' ? 'rgba(16, 185, 129, 0.06)' : 'rgba(107, 114, 128, 0.06)'
-            }`,
-          }}
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-[15px] text-[#A0A0A0]">
@@ -992,6 +983,7 @@ export default function Workout({ showToast }) {
             )}
           </div>
         </motion.div>
+        </GlowBorder>
 
         {/* Upcoming Workouts */}
         <div>
