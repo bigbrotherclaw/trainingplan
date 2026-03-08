@@ -610,11 +610,13 @@ export default function Workout({ showToast }) {
   if (todayWorkout.type === 'rest') {
     return (
       <div className="px-5 pt-4 pb-32 min-h-screen bg-black space-y-14">
-        <div className="text-center py-8">
-          <Moon size={48} className="text-[#333333] mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
-          <p className="text-sm text-[#666666]">Take time to recover and prepare for tomorrow.</p>
-        </div>
+        <GlowBorder color="#6B7280" speed={4} width={1.5} radius={16}>
+          <div className="bg-[#141414] rounded-2xl text-center py-8 px-5">
+            <Moon size={48} className="text-[#333333] mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold text-white mb-2">Rest Day</h2>
+            <p className="text-sm text-[#666666]">Take time to recover and prepare for tomorrow.</p>
+          </div>
+        </GlowBorder>
 
         <div>
           <h3 className="text-xs font-semibold text-[#555555] uppercase tracking-widest mb-4">Upcoming</h3>
