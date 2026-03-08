@@ -66,6 +66,7 @@ export default function CalendarPage({ onEditLog }) {
   const [activeId, setActiveId] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showSwapPicker, setShowSwapPicker] = useState(false);
+  const [pendingDrop, setPendingDrop] = useState(null); // { fromInfo, toInfo }
   const [logMode, setLogMode] = useState(null); // null | 'detailed'
   const [showMerged, setShowMerged] = useState(false);
   const [liftData, setLiftData] = useState({});
@@ -149,7 +150,15 @@ export default function CalendarPage({ onEditLog }) {
     const ws2 = startOfWeek(toInfo.date, { weekStartsOn: 0 });
     if (ws1.getTime() !== ws2.getTime()) return;
 
-    const weekKey = formatDateKey(ws1);
+    // Show choice modal instead of auto-swapping
+    setPendingDrop({ fromInfo, toInfo });
+  }, [getDayInfoById]);
+
+  const handleDropSwap = useCallback(() => {
+    if (!pendingDrop) return;
+    const { fromInfo, toInfo } = pendingDrop;
+    const ws = startOfWeek(fromInfo.date, { weekStartsOn: 0 });
+    const weekKey = formatDateKey(ws);
     const existing = weekSwaps[weekKey] || {};
     const day1 = fromInfo.date.getDay();
     const day2 = toInfo.date.getDay();
@@ -160,7 +169,34 @@ export default function CalendarPage({ onEditLog }) {
       ...prev,
       [weekKey]: { ...existing, [day1]: current2, [day2]: current1 },
     }));
-  }, [getDayInfoById, weekSwaps, setWeekSwaps]);
+    setPendingDrop(null);
+  }, [pendingDrop, weekSwaps, setWeekSwaps]);
+
+  const handleDropCombine = useCallback(() => {
+    if (!pendingDrop) return;
+    const { fromInfo, toInfo } = pendingDrop;
+    const ws = startOfWeek(fromInfo.date, { weekStartsOn: 0 });
+    const weekKey = formatDateKey(ws);
+    const existing = weekSwaps[weekKey] || {};
+    const sourceDay = fromInfo.date.getDay();
+    const targetDay = toInfo.date.getDay();
+    // Get current template indices for both days
+    const sourceTemplate = existing[sourceDay] !== undefined ? existing[sourceDay] : sourceDay;
+    const targetTemplate = existing[targetDay] !== undefined ? existing[targetDay] : targetDay;
+    // Flatten if either is already combined (array)
+    const sourceArr = Array.isArray(sourceTemplate) ? sourceTemplate : [sourceTemplate];
+    const targetArr = Array.isArray(targetTemplate) ? targetTemplate : [targetTemplate];
+    // Combine into target, source becomes rest
+    setWeekSwaps((prev) => ({
+      ...prev,
+      [weekKey]: {
+        ...existing,
+        [targetDay]: [...targetArr, ...sourceArr],
+        [sourceDay]: 0, // rest
+      },
+    }));
+    setPendingDrop(null);
+  }, [pendingDrop, weekSwaps, setWeekSwaps]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
@@ -469,6 +505,7 @@ export default function CalendarPage({ onEditLog }) {
               const isToday = isSameDay(dayInfo.date, today);
               const isLogged = loggedDates.has(dayInfo.date.toDateString());
               const summary = dayInfo.isCurrentMonth ? getSwappedWorkoutSummaryForDate(dayInfo.date, weekSwaps) : null;
+              const cellWorkout = dayInfo.isCurrentMonth ? getSwappedWorkoutForDate(dayInfo.date, weekSwaps) : null;
               const log = isLogged ? workoutHistory.find((e) => new Date(e.date).toDateString() === dayInfo.date.toDateString()) : null;
               const hasSkippedHic = log?.details?.hic?.skipped;
               const isDragging = activeId === `day-${idx}`;
@@ -512,6 +549,7 @@ export default function CalendarPage({ onEditLog }) {
                   swapped={swapped}
                   whoopStrain={maxStrain}
                   whoopExtras={whoopExtras}
+                  workout={cellWorkout}
                   onTap={handleDayTap}
                 />
               );
@@ -763,6 +801,99 @@ export default function CalendarPage({ onEditLog }) {
             </motion.div>
           </>
         )}
+      </AnimatePresence>
+
+      {/* Drop Choice Modal (Swap vs Combine) */}
+      <AnimatePresence>
+        {pendingDrop && (() => {
+          const fromSummary = getSwappedWorkoutSummaryForDate(pendingDrop.fromInfo.date, weekSwaps);
+          const toSummary = getSwappedWorkoutSummaryForDate(pendingDrop.toInfo.date, weekSwaps);
+          const fromWorkout = getSwappedWorkoutForDate(pendingDrop.fromInfo.date, weekSwaps);
+          const toWorkout = getSwappedWorkoutForDate(pendingDrop.toInfo.date, weekSwaps);
+          return (
+            <>
+              <motion.div
+                className="fixed inset-0 bg-black/60 z-40"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setPendingDrop(null)}
+              />
+              <motion.div
+                className="fixed bottom-0 left-0 right-0 z-50 bg-[#141414] rounded-t-3xl border-t border-white/[0.10] px-5 pt-3"
+                style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 5rem))' }}
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              >
+                {/* Handle */}
+                <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
+
+                {/* Header */}
+                <div className="relative mb-5">
+                  <div className="text-center">
+                    <h3 className="text-[17px] font-bold text-white mb-2">Move Workout</h3>
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: fromSummary?.accent }} />
+                        <span className="text-[13px] font-medium" style={{ color: fromSummary?.accent }}>
+                          {fromWorkout?.short || 'Rest'}
+                        </span>
+                      </div>
+                      <ArrowLeftRight size={14} className="text-[#555]" />
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: toSummary?.accent }} />
+                        <span className="text-[13px] font-medium" style={{ color: toSummary?.accent }}>
+                          {toWorkout?.short || 'Rest'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPendingDrop(null)}
+                    className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10"
+                  >
+                    <X size={16} className="text-white/60" />
+                  </button>
+                </div>
+
+                {/* Options */}
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    onClick={handleDropSwap}
+                    className="flex items-center gap-3 w-full p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 active:bg-amber-500/20 transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-amber-600/30 flex items-center justify-center">
+                      <ArrowLeftRight size={18} className="text-amber-400" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <span className="text-[15px] font-medium text-white block">Swap Workouts</span>
+                      <span className="text-[12px] text-[#777]">
+                        {format(pendingDrop.fromInfo.date, 'EEE')} gets {toWorkout?.short || 'Rest'}, {format(pendingDrop.toInfo.date, 'EEE')} gets {fromWorkout?.short || 'Rest'}
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleDropCombine}
+                    className="flex items-center gap-3 w-full p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 active:bg-blue-500/20 transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-blue-600/30 flex items-center justify-center">
+                      <Layers size={18} className="text-blue-400" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <span className="text-[15px] font-medium text-white block">Combine Workouts</span>
+                      <span className="text-[12px] text-[#777]">
+                        {format(pendingDrop.toInfo.date, 'EEE')} becomes {[toWorkout?.short, fromWorkout?.short].filter(Boolean).join(' + ')}, {format(pendingDrop.fromInfo.date, 'EEE')} becomes Rest
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
       </AnimatePresence>
     </div>
   );
@@ -1135,8 +1266,18 @@ function DetailedLogForm({ workout, loadingInfo, settings, liftData, setLiftData
   );
 }
 
-function abbrevLabel(label) {
+function abbrevLabel(label, workout) {
   if (!label) return '';
+  // Handle combined workouts by abbreviating each component
+  if (workout && workout.type === 'combined' && workout.components) {
+    return workout.components
+      .filter(c => c.type !== 'rest')
+      .map(c => {
+        const s = getWorkoutSummary(c);
+        return abbrevLabel(s.label);
+      })
+      .join('+');
+  }
   const l = label.toLowerCase();
   if (l === 'rest') return 'REST';
   if (l.includes('strength a') || l.includes('str a')) return 'STR A';
@@ -1151,7 +1292,7 @@ function abbrevLabel(label) {
   return label.toUpperCase().slice(0, 8);
 }
 
-function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, whoopExtras, onTap }) {
+function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, bgColor, borderStyle, isDragging, isValidTarget, todayRef, swapped, whoopStrain, whoopExtras, workout, onTap }) {
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id,
     disabled: !dayInfo.isCurrentMonth,
@@ -1198,7 +1339,7 @@ function CalendarCell({ id, dayInfo, isToday, isLogged, summary, hasSkippedHic, 
       </span>
       {dayInfo.isCurrentMonth && summary && summary.label !== 'Rest' && (
         <span className="text-[9px] leading-tight text-center font-semibold px-0.5" style={{ color: summary.accent }}>
-          {abbrevLabel(summary.label)}
+          {abbrevLabel(summary.label, workout)}
         </span>
       )}
       {dayInfo.isCurrentMonth && whoopExtras && whoopExtras.length > 0 && (

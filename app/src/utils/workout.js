@@ -22,6 +22,15 @@ export function getWorkoutSummary(workout) {
     return { label: 'Swim/Bike + HIC', color: '#1e3a5f', accent: '#3b82f6' };
   }
   if (workout.type === 'long') return { label: 'Long Tri', color: '#4c1d95', accent: '#8b5cf6' };
+  if (workout.type === 'combined' && workout.components) {
+    const summaries = workout.components.map(c => getWorkoutSummary(c));
+    const first = summaries.find(s => s.label !== 'Rest') || summaries[0];
+    return {
+      label: summaries.map(s => s.label).join(' + '),
+      color: first.color,
+      accent: first.accent,
+    };
+  }
   return { label: workout.short, color: '#334155', accent: '#64748b' };
 }
 
@@ -80,6 +89,21 @@ export function getSwappedWorkoutForDate(date, weekSwaps) {
     const dayOfWeek = date.getDay();
     const swappedDay = swaps[dayOfWeek];
     if (swappedDay !== undefined) {
+      // Combined workout: array of template indices
+      if (Array.isArray(swappedDay)) {
+        const components = swappedDay.map(idx => WEEKLY_TEMPLATE[idx]).filter(w => w && w.type !== 'rest');
+        if (components.length === 0) return WEEKLY_TEMPLATE[0]; // all rest → rest
+        if (components.length === 1) return components[0];
+        return {
+          name: components.map(w => w.name).join(' + '),
+          short: components.map(w => w.short).join('+'),
+          type: 'combined',
+          label: 'COMBINED',
+          components,
+          // Collect all accessories from strength components
+          accessories: components.filter(w => w.type === 'strength' && w.accessories).map(w => w.accessories),
+        };
+      }
       return WEEKLY_TEMPLATE[swappedDay];
     }
   }
