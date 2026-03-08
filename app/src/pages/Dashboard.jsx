@@ -172,15 +172,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
 
     if (recoveryScore == null && hrv == null && strain == null) return null;
 
-    // Strain target based on recovery (Whoop-style ranges)
-    let strainTarget = null;
-    if (recoveryScore != null) {
-      if (recoveryScore >= 67) strainTarget = 16;       // Green: push hard
-      else if (recoveryScore >= 34) strainTarget = 11;   // Yellow: moderate
-      else strainTarget = 6;                              // Red: easy day
-    }
-
-    return { recoveryScore, hrv, restingHR, sleepScore, strain, calories, strainTarget };
+    return { recoveryScore, hrv, restingHR, sleepScore, strain, calories };
   }, [connected, whoopData]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
@@ -411,7 +403,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
                 decimals={1}
                 suffix=""
                 delay={0.2}
-                target={whoopMetrics.strainTarget}
+                target={null}
                 getColor={(s) => s <= 7 ? '#00D46A' : s <= 14 ? '#FFCC00' : '#EF4444'}
               />
             </div>
@@ -421,7 +413,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
           <div className="grid grid-cols-3 gap-2" style={{ marginTop: 8 }}>
             <StatMiniCard label="HRV" delay={0.1} icon={<Zap size={14} color="#00D46A" />}>
               <div className="text-[18px] font-bold text-white">
-                <AnimatedNumber value={whoopMetrics.hrv} decimals={1} suffix="" />
+                <AnimatedNumber value={whoopMetrics.hrv != null ? Math.round(whoopMetrics.hrv) : null} decimals={0} suffix="" />
               </div>
               <div className="text-[10px] text-[#555]">ms</div>
             </StatMiniCard>

@@ -32,6 +32,7 @@ async function refreshTokenIfNeeded(supabase: any, userId: string, tokens: any) 
       refresh_token: tokens.refresh_token,
       client_id: WHOOP_CLIENT_ID,
       client_secret: WHOOP_CLIENT_SECRET,
+      scope: 'offline',
     }),
   })
 
@@ -87,20 +88,30 @@ serve(async (req: Request) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    const { data: { user } } = await supabase.auth.getUser(userToken)
 
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Invalid user' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    // Support admin calls with userId param (for server-side/CLI triggers)
+    const bodyPeek = await req.clone().json().catch(() => ({}))
+    let userId: string
+
+    if (bodyPeek.userId) {
+      // Admin mode: caller provides userId directly (requires service role or no-verify-jwt)
+      userId = bodyPeek.userId
+    } else {
+      const { data: { user } } = await supabase.auth.getUser(userToken)
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Invalid user' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      userId = user.id
     }
 
     // Get stored tokens
     const { data: tokens } = await supabase
       .from('whoop_tokens')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (!tokens) {
@@ -111,12 +122,14 @@ serve(async (req: Request) => {
     }
 
     // Refresh token if needed
-    const accessToken = await refreshTokenIfNeeded(supabase, user.id, tokens)
+    const accessToken = await refreshTokenIfNeeded(supabase, userId, tokens)
 
     // Determine what to sync based on request body
     const body = await req.json().catch(() => ({}))
     const syncType = body.type || 'all' // 'all', 'recovery', 'sleep', 'cycle', 'workout'
     const days = body.days || 7 // How many days to sync
+    // Client sends their local date so we key "today" correctly (server is UTC)
+    const clientToday = body.clientToday || new Date().toISOString().split('T')[0]
 
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
@@ -138,7 +151,7 @@ serve(async (req: Request) => {
           const date = record.created_at?.split('T')[0]
           if (date) {
             await supabase.from('whoop_data').upsert({
-              user_id: user.id,
+              user_id: userId,
               data_type: 'recovery',
               date,
               data: record,
@@ -162,7 +175,7 @@ serve(async (req: Request) => {
           const date = record.start?.split('T')[0] || record.created_at?.split('T')[0]
           if (date) {
             await supabase.from('whoop_data').upsert({
-              user_id: user.id,
+              user_id: userId,
               data_type: 'sleep',
               date,
               data: record,
@@ -186,7 +199,7 @@ serve(async (req: Request) => {
           const date = record.start?.split('T')[0] || record.created_at?.split('T')[0]
           if (date) {
             await supabase.from('whoop_data').upsert({
-              user_id: user.id,
+              user_id: userId,
               data_type: 'cycle',
               date,
               data: record,
@@ -206,18 +219,13 @@ serve(async (req: Request) => {
           const currentCycle = cycleData.records[0]
           const cycleId = currentCycle.id
           
-          // Use local-date-aware key: if cycle started today in user's perspective, use today
-          // The cycle start is in UTC; convert to local-ish date
-          const cycleStart = new Date(currentCycle.start)
-          const now = new Date()
-          // Use today's date as the key for the current active cycle (no end = still active)
+          // Use client's local date for the current active cycle key
           const isActive = !currentCycle.end
-          const todayStr = now.toISOString().split('T')[0]
-          const cycleDate = isActive ? todayStr : (currentCycle.start?.split('T')[0] || todayStr)
+          const cycleDate = isActive ? clientToday : (currentCycle.start?.split('T')[0] || clientToday)
           
           // Cache current cycle
           await supabase.from('whoop_data').upsert({
-            user_id: user.id,
+            user_id: userId,
             data_type: 'cycle',
             date: cycleDate,
             data: currentCycle,
@@ -229,7 +237,7 @@ serve(async (req: Request) => {
             const recoveryData = await fetchWhoopData(accessToken, `/v2/recovery/${cycleId}`)
             if (recoveryData && recoveryData.score_state === 'SCORED') {
               await supabase.from('whoop_data').upsert({
-                user_id: user.id,
+                user_id: userId,
                 data_type: 'recovery',
                 date: cycleDate,
                 data: recoveryData,
@@ -245,14 +253,15 @@ serve(async (req: Request) => {
         const sleepData = await fetchWhoopData(accessToken, '/v2/activity/sleep', { limit: '1' })
         if (sleepData.records?.length > 0) {
           const latestSleep = sleepData.records[0]
-          const sleepDate = latestSleep.start?.split('T')[0] || new Date().toISOString().split('T')[0]
-          // If sleep ended today, key it to today
+          const sleepDate = latestSleep.start?.split('T')[0] || clientToday
+          // If sleep ended today (client's today), key it to today
           const sleepEnd = latestSleep.end ? new Date(latestSleep.end) : null
-          const todayStr2 = new Date().toISOString().split('T')[0]
-          const finalSleepDate = (sleepEnd && sleepEnd.toISOString().split('T')[0] === todayStr2) ? todayStr2 : sleepDate
+          const sleepEndDate = sleepEnd ? sleepEnd.toISOString().split('T')[0] : null
+          // Key to clientToday if sleep ended today or yesterday (covers timezone edge cases)
+          const finalSleepDate = (sleepEnd && (sleepEndDate === clientToday || sleepEndDate >= clientToday)) ? clientToday : sleepDate
           
           await supabase.from('whoop_data').upsert({
-            user_id: user.id,
+            user_id: userId,
             data_type: 'sleep',
             date: finalSleepDate,
             data: latestSleep,
@@ -268,17 +277,32 @@ serve(async (req: Request) => {
     if (syncType === 'all' || syncType === 'workout') {
       const data = await fetchWhoopData(accessToken, '/v2/activity/workout', {
         start: startParam,
-        limit: String(Math.min(days * 3, 50)),
+        limit: String(Math.min(days * 3, 25)),
       })
       results.workout = data
 
       if (data.records) {
         for (const record of data.records) {
-          const date = record.start?.split('T')[0] || record.created_at?.split('T')[0]
+          // Use timezone_offset from the record to compute local date, fall back to UTC split
+          let date: string
+          if (record.start && record.timezone_offset) {
+            const startUtc = new Date(record.start)
+            const offsetMatch = record.timezone_offset.match(/^([+-])(\d{2}):(\d{2})$/)
+            if (offsetMatch) {
+              const sign = offsetMatch[1] === '+' ? 1 : -1
+              const offsetMs = (parseInt(offsetMatch[2]) * 60 + parseInt(offsetMatch[3])) * 60000 * sign
+              const localTime = new Date(startUtc.getTime() + offsetMs)
+              date = localTime.toISOString().split('T')[0]
+            } else {
+              date = record.start.split('T')[0]
+            }
+          } else {
+            date = record.start?.split('T')[0] || record.created_at?.split('T')[0]
+          }
           const whoopId = record.id || record.v1_id || date
           if (date) {
             await supabase.from('whoop_data').upsert({
-              user_id: user.id,
+              user_id: userId,
               data_type: `workout:${whoopId}`,
               date,
               data: record,

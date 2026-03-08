@@ -12,7 +12,7 @@ const APP_URL = Deno.env.get('APP_URL') || 'https://bigbrotherclaw.github.io/tra
 // Custom URL scheme registered in iOS Info.plist
 const NATIVE_SCHEME = 'com.bigbrother.trainingplan'
 
-const SCOPES = 'read:recovery read:cycles read:workout read:sleep read:profile read:body_measurement'
+const SCOPES = 'read:recovery read:cycles read:workout read:sleep read:profile read:body_measurement offline'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

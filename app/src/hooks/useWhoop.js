@@ -202,7 +202,7 @@ export function useWhoop() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ type: 'all', days }),
+        body: JSON.stringify({ type: 'all', days, clientToday: (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })() }),
       });
       const result = await resp.json();
       console.log('[Whoop] Sync result:', result);
