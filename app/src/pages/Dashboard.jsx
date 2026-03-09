@@ -241,25 +241,36 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
   const weekWorkouts = weekData.filter(d => d.isLogged).length;
   const plannedWorkouts = weekData.filter(d => d.workout.type !== 'rest').length;
   
-  // Compliance: swapped plan vs what was actually logged
+  // Compliance: total logged workouts this week vs 6 planned
   const complianceData = useMemo(() => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay());
-    const original = Array.from({ length: 7 }, (_, i) => {
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    const days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date(weekStart);
       date.setDate(weekStart.getDate() + i);
-      const workout = getSwappedWorkoutForDate(date, weekSwaps); // use swapped schedule
+      const workout = getSwappedWorkoutForDate(date, weekSwaps);
       const isLogged = loggedDates.has(date.toDateString());
       const isPast = date < today;
       const isToday = date.toDateString() === today.toDateString();
       return { date, workout, isLogged, isPast, isToday };
     });
-    const plannedOriginal = original.filter(d => d.workout.type !== 'rest');
-    const completedOriginal = plannedOriginal.filter(d => d.isLogged);
-    const missedOriginal = plannedOriginal.filter(d => !d.isLogged && d.isPast);
-    const upcomingOriginal = plannedOriginal.filter(d => !d.isLogged && !d.isPast);
-    const pct = plannedOriginal.length > 0 ? Math.round((completedOriginal.length / plannedOriginal.length) * 100) : 100;
-    return { planned: plannedOriginal, completed: completedOriginal, missed: missedOriginal, upcoming: upcomingOriginal, pct };
+
+    // Count total logged workouts this week (any day, including rest days)
+    const totalLogged = days.filter(d => d.isLogged).length;
+    // 6 planned workouts per week (Mon-Sat in the template)
+    const totalPlanned = days.filter(d => d.workout.type !== 'rest').length;
+    // Completed = min of logged vs planned (can't exceed 100%)
+    const completed = Math.min(totalLogged, totalPlanned);
+    // Missed = planned non-rest days that are past and not logged
+    const plannedDays = days.filter(d => d.workout.type !== 'rest');
+    const missed = plannedDays.filter(d => !d.isLogged && d.isPast);
+    const upcoming = plannedDays.filter(d => !d.isLogged && !d.isPast && !d.isToday);
+    const pct = totalPlanned > 0 ? Math.round((completed / totalPlanned) * 100) : 100;
+    return { planned: plannedDays, completed: days.filter(d => d.isLogged), missed, upcoming, pct, totalLogged, totalPlanned: totalPlanned };
   }, [today, loggedDates, weekSwaps]);
 
   // Weekly tonnage
