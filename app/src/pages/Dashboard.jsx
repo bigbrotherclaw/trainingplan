@@ -241,14 +241,14 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
   const weekWorkouts = weekData.filter(d => d.isLogged).length;
   const plannedWorkouts = weekData.filter(d => d.workout.type !== 'rest').length;
   
-  // Compliance: original (unswapped) plan vs what was actually logged
+  // Compliance: swapped plan vs what was actually logged
   const complianceData = useMemo(() => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay());
     const original = Array.from({ length: 7 }, (_, i) => {
       const date = new Date(weekStart);
       date.setDate(weekStart.getDate() + i);
-      const workout = getWorkoutForDate(date); // original template, no swaps
+      const workout = getSwappedWorkoutForDate(date, weekSwaps); // use swapped schedule
       const isLogged = loggedDates.has(date.toDateString());
       const isPast = date < today;
       const isToday = date.toDateString() === today.toDateString();
@@ -260,7 +260,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
     const upcomingOriginal = plannedOriginal.filter(d => !d.isLogged && !d.isPast);
     const pct = plannedOriginal.length > 0 ? Math.round((completedOriginal.length / plannedOriginal.length) * 100) : 100;
     return { planned: plannedOriginal, completed: completedOriginal, missed: missedOriginal, upcoming: upcomingOriginal, pct };
-  }, [today, loggedDates]);
+  }, [today, loggedDates, weekSwaps]);
 
   // Weekly tonnage
   const weekTonnage = useMemo(() => {
