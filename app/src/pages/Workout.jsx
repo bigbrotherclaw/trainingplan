@@ -368,6 +368,17 @@ function MiniCalendar({ selectedDate, onSelectDate, loggedDates, weekSwaps }) {
   );
 }
 
+// ── Module-level persistence for recovery advisor dismissals ──
+const _recoveryDismissed = (() => {
+  try {
+    const raw = localStorage.getItem('recoveryAdvisor_dismissed');
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+})();
+function saveRecoveryDismissed() {
+  try { localStorage.setItem('recoveryAdvisor_dismissed', JSON.stringify([..._recoveryDismissed])); } catch {}
+}
+
 export default function Workout({ showToast, selectedDate: selectedDateProp, onSelectedDateChange, editFromCalendar, onEditFromCalendarHandled }) {
   const { settings, workoutHistory, setWorkoutHistory, weekSwaps, setWeekSwaps, acceptedSuggestion, setAcceptedSuggestion } = useApp();
   const { connected: whoopConnected, latestRecovery, latestSleep, latestCycle, workouts: whoopWorkouts } = useWhoop();
@@ -397,7 +408,7 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
   const [recoveryChecked, setRecoveryChecked] = useState({});
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [overrideSuggestion, setOverrideSuggestion] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [, forceUpdate] = useState(0);
   const timerRef = useRef(null);
   const loggingStartRef = useRef(null);
 
@@ -556,6 +567,8 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
   };
 
   const activeSuggestion = (!overrideSuggestion && acceptedSuggestion) ? acceptedSuggestion : null;
+  const todayDateKey = today.toDateString();
+  const dismissed = _recoveryDismissed.has(todayDateKey);
   const showSuggestionCard = whoopRecoveryInfo && whoopRecoveryInfo.modifications?.type !== 'none' && !acceptedSuggestion && !dismissed && !todayLogged;
 
   const getTodayLiftWeight = (liftName) => {
@@ -1042,7 +1055,7 @@ export default function Workout({ showToast, selectedDate: selectedDateProp, onS
                         Accept Adjustment
                       </button>
                       <button
-                        onClick={() => setDismissed(true)}
+                        onClick={() => { _recoveryDismissed.add(todayDateKey); saveRecoveryDismissed(); forceUpdate(n => n + 1); }}
                         className="flex-1 text-[13px] font-semibold rounded-xl transition-colors active:scale-[0.98] min-h-[40px] text-[#A0A0A0] border border-white/[0.15] bg-transparent"
                       >
                         Dismiss

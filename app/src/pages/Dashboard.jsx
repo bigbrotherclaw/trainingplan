@@ -6,7 +6,7 @@ import { useWhoop } from '../hooks/useWhoop';
 import { getSportName, getSportIcon, getSportColor, formatDuration } from '../utils/whoopSports';
 import { getWorkoutForDate, getSwappedWorkoutForDate } from '../utils/workout';
 import ComplianceRing from '../components/ComplianceRing';
-import WhoopAutoLog from '../components/WhoopAutoLog';
+import UnifiedAutoLog from '../components/UnifiedAutoLog';
 import GlowBorder from '../components/GlowBorder';
 
 const TYPE_COLORS = {
@@ -534,7 +534,7 @@ export default function Dashboard({ onNavigate, onNavigateToWorkout }) {
 
       {/* WHOOP AUTO-LOG PROMPTS */}
       <div style={{marginTop:"12px"}}>
-      <WhoopAutoLog />
+      <UnifiedAutoLog />
       </div>
 
       {/* RECENT WHOOP ACTIVITIES */}
