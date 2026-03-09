@@ -165,6 +165,28 @@ serve(async (req: Request) => {
 
       console.log('Whoop tokens stored for user:', user.id)
 
+      // Fetch Whoop user profile to store whoop_user_id (needed for webhook matching)
+      try {
+        const profileResp = await fetch('https://api.prod.whoop.com/developer/v1/user/profile/basic', {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        })
+        if (profileResp.ok) {
+          const profile = await profileResp.json()
+          const whoopUserId = profile.user_id || profile.id
+          if (whoopUserId) {
+            await supabase
+              .from('whoop_tokens')
+              .update({ whoop_user_id: String(whoopUserId) })
+              .eq('user_id', user.id)
+            console.log('Stored whoop_user_id:', whoopUserId)
+          }
+        } else {
+          console.error('Failed to fetch Whoop profile:', profileResp.status)
+        }
+      } catch (profileErr) {
+        console.error('Whoop profile fetch error:', profileErr.message)
+      }
+
       // Redirect back to app via custom URL scheme (native) or web URL
       return appRedirect({ whoop: 'connected' }, isNative)
     }

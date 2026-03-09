@@ -131,23 +131,25 @@ export function useGarmin() {
   }, [session]);
 
   // ── Sync data (direct, doesn't depend on `connected` state) ──
-  const syncDataDirect = useCallback(async (days = 7) => {
+  const syncDataDirect = useCallback(async (days = 7, quickCheck = false) => {
     if (!session?.access_token) return;
 
     setSyncing(true);
     try {
-      console.log('[Garmin] Syncing data, days:', days);
+      console.log('[Garmin] Syncing data, days:', days, 'quickCheck:', quickCheck);
       const resp = await fetch(`${EDGE_BASE}/garmin-sync`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ days }),
+        body: JSON.stringify({ days, quickCheck }),
       });
       const result = await resp.json();
       console.log('[Garmin] Sync result:', result);
-      await loadCachedData(days);
+      if (!result.noNewData) {
+        await loadCachedData(days);
+      }
     } catch (err) {
       console.error('[Garmin] Sync failed:', err);
     } finally {
@@ -204,15 +206,72 @@ export function useGarmin() {
     }
   }, [connected, loadCachedData, syncDataDirect]);
 
-  // Periodic refresh every 15 minutes
+  // Periodic refresh every 10 minutes (with quick check to skip if no new data)
   useEffect(() => {
     if (!connected) return;
     const interval = setInterval(() => {
-      console.log('[Garmin] Periodic sync: refreshing data...');
-      syncDataDirect(3).then(() => loadCachedData(30));
-    }, 15 * 60 * 1000);
+      console.log('[Garmin] Periodic sync: quick check for new data...');
+      syncDataDirect(3, true).then(() => loadCachedData(30));
+    }, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [connected, syncDataDirect, loadCachedData]);
+
+  // ── App foreground detection: sync when app comes back ──
+  useEffect(() => {
+    if (!connected) return;
+
+    let capacitorListener = null;
+
+    // Capacitor native: listen for appStateChange
+    if (window.Capacitor?.isNativePlatform()) {
+      const setup = async () => {
+        try {
+          const { App: CapApp } = await import('@capacitor/app');
+          capacitorListener = await CapApp.addListener('appStateChange', (state) => {
+            if (state.isActive) {
+              console.log('[Garmin] App foregrounded, syncing...');
+              syncDataDirect(3, true);
+            }
+          });
+        } catch (err) {
+          console.error('[Garmin] Failed to set up appStateChange listener:', err);
+        }
+      };
+      setup();
+    }
+
+    // Web: listen for visibilitychange
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Garmin] Tab visible, syncing...');
+        syncDataDirect(3, true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (capacitorListener) capacitorListener.remove();
+    };
+  }, [connected, syncDataDirect]);
+
+  // ── Supabase Realtime: instant UI updates when garmin_data changes ──
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const channel = supabase
+      .channel('garmin-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'garmin_data',
+        filter: `user_id=eq.${session.user.id}`,
+      }, () => {
+        console.log('[Garmin] Realtime update received');
+        loadCachedData(30);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [session?.user?.id, loadCachedData]);
 
   const activities = data.activities;
 

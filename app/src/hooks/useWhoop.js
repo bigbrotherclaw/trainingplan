@@ -305,6 +305,24 @@ export function useWhoop() {
     return () => clearInterval(interval);
   }, [connected, syncDataDirect, loadCachedData]);
 
+  // ── Supabase Realtime: instant UI updates from webhook-driven upserts ──
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const channel = supabase
+      .channel('whoop-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'whoop_data',
+        filter: `user_id=eq.${session.user.id}`,
+      }, () => {
+        console.log('[Whoop] Realtime update received');
+        loadCachedData(30);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [session?.user?.id, loadCachedData]);
+
   // ── Derived latest values ──
   const latestRecovery = data.recovery.length > 0 ? data.recovery[data.recovery.length - 1] : null;
   const latestSleep = data.sleep.length > 0 ? data.sleep[data.sleep.length - 1] : null;

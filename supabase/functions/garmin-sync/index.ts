@@ -255,10 +255,11 @@ serve(async (req: Request) => {
 
     const body = await req.json().catch(() => ({}))
     const days = body.days || 7
+    const quickCheck = body.quickCheck || false
     const limit = Math.min(days * 3, 50)
 
-    // Fetch activities
-    console.log('[Garmin] Syncing activities, limit:', limit)
+    // Fetch activity list
+    console.log('[Garmin] Syncing activities, limit:', limit, 'quickCheck:', quickCheck)
     const activities = await fetchGarmin(
       accessToken,
       `/activitylist-service/activities/search/activities?start=0&limit=${limit}`
@@ -270,6 +271,26 @@ serve(async (req: Request) => {
     }
 
     console.log('[Garmin] Fetched', activities.length, 'activities')
+
+    // Quick check mode: only see if there are new activities since last sync
+    const lastSyncedId = tokens.last_synced_activity_id
+    if (quickCheck && lastSyncedId && activities.length > 0) {
+      const latestId = String(activities[0].activityId)
+      if (latestId === lastSyncedId) {
+        console.log('[Garmin] Quick check: no new activities')
+        return new Response(JSON.stringify({
+          success: true,
+          synced: 0,
+          total: activities.length,
+          days,
+          quickCheck: true,
+          noNewData: true,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      console.log('[Garmin] Quick check: new activities found (latest:', latestId, 'vs last synced:', lastSyncedId, ')')
+    }
 
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
@@ -339,8 +360,13 @@ serve(async (req: Request) => {
       }
     }
 
+    // Store the latest activity ID for quick check optimization
+    const latestActivityId = activities.length > 0 ? String(activities[0].activityId) : lastSyncedId
     await supabase.from('garmin_tokens')
-      .update({ updated_at: new Date().toISOString() })
+      .update({
+        updated_at: new Date().toISOString(),
+        last_synced_activity_id: latestActivityId,
+      })
       .eq('user_id', userId)
 
     return new Response(JSON.stringify({
