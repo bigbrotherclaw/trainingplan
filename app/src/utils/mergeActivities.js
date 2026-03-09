@@ -188,7 +188,9 @@ function buildMergedActivity(garmin, whoop) {
     startTime: gTime ? gTime.start.toISOString() : garmin.startTimeLocal,
     duration: garmin.duration || 0,
     distance: garmin.distance || 0,
-    calories: garmin.calories || 0,
+    calories: (garmin._raw?.bmrCalories && garmin.calories)
+      ? garmin.calories - garmin._raw.bmrCalories
+      : garmin.calories || 0,
     avgHR: garmin.averageHR || 0,
     maxHR: garmin.maxHR || 0,
     garmin: {
